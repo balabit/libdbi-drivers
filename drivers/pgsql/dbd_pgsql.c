@@ -105,6 +105,8 @@ int dbd_connect(dbi_conn_t *conn) {
 	else if (host) asprintf(&conninfo_kludge, "host='%s'", host);
 	else if (port_str) asprintf(&conninfo_kludge, "port='%s'", port_str);
 	else conninfo_kludge = NULL;
+
+	if (port_str) free(port_str);
 	
 	asprintf(&conninfo, "%s dbname='%s' user='%s' password='%s' options='%s' tty='%s'",
 		conninfo_kludge ? conninfo_kludge : "", /* if we pass a NULL directly to the %s it will show up as "(null)" */
@@ -115,6 +117,7 @@ int dbd_connect(dbi_conn_t *conn) {
 		tty ? tty : "");
 
 	pgconn = PQconnectdb(conninfo);
+	if (conninfo) free(conninfo);
 	if (!pgconn) return -1;
 
 	if (PQstatus(pgconn) == CONNECTION_BAD) {

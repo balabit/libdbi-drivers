@@ -223,7 +223,15 @@ int main(int argc, char **argv) {
 	
 	printf("\nTest 4: Create table: \n");
 	
-	snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME)");
+	if (!strcmp(drivername, "mysql")) {
+	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME)");
+	}
+	else if (!strcmp(drivername, "pgsql")) {
+	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME)");
+	}
+	else {
+	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME)");
+	}
 	if ((result = dbi_conn_query(conn, query)) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't create table! Error message: %s\n", errmsg);
@@ -255,7 +263,7 @@ int main(int argc, char **argv) {
 	
 	printf("\nTest 6: Insert row: \n");
 	
-	if ((result = dbi_conn_query(conn, "INSERT INTO test_datatypes VALUES ('a','a',-32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+308, 'this is a test', '2001-12-31 23:59:59')")) == NULL) {
+	if ((result = dbi_conn_query(conn, "INSERT INTO test_datatypes VALUES (-127, 255, -32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+308, 'this is a test', '2001-12-31 23:59:59')")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't insert data! Error message: %s\n", errmsg);
 		dbi_conn_close(conn);
@@ -367,7 +375,7 @@ int main(int argc, char **argv) {
 
 		ptr_tm = gmtime(&the_datetime);
 
-		printf("the_char: in:'a' out:%d<<\nthe_uchar: in:'a' out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%f<<\nthe_double: in:1.7976931348623157E+308 out:%lf\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_string, ptr_tm->tm_year+1900, ptr_tm->tm_mon+1, ptr_tm->tm_mday, ptr_tm->tm_hour, ptr_tm->tm_min, ptr_tm->tm_sec);
+		printf("the_char: in:-127 out:%d<<\nthe_uchar: in:255 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%f<<\nthe_double: in:1.7976931348623157E+308 out:%lf\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_string, ptr_tm->tm_year+1900, ptr_tm->tm_mon+1, ptr_tm->tm_mday, ptr_tm->tm_hour, ptr_tm->tm_min, ptr_tm->tm_sec);
 
 	}
 	

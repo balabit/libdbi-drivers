@@ -3,7 +3,7 @@
  * Copyright (C) 2001-2002, David Parker and Mark Tobenkin.
  * http://libdbi.sourceforge.net
  * 
- * dbd_mysql.c: MySQL database support (using libmysqlclient6)
+ * dbd_mysql.c: MySQL database support (using libmysqlclient)
  * Copyright (C) 2001-2002, Mark M. Tobenkin <mark@brentwoodradio.com>.
  * http://libdbi.sourceforge.net
  * 

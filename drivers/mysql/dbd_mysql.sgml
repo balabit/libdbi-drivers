@@ -86,9 +86,51 @@
     <para>Your application has to initialize libdbi drivers by setting some driver options with the <function>dbi_conn_set_option()</function> and the <function>dbi_conn_set_option_numeric()</function> library functions. The mysql driver supports the following options:</para>
     <variablelist>
       <varlistentry>
-	<term>mysql_include_trailing_null</term>
+	<term>host</term>
+	<listitem>
+	  <para>The hostname or IP address of the MySQL database server. Use an empty string or "localhost" to connect to a MySQL server running on the local machine.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>port (numeric)</term>
+	<listitem>
+	  <para>The port used to remotely connect to the MySQL database server over TCP. Use "0" (zero) to accept the default socket.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>username</term>
+	<listitem>
+	  <para>The name of the user accessing the database.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>password</term>
+	<listitem>
+	  <para>The password of the user accessing the database.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>dbname</term>
+	<listitem>
+	  <para>The name of the database used for the initial connection.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_include_trailing_null (numeric)</term>
 	<listitem>
 	  <para>This item will tell the driver whether or not to include trailing null values ('\0') at the end of binary strings. This applies to the types BLOB, MEDIUMBLOB, LARGEBLOB etc. A numeric value of 0 will tell the driver to leave off the NULL value. A value of 1 will tell the driver to include the trailing NULL character. </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_unix_socket</term>
+	<listitem>
+	  <para>The filename of the Unix socket used to connect to a MySQL database server running on the local machine. Provide an empty string to use the default socket.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_compression (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero causes the client/server communication to be compressed. Set this to zero to use no data compression.</para>
 	</listitem>
       </varlistentry>
     </variablelist>

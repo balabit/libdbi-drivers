@@ -62,15 +62,46 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = MYSQL_RESERVED_WORDS;
 
-/* encoding strings */
-static const char mysql_encoding_koi8_ru[] = "KOI8";
-static const char mysql_encoding_latin1[] = "LATIN1";
-static const char mysql_encoding_latin2[] = "LATIN2";
-static const char mysql_encoding_latin5[] = "LATIN5";
-static const char mysql_encoding_cp1251[] = "WIN";
-static const char mysql_encoding_hebrew[] = "ISO-8859-8";
-static const char mysql_encoding_euc_kr[] = "EUC_KR";
-static const char mysql_encoding_greek[] = "ISO-8859-7";
+/* encoding strings, array is terminated by empty string */
+static const char mysql_encoding_hash[][16] = {
+  /* from , to */
+  "ascii", "US-ASCII",
+  "ujis", "EUC-JP",
+  "euc_kr", "EUC-KR", 
+  "euckr", "EUC-KR", 
+  "utf8", "UTF-8",
+  "latin1", "ISO-8859-1",
+  "latin2", "ISO-8859-2",
+  "latin5", "ISO-8859-9",
+  "latin7", "ISO-8859-13",
+  "greek", "ISO-8859-7",
+  "hebrew", "ISO-8859-8",
+  "koi8_ru", "KOI8-R",
+  "koi8r", "KOI8-R",
+  "koi8_ukr","KOI8-U",
+  "koi8u","KOI8-U",
+  "cp1251","windows-1251",
+  "win1250","windows-1250",
+  "cp1250","windows-1250",
+  "cp1256","windows-1256",
+  "win1257","windows-1257",
+  "cp1257","windows-1257",
+  "cp850","IBM850",
+  "cp852","IBM852",
+  "dos","IBM865",
+  "cp866","IBM866",
+  "big5","Big5",
+  "gb2312","GB2312",
+  "sjis","Shift_JIS",
+  "danish","ISO646-NO",
+  "hungarian","ISO646-HU",
+  "gbk","GBK",
+  "ucs2","ISO-10646-UCS-2",
+  "dec8","DEC-MCS",
+  "tis620","TIS-620",
+  "hp8","hp-roman8",
+  ""
+};
 
 void _translate_mysql_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
@@ -174,32 +205,19 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	if (!my_enc) {
 	  return NULL;
 	}
-	else if (!strcmp(my_enc, "koi8_ru")) {
-	  return mysql_encoding_koi8_ru;
-	}
-	else if (!strcmp(my_enc, "latin1")) {
-	  return mysql_encoding_latin1;
-	}
-	else if (!strcmp(my_enc, "latin2")) {
-	  return mysql_encoding_latin2;
-	}
-	else if (!strcmp(my_enc, "latin5")) {
-	  return mysql_encoding_latin5;
-	}
-	else if (!strcmp(my_enc, "cp1251")) {
-	  return mysql_encoding_cp1251;
-	}
-	else if (!strcmp(my_enc, "hebrew")) {
-	  return mysql_encoding_hebrew;
-	}
-	else if (!strcmp(my_enc, "euc_kr")) {
-	  return mysql_encoding_euc_kr;
-	}
-	else if (!strcmp(my_enc, "greek")) {
-	  return mysql_encoding_greek;
-	}
 	else {
-	  /* don't know how to translate */
+	  int i = 0;
+
+	  /* loop over all even entries in hash and compare to my_enc */
+	  while (*mysql_encoding_hash[i]) {
+	    if (!strcmp(mysql_encoding_hash[i], my_enc)) {
+	      /* return corresponding odd entry */
+	      return mysql_encoding_hash[i+1];
+	    }
+	    i+=2;
+	  }
+
+	  /* don't know how to translate, return original string */
 	  return my_enc;
 	}
 }

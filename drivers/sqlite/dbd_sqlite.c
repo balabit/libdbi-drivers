@@ -69,10 +69,10 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = SQLITE_RESERVED_WORDS;
 
-/* the encoding strings as PostgreSQL would return them */
-static const char sqlite_encoding_UTF8[] = "UNICODE";
+/* the encoding strings */
+static const char sqlite_encoding_UTF8[] = "UTF-8";
 /* the following is an assumption that is most likely correct */
-static const char sqlite_encoding_ISO8859[] = "LATIN1";
+static const char sqlite_encoding_ISO8859[] = "ISO-8859-1";
 
 /* forward declarations */
 int _real_dbd_connect(dbi_conn_t *conn, const char* database);

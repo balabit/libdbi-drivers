@@ -64,7 +64,7 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; 
 static const char *reserved_words[] = MSQL_RESERVED_WORDS;
 
-static const char msql_encoding[] = "LATIN1";
+static const char msql_encoding[] = "ISO-8859-1";
 
 void _translate_msql_type(int fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);

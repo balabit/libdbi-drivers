@@ -61,6 +61,33 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = PGSQL_RESERVED_WORDS;
 
+/* encoding strings, array is terminated by empty string */
+static const char pgsql_encoding_hash[][16] = {
+  /* from , to */
+  "SQL_ASCII", "US-ASCII",
+  "EUC_JP", "EUC-JP",
+  "EUC_KR", "EUC-KR",
+  "UNICODE", "UTF-8",
+  "LATIN1", "ISO-8859-1",
+  "LATIN2", "ISO-8859-2",
+  "LATIN3", "ISO-8859-3",
+  "LATIN4", "ISO-8859-4",
+  "LATIN5", "ISO-8859-9",
+  "LATIN6", "ISO-8859-10",
+  "LATIN7", "ISO-8859-13",
+  "LATIN8", "ISO-8859-14",
+  "LATIN9", "ISO-8859-15",
+  "LATIN10", "ISO-8859-16",
+  "ISO-8859-5", "ISO-8859-5",
+  "ISO-8859-6", "ISO-8859-6",
+  "ISO-8859-7", "ISO-8859-7",
+  "ISO-8859-8", "ISO-8859-8",
+  "KOI8", "KOI8-R",
+  "WIN", "windows-1251",
+  "ALT", "IBM866",
+  ""
+};
+
 /* forward declarations of internal functions */
 void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
@@ -186,8 +213,9 @@ int dbd_get_socket(dbi_conn_t *conn)
 
 const char *dbd_get_encoding(dbi_conn_t *conn){
 
+        char* my_enc;
 	PGconn *pgconn = (PGconn*) conn->connection;
-
+	
 	if(!pgconn) return NULL;
 
 	/* this is somewhat murky as the pg_encoding_to_char()
@@ -196,7 +224,26 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	 to be exported or that it may disappear without a trace
 	 eventually. If it breaks, use a query "SHOW CLIENT_ENCODING"
 	 instead */
-        return pg_encoding_to_char(PQclientEncoding(pgconn));
+        my_enc = pg_encoding_to_char(PQclientEncoding(pgconn));
+
+	if (!my_enc) {
+	  return NULL;
+	}
+	else {
+	  int i = 0;
+
+	  /* loop over all even entries in hash and compare to my_enc */
+	  while (*pgsql_encoding_hash[i]) {
+	    if (!strcmp(pgsql_encoding_hash[i], my_enc)) {
+	      /* return corresponding odd entry */
+	      return pgsql_encoding_hash[i+1];
+	    }
+	    i+=2;
+	  }
+
+	  /* don't know how to translate, return original string */
+	  return my_enc;
+	}
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {

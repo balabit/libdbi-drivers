@@ -285,7 +285,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
 
 	/* match filename to a pattern, or use all found files */
 	if (pattern) {
-	  if (wild_case_compare(entry->d_name, &entry->d_name[strlen(entry->d_name)-1], pattern, &pattern[strlen(pattern)-1], '\\')) {
+	  if (wild_case_compare(entry->d_name, &entry->d_name[strlen(entry->d_name)], pattern, &pattern[strlen(pattern)], '\\') == 0) {
 	    retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO databases VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
 	    if (sq_errmsg) {
 	      _dbd_internal_error_handler(conn, sq_errmsg, retval);
@@ -987,81 +987,92 @@ time_t _parse_datetime(const char *raw, unsigned long attribs) {
   return mktime(&unixtime);
 }
 
-/* this function is stolen from MySQL and somewhat simplified for our needs */
+/* this function is stolen from MySQL and somewhat simplified for our
+   needs */
+/* it appears to return 0 on a match, 1 if no match is found, and -1
+   in some odd cases */
+
 #define wild_many (char)'%'
 #define wild_one (char)'_'
 #define INC_PTR(A,B) A++
 
 int wild_case_compare(const char *str,const char *str_end,
 		      const char *wildstr,const char *wildend,
-		      char escape)
-{
+		      char escape) {
   int result= -1;				// Not found, using wildcards
   unsigned char cmp;
 
-  while (wildstr != wildend)
-    {
-      while (*wildstr != wild_many && *wildstr != wild_one)
-	{
-	  if (*wildstr == escape && wildstr+1 != wildend)
-	    wildstr++;
-	  if (str == str_end || *wildstr++ != *str++)
-	    return(1);				// No match
-	  if (wildstr == wildend)
-	    return (str != str_end);		// Match if both are at end
-	  result=1;					// Found an anchor char
-	}
-      if (*wildstr == wild_one)
-	{
-	  do
-	    {
-	      if (str == str_end)			// Skip one char if possible
-		return (result);
-	      INC_PTR(str,str_end);
-	    } while (++wildstr < wildend && *wildstr == wild_one);
-	  if (wildstr == wildend)
-	    break;
-	}
-      if (*wildstr == wild_many)
-	{						// Found wild_many
+  while (wildstr != wildend) {
+      while (*wildstr != wild_many && *wildstr != wild_one) {
+	if (*wildstr == escape && wildstr+1 != wildend) {
 	  wildstr++;
-	  /* Remove any '%' and '_' from the wild search string */
-	  for ( ; wildstr != wildend ; wildstr++)
-	    {
-	      if (*wildstr == wild_many)
-		continue;
-	      if (*wildstr == wild_one)
-		{
-		  if (str == str_end)
-		    return (-1);
-		  INC_PTR(str,str_end);
-		  continue;
-		}
-	      break;					// Not a wild character
-	    }
-	  if (wildstr == wildend)
-	    return(0);				// Ok if wild_many is last
-	  if (str == str_end)
-	    return -1;
-
-	  if ((cmp= *wildstr) == escape && wildstr+1 != wildend)
-	    cmp= *++wildstr;
-	  INC_PTR(wildstr,wildend);			// This is compared trough cmp
-	  /*        cmp=likeconv(cmp);    */
-	  do
-	    {
-	      while (str != str_end && *str != cmp)
-		str++;
-	      if (str++ == str_end) return (-1);
-	      {
-		int tmp=wild_case_compare(str,str_end,wildstr,wildend,escape);
-		if (tmp <= 0)
-		  return (tmp);
-	      }
-	    } while (str != str_end && wildstr[0] != wild_many);
-	  return(-1);
 	}
-    }
+	if (str == str_end || *wildstr++ != *str++) {
+	  return(1);				// No match
+	}
+	if (wildstr == wildend) {
+	  return (str != str_end);		// Match if both are at end
+	}
+	result=1;					// Found an anchor char
+      }
+      if (*wildstr == wild_one)	{
+	do {
+	  if (str == str_end) {			// Skip one char if possible
+	    return (result);
+	  }
+	  INC_PTR(str,str_end);
+	} while (++wildstr < wildend && *wildstr == wild_one);
+	if (wildstr == wildend) {
+	  break;
+	}
+      }
+
+      if (*wildstr == wild_many) {		// Found wild_many
+	wildstr++;
+	/* Remove any '%' and '_' from the wild search string */
+	for ( ; wildstr != wildend ; wildstr++) {
+	  if (*wildstr == wild_many) {
+	    continue;
+	  }
+	  if (*wildstr == wild_one) {
+	    if (str == str_end) {
+	      return (-1);
+	    }
+	    INC_PTR(str,str_end);
+	    continue;
+	  }
+	  break;					// Not a wild character
+	}
+	if (wildstr == wildend) {
+	  return(0);				// Ok if wild_many is last
+	}
+	if (str == str_end) {
+	  return -1;
+	}
+
+	if ((cmp= *wildstr) == escape && wildstr+1 != wildend) {
+	  cmp= *++wildstr;
+	}
+	INC_PTR(wildstr,wildend);			// This is compared trough cmp
+	  /*        cmp=likeconv(cmp);    */
+	do {
+	  while (str != str_end && *str != cmp) {
+	    str++;
+	  }
+	  if (str++ == str_end) {
+	    return (-1);
+	  }
+
+	  {
+	    int tmp=wild_case_compare(str,str_end,wildstr,wildend,escape);
+	    if (tmp <= 0) {
+	      return (tmp);
+	    }
+	  }
+	} while (str != str_end && wildstr[0] != wild_many);
+	return(-1);
+      }
+  }
   return (str != str_end ? 1 : 0);
 }
 

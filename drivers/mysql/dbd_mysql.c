@@ -484,7 +484,7 @@ time_t _parse_datetime(const char *raw, unsigned long attribs) {
       if (attribs & DBI_DATETIME_TIME) cur += 11;
     }
     
-    if (strlen(raw) > 5 && attribs & DBI_DATETIME_TIME) {
+    if (strlen(cur) > 5 && attribs & DBI_DATETIME_TIME) {
       cur[2] = '\0';
       cur[5] = '\0';
       unixtime.tm_hour = atoi(cur);

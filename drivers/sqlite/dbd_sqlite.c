@@ -640,26 +640,36 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   }
 
 /*   printf("field type: %s<<\n", curr_type); */
-  if (strstr(curr_type, "BLOB") ||
-      strstr(curr_type, "CHAR") ||
-      strstr(curr_type, "CLOB") ||
-      strstr(curr_type, "TEXT")) {
+  if (strstr(curr_type, "BLOB")
+      || strstr(curr_type, "CHAR(")
+      || strstr(curr_type, "CLOB")
+      || strstr(curr_type, "TEXT")) {
     type = FIELD_TYPE_STRING;
   }
-  else if (strstr(curr_type, "SMALLINT")) {
+  else if (strstr(curr_type, "CHAR")
+	   || strstr(curr_type, "TINYINT")
+	   || strstr(curr_type, "INT1")) {
+    type = FIELD_TYPE_TINY;
+  }
+  else if (strstr(curr_type, "SMALLINT")
+	   || strstr(curr_type, "INT2")) {
     type = FIELD_TYPE_SHORT;
   }
-  else if (strstr(curr_type, "INTEGER")) {
-    type = FIELD_TYPE_LONG;
-  }
-  else if (strstr(curr_type, "BIGINT")) {
+  else if (strstr(curr_type, "BIGINT")
+	   || strstr(curr_type, "INT8")) {
     type = FIELD_TYPE_LONGLONG;
+  }
+  else if (strstr(curr_type, "INTEGER")
+	   || strstr(curr_type, "INT")
+	   || strstr(curr_type, "INT4")) {
+    type = FIELD_TYPE_LONG;
   }
   else if (strstr(curr_type, "DECIMAL") ||
 	   strstr(curr_type, "NUMERIC")) {
     type = FIELD_TYPE_DECIMAL;
   }
-  else if (strstr(curr_type, "TIMESTAMP")) {
+  else if (strstr(curr_type, "TIMESTAMP")
+	   || strstr(curr_type, "DATETIME")) {
     type = FIELD_TYPE_TIMESTAMP;
   }
   else if (strstr(curr_type, "DATE")) {
@@ -668,10 +678,11 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   else if (strstr(curr_type, "TIME")) {
     type = FIELD_TYPE_TIME;
   }
-  else if (strstr(curr_type, "REAL")) {
+  else if (strstr(curr_type, "REAL")
+	   || strstr(curr_type, "FLOAT")) {
     type = FIELD_TYPE_FLOAT;
   }
-  else if (strstr(curr_type, "DOUBLE PRECISION")) {
+  else if (strstr(curr_type, "DOUBLE")) {
     type = FIELD_TYPE_DOUBLE;
   }
   else {
@@ -985,7 +996,7 @@ time_t _parse_datetime(const char *raw, unsigned long attribs) {
       if (attribs & DBI_DATETIME_TIME) cur += 11;
     }
     
-    if (strlen(raw) > 5 && attribs & DBI_DATETIME_TIME) {
+    if (strlen(cur) > 5 && attribs & DBI_DATETIME_TIME) {
       cur[2] = '\0';
       cur[5] = '\0';
       unixtime.tm_hour = atoi(cur);

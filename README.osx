@@ -1,0 +1,39 @@
+
+libdbi-drivers - drivers for libdbi, the Database
+Independent Abstraction Layer for C
+
+Copyright (C) 2001-2003, Markus Hoenicka
+http://libdbi-drivers.sourceforge.net
+
+
+OSX-SPECIFIC INSTALLATION INSTRUCTIONS:
+-------------------------------------------
+
+Installing libdbi-drivers on OSX can be easily accomplished by bending
+over backwards while jumping through a burning hoop. This is the
+recommended procedure to achieve this feat:
+
+/sw/bin/glibtoolize --force
+aclocal
+automake --add-missing
+autoconf
+./configure --with-mysql --with-pgsql --with-sqlite --with-pgsql-dir=/opt/local/pgsql LDFLAGS="-L/sw/lib"
+./fixlt.sh
+make
+sudo make install
+
+The fixlt.sh script is shipped with libdbi-drivers. It is required to
+fix the libtool script created by configure for libtool versions
+1.4.x. libtool versions 1.5.x should not require this hack.
+
+Please note that you may have to adapt some paths depending on where
+your stuff is installed.
+
+MODIFICATIONS AND REDISTRIBUTION (GPL):
+----------------------------------------
+
+See the file COPYING or http://www.gnu.org for more details.
+
+
+$Id$
+

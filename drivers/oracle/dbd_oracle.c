@@ -517,7 +517,8 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		OCIDefineByPos(stmt, &defnp, Oconn->err, curfield+1, cols[curfield],
 			       (sword) length+1, SQLT_STR, (dvoid *) 0, (ub2 *)0, 
 			       (ub2 *)0, OCI_DEFAULT);
-		
+
+		if(length < 0 ) _set_field_flag( row, curfield, DBI_VALUE_NULL, 1);
 
 		switch (result->field_types[curfield]) {
 		case DBI_TYPE_BINARY:

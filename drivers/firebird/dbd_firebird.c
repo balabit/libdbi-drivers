@@ -522,6 +522,12 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	while (curfield < result->numfields) {
 		var = istmt->osqlda->sqlvar[curfield];
 		data = &row->field_values[curfield];
+
+		
+		/** the fcolumn is NULL */
+		if ((var->sqltype & 1) && (*var->sqlind < 0)) 
+			_set_field_flag( row, curfield, DBI_VALUE_NULL, 1);
+
 		
 		switch ( result->field_types[curfield] ) {
 		case DBI_TYPE_STRING: 

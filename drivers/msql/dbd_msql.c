@@ -373,6 +373,8 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		data = &row->field_values[curfield];
     
 		row->field_sizes[curfield] = 0;
+
+		if( raw == NULL) _set_field_flag( row, curfield, DBI_VALUE_NULL, 1);
     
 		switch (result->field_types[curfield]) {
 		case DBI_TYPE_INTEGER:

@@ -258,7 +258,6 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
        sqlda->version = 1;
 
        if (isc_dsql_prepare(iconn->status, &(iconn->trans), &stmt, 0, (char *)statement, 1, sqlda)) {
-	       isc_print_status(iconn->status);
 	       free(sqlda);
 	       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
 	       return NULL;
@@ -273,12 +272,16 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
        if (!sqlda->sqld) {
 
 	       if (isc_dsql_execute(iconn->status, &(iconn->trans), &stmt, SQL_DIALECT_V6, NULL)) {
-		       isc_print_status(iconn->status);
+		       free(sqlda);
+		       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+		       return NULL;
 	       }
 	       /* Commit DDL statements if that is what sql_info says */
 	       if (iconn->trans && (statement_type == isc_info_sql_stmt_ddl)) {
 		       if (isc_commit_transaction(iconn->status, &(iconn->trans))) {
-			       isc_print_status(iconn->status);
+			       free(sqlda);
+			       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+			       return NULL;
 		       }
 	       }
        } else {
@@ -297,7 +300,9 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 		       sqlda->version = 1;
 		       
 		       if (isc_dsql_describe(iconn->status, &stmt, SQL_DIALECT_V6, sqlda)) {
-			       isc_print_status(iconn->status);
+			       free(sqlda);
+			       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+			       return NULL;
 		       }
 		       
 	       }
@@ -321,8 +326,9 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	       }
 	       
 	       if (isc_dsql_execute(iconn->status, &(iconn->trans), &stmt, SQL_DIALECT_V6, NULL)) {
-		       
-		       isc_print_status(iconn->status);
+		       free(sqlda);
+		       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+		       return NULL;
 	       }       
        }
 
@@ -350,7 +356,7 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
         
 	TEXT errbuf[MAXLEN];
         ISC_STATUS *vec;
-	
+
 	if ( conn->connection == NULL) {
                 *errstr = strdup("Unable to connect to database.");
 		return 1;
@@ -457,7 +463,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	int curfield = 0;
 	XSQLVAR var;
 	long fetch_stat = 0;
-	char *p = NULL;
 	char blob_s[20], date_s[25];
 	vary_t *vary = NULL;
 	struct tm   times;
@@ -524,7 +529,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 					times.tm_min,
 					times.tm_sec,
 					(*((ISC_TIME *)var.sqldata)) % 10000);
-				sprintf(p, "%*s ", 13, date_s);
 				break;
 				
 			case DBI_DATETIME_DATE:
@@ -533,7 +537,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 					times.tm_year + 1900,
 					times.tm_mon+1,
 					times.tm_mday);
-				sprintf(p, "%*s ", 10, date_s);
 				break;
 			default:
 				isc_decode_timestamp((ISC_TIMESTAMP *)var.sqldata, &times);
@@ -554,7 +557,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			/** Binary doesnt work yet */
 			bid = *(ISC_QUAD *) var.sqldata;
 			sprintf(blob_s, "%08x:%08x", bid.isc_quad_high, bid.isc_quad_low);
-			sprintf(p, "%17s ", blob_s);
 			break;
 				
 		default:

@@ -14,7 +14,7 @@ mysql_sources =
 
 endif
 
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @MYSQL_INCLUDE@
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @MYSQL_INCLUDE@
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(mysql_ltlibs)

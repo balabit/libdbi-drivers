@@ -14,7 +14,7 @@ sqlite_sources =
 
 endif
 
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @SQLITE_INCLUDE@
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @SQLITE_INCLUDE@
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(sqlite_ltlibs)

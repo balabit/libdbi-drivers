@@ -14,7 +14,7 @@ pgsql_sources =
 
 endif
 
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @PGSQL_INCLUDE@
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @PGSQL_INCLUDE@
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(pgsql_ltlibs)

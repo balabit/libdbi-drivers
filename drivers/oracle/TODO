@@ -10,17 +10,18 @@
   This makes it very hard to map numbers against libdbi's type system becouse everything 
   that you get from Oracle is an SQLT_NUM type internaly. SQLT_NUM has to be atleast an
   unsigned char[21] as external datatype.
-  We need to fetch OCI_ATTR_PRECISION and OCI_ATTR_SCALE using OCIAttrGet() to find out if 
+  We need to fetch OCI_ATTR_SCALE using OCIAttrGet() to find out if 
   the column is a float column.
 
+- Continue the work with Charsets mappings (Oracle to IANA).
   
-- Implement all other "special" oracle types.
-
-- Implement ping function ("select 1 from dual" or simular).
+- Implement other oracle types (Dates,refs ..).
 
 - define driver capabilities.
 
 - write documentation.
+
+
 
 
 

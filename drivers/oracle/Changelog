@@ -1,3 +1,10 @@
+2004-01-10 Christian M. STamgren <christian@stamgren.com>
+	
+	* Started work on Charset encodings, more work needs to be done.
+	* Ping support.
+	* Cleanups. 	
+
+
 2003-09-01  Christian M. Stamgren  <christian@stamgren.com>
 
 	* basic numbers as doubles and longlong.: 

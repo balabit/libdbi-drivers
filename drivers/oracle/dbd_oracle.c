@@ -1,6 +1,6 @@
 /*
  * libdbi - database independent abstraction layer for C.
- * Copyright (C) 2001-2002, David Parker and Mark Tobenkin.
+ * Copyright (C) 2001-2004, David Parker and Mark Tobenkin.
  * http://libdbi.sourceforge.net
  *
  * This library is free software; you can redistribute it and/or
@@ -18,25 +18,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * dbd_oracle.c: Oracle database support
- * Copyright (C) 2003, Christian M. Stamgren <christian@stamgren.com>
+ * Copyright (C) 2003-2004, Christian M. Stamgren <christian@stamgren.com>
  * http://libdbi-drivers.sourceforge.net
  *
  */
-
-/* 
- * This driver is still in an unstable state don't use it for anything besides testing.
- * 
- * There are ALOT of error checkings missing and not all data types are implemented.
- * some solutions might be a bit of a hack ...  Oracle doesn't really fit into libdbi's suite
- * at some times.
- * But hey! It's a start.
- *
- * The driver really needs some cleanups here and there, but lets get stuff working first.
- *
- * Christian M. Stamgren <Christian@stamgren.com>
- *
- */
-
 
 #ifdef  HAVE_CONFIG_H
 #include <config.h>
@@ -56,26 +41,26 @@
 
 #include <oci.h>
 #include "dbd_oracle.h"
-
+#include "oracle_charsets.h"
 
 static const dbi_info_t driver_info = {
 	"Oracle",
 	"Oracle database support (using Oracle Call Interface)",
 	"Christian M. Stamgren <christian@stamgren.com>",
 	"http://libdbi-drivers.sourceforge.net",
-	"dbd_Oracle v0.01",
+	"dbd_Oracle v" VERSION,
 	__DATE__
 };
 
 static const char *custom_functions[] = {NULL}; 
 static const char *reserved_words[] = ORACLE_RESERVED_WORDS;
 
-static const char oracle_encoding[] = "ISO-8859-1";
 
 void _translate_oracle_type(int fieldtype, ub1 scale, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
-void checkerr(OCIError * errhp, sword status);
+unsigned long long _oracle_query_to_longlong(dbi_conn_t *conn, const char *sql_cmd);
+void _checkerr(OCIError * errhp, sword status);
 
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, 
 			 const char ***_reserved_words) 
@@ -104,19 +89,19 @@ int dbd_connect(dbi_conn_t *conn)
 	if(! sid ) sid = getenv("ORACLE_SID");
 
 	if(OCIEnvCreate ((OCIEnv **) &(Oconn->env), OCI_DEFAULT, (dvoid *)0, 0, 0, 0, (size_t)0, (dvoid **)0)) {
-		_dbd_internal_error_handler(conn, "Connect. Unable to initialize enviroment", 0);
+		_dbd_internal_error_handler(conn, "Connect::Unable to initialize enviroment", 0);
 		return 1;
 	}
 	if( (OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &(Oconn->err), OCI_HTYPE_ERROR, 
 			     (size_t) 0, (dvoid **) 0))  ||
 	    (OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &(Oconn->svc), OCI_HTYPE_SVCCTX,
 			     (size_t) 0, (dvoid **) 0))) {
-		_dbd_internal_error_handler(conn, "Connect: Unable to allocate handlers.", 0);
+		_dbd_internal_error_handler(conn, "Connect::Unable to allocate handlers.", 0);
 		return 1;
 	}
 	if( OCILogon(Oconn->env, Oconn->err, &(Oconn->svc), username, 
 		     strlen(username), password, strlen(password), sid, strlen(sid))) {
-		_dbd_internal_error_handler(conn, "Connect: Unable to login to the database.", 0);
+		_dbd_internal_error_handler(conn, "Connect::Unable to login to the database.", 0);
 		return 1;
 	}
 
@@ -137,6 +122,7 @@ int dbd_disconnect(dbi_conn_t *conn)
 		OCIHandleFree((dvoid *) Oconn->err, OCI_HTYPE_ERROR); 
 	}
     
+	if(conn->current_db) free(conn->current_db);
 	free(conn->connection);
 	conn->connection = NULL;
 	return 0;
@@ -178,10 +164,33 @@ int dbd_get_socket(dbi_conn_t *conn)
 	return 0; /* Oracle can't do that.. */
 }
 
-
+/*
+ * Use this function with care... It might bite you.
+ * There can be N-type columns in queries that have a diffrent Charset, 
+ * a session might be altered to use another charset as output or
+ * there might be values converted using the Oracle convert() function in the query. 
+ */
 const char *dbd_get_encoding(dbi_conn_t *conn){
-  /* ToDo: Oracle certainly can do better than this */
-  return oracle_encoding;
+	OraText  buf[OCI_NLS_MAXBUFSZ];
+	sword ret;
+	int i = 0;
+	
+	Oraconn *Oconn = conn->connection;
+
+	if( (ret = OCINlsGetInfo(Oconn->env, Oconn->err, buf,
+				 OCI_NLS_MAXBUFSZ, OCI_NLS_CHARACTER_SET)) != OCI_SUCCESS) {
+		_checkerr(Oconn->err, ret);                
+	}
+	if (!buf) return NULL;
+	else {
+	  while (*oracle_encoding_hash[i]) {
+	    if (!strcmp(oracle_encoding_hash[i], buf)) {
+	      return oracle_encoding_hash[i+1];
+	    }
+	    i+=2;
+	  }
+	}
+	return "UTF-16";
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) 
@@ -243,14 +252,12 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 
 	OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &stmt,
 			OCI_HTYPE_STMT, (size_t) 0, (dvoid **) 0);
-
 	
 	if( OCIStmtPrepare(stmt, Oconn->err, (char  *) statement,
 			   (ub4) st_length, (ub4) OCI_NTV_SYNTAX, (ub4) OCI_DEFAULT)) {
 		return NULL;
 	}
 	
-
 	OCIAttrGet(stmt, OCI_HTYPE_STMT, (dvoid *) &stmttype,
 		   (ub4 *) 0, (ub4) OCI_ATTR_STMT_TYPE, Oconn->err);
 	
@@ -270,7 +277,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 		 * To find out how many rows there is in a result set we need to call 
 		 * OCIStmtFetch2() with OCI_FETCH_LAST and then use OCIAttrGet()
 		 * with OCI_ATTR_CURRENT_POSITION, This is really not that great 
-		 * becouse it might be very very very slow..... But It's the only way i know
+		 * because it might be very very very slow..... But It's the only way I know.
 		 * It would be really great if libdbi didn't have to know how large a result set is
 		 * at this early point.
 		 */
@@ -288,7 +295,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 
 		status = OCIAttrGet (stmt, OCI_HTYPE_STMT, (dvoid *) &numrows, 
 				     (ub4 *) 0, (ub4) OCI_ATTR_CURRENT_POSITION, Oconn->err); 
-		checkerr(Oconn->err, status);
+		_checkerr(Oconn->err, status);
 		
 		/* cache should be about 20% of all rows. */
 		if(dbi_conn_get_option_numeric(conn, "oracle_prefetch_rows")) {
@@ -298,8 +305,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 				   Oconn->err);
 		}
 
-		/* howto handle affected rows? */
-		
+		/* howto handle affectedrows? */
 	}
 
 
@@ -329,7 +335,7 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
 	*errno = 0;
 
 	if (!conn->connection) {
-		*errstr = strdup("Unable to connect to database");
+		*errstr = strdup("Unable to connect to database.");
 		return 2;
 	} else {
 		OCIErrorGet((dvoid *)Oconn->err, (ub4) 1, (text *) NULL, &errcode, errbuf, 
@@ -341,82 +347,55 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
 	return 3;
 }
 
-
 unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) 
 {  
-	OCIStmt *stmt;
-	char *sql_cmd;
-	sword currval = 0;
-	OCIDefine *defnp = (OCIDefine *) 0;
-	
-	Oraconn *Oconn = conn->connection;
+	unsigned long long retval = 0;
+	char *sql_cmd = NULL;
 	
 	asprintf(&sql_cmd, "SELECT %s.currval FROM dual", sequence);
 	
-	OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &stmt,
-			OCI_HTYPE_STMT, (size_t) 0, (dvoid **) 0);
-	OCIStmtPrepare(stmt, Oconn->err, (char  *) sql_cmd,
-		       (ub4) strlen(sql_cmd), (ub4) OCI_NTV_SYNTAX, (ub4) OCI_DEFAULT);
-	free(sql_cmd);
-	
-	OCIDefineByPos(stmt, &defnp, Oconn->err, 1, (dvoid *) &currval,
-		       (sword) sizeof(sword), SQLT_INT, (dvoid *) 0, (ub2 *)0,
-		       (ub2 *)0, OCI_DEFAULT);
+	retval =  _oracle_query_to_longlong(conn, sql_cmd);
+	if(sql_cmd) free(sql_cmd);
 
-	OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
-		       (ub4) 1, (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
-		       OCI_DEFAULT); 
-  
-	OCIStmtFetch(stmt, Oconn->err, (ub4) 1, (ub4) OCI_FETCH_NEXT,
-		     (ub4) OCI_DEFAULT) ;
-
-	(void) OCIHandleFree((dvoid *) stmt, OCI_HTYPE_STMT);
-  
-	return (currval ? (unsigned long long)currval : 0);
+	return retval;
 }
-
 
 unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) 
 {	
-	OCIStmt *stmt;
-	char *sql_cmd;
-	sword nextval = 0;
-	OCIDefine *defnp = (OCIDefine *) 0;
-	
-	Oraconn *Oconn = conn->connection;
-	
+	unsigned long long retval = 0;
+	char *sql_cmd = NULL;
+
 	asprintf(&sql_cmd, "SELECT %s.nextval FROM dual", sequence);
-	
-	OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &stmt,
-			OCI_HTYPE_STMT, (size_t) 0, (dvoid **) 0);
-	OCIStmtPrepare(stmt, Oconn->err, (char  *) sql_cmd,
-		       (ub4) strlen(sql_cmd), (ub4) OCI_NTV_SYNTAX, (ub4) OCI_DEFAULT);
-	free(sql_cmd);
-	
-	OCIDefineByPos(stmt, &defnp, Oconn->err, 1, (dvoid *) &nextval,
-		       (sword) sizeof(sword), SQLT_INT, (dvoid *) 0, (ub2 *)0,
-		       (ub2 *)0, OCI_DEFAULT);
-  
-	OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
-		       (ub4) 1, (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
-		       OCI_DEFAULT); 
-  
-	OCIStmtFetch(stmt, Oconn->err, (ub4) 1, (ub4) OCI_FETCH_NEXT,
-		     (ub4) OCI_DEFAULT);
-  
-	(void) OCIHandleFree((dvoid *) stmt, OCI_HTYPE_STMT);
-	
-	return (nextval ? (unsigned long long)nextval : 0);
+
+	retval =  _oracle_query_to_longlong(conn, sql_cmd);
+	if(sql_cmd) free(sql_cmd);
+
+	return retval;
 }
 
 
 int dbd_ping(dbi_conn_t *conn) 
 {
-	return 0;
+	unsigned long long retval = 0;
+	char *sql_cmd = NULL;
+	Oraconn *Oconn = conn->connection;
+
+	asprintf(&sql_cmd, "SELECT 1 from dual");
+	
+	retval =  _oracle_query_to_longlong(conn, sql_cmd);
+	if(sql_cmd) free(sql_cmd);
+
+	if(!retval) { /* We need to reconnect! */
+		dbd_disconnect(conn);
+		retval = dbd_connect(conn);
+
+		return (retval ? 0 : retval); 
+
+	}
+	return retval;
 }
 
 /* CORE ORACLE DATA FETCHING STUFF */
-
 void _translate_oracle_type(int fieldtype, ub1 scale, unsigned short *type, unsigned int *attribs) 
 {
 	unsigned int _type = 0;
@@ -428,6 +407,10 @@ void _translate_oracle_type(int fieldtype, ub1 scale, unsigned short *type, unsi
 	case SQLT_LNG:
 		_type = DBI_TYPE_INTEGER;
 		_attribs |= DBI_INTEGER_SIZE8;
+		break;
+	case SQLT_FLT:
+		_type = DBI_TYPE_DECIMAL;
+		_attribs |= DBI_DECIMAL_SIZE8;
 		break;
 	case SQLT_NUM:
 		/*
@@ -448,18 +431,14 @@ void _translate_oracle_type(int fieldtype, ub1 scale, unsigned short *type, unsi
 		_type = DBI_TYPE_BINARY;
 		break;
 	  
-	case SQLT_FLT:
-		_type = DBI_TYPE_DECIMAL;
-		_attribs |= DBI_DECIMAL_SIZE8;
-		
+
+	case SQLT_DAT:
 	case SQLT_AFC:
 	case SQLT_STR:
 	case SQLT_CHR:
 
 	case SQLT_VNU:
 	case SQLT_VCS:
-	case SQLT_DAT:
-
 	default:
 		_type = DBI_TYPE_STRING;
 		break;
@@ -477,15 +456,13 @@ void _get_field_info(dbi_result_t *result)
 	OCIParam *param;
 	ub4 otype;
 	text *col_name;
-	sb1  scale,precision;
+	sb1  scale;
 	ub4  col_name_len;
 
 	Oraconn *Oconn = (Oraconn *)result->conn->connection;
 	
-	
-	
 	while (idx < result->numfields) {
-		precision = scale = 0;
+		scale = 0;
 
 		OCIParamGet((dvoid *)result->result_handle, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
 			    (ub4) idx+1);
@@ -499,13 +476,6 @@ void _get_field_info(dbi_result_t *result)
 			   (OCIError *) Oconn->err );
 	
 		if(otype == 2) { /* we got SQLT_NUM */
-			/*
-			  
-			OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
-			(dvoid**) &precision,(ub4 *) 0, (ub4) OCI_ATTR_PRECISION,
-			(OCIError *) Oconn->err );
-			*/
-
 			OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
 				   (dvoid**) &scale,(ub4 *) 0, (ub4) OCI_ATTR_SCALE,
 				   (OCIError *) Oconn->err );
@@ -535,7 +505,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	 * This might not be all that good  ... lets revisit
 	 * this when some Oracle guru starts sending in patches.
 	 */
-		
 	while(curfield < result->numfields) {
 		length = 0;
 		OCIParamGet(stmt, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
@@ -544,18 +513,19 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
 			   (dvoid*) &length,(ub4 *) 0, (ub4) OCI_ATTR_DATA_SIZE,
 			   (OCIError *) Oconn->err  );
-
 		cols[curfield] = (char *)malloc(length+1);
-		
+
 		OCIDefineByPos(stmt, &defnp, Oconn->err, curfield+1, cols[curfield],
-			       (sword) length, SQLT_CHR, (dvoid *) 0, (ub2 *)0, 
+			       (sword) length+1, SQLT_STR, (dvoid *) 0, (ub2 *)0, 
 			       (ub2 *)0, OCI_DEFAULT);
+		
 
 		switch (result->field_types[curfield]) {
 		case DBI_TYPE_BINARY:
 		case DBI_TYPE_STRING:
 			row->field_sizes[curfield] = length;
 			break;
+		
 		default:
 			row->field_sizes[curfield] = 0;
 			break;
@@ -564,8 +534,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 
 	}
 
-	status = OCIStmtFetch2(stmt, Oconn->err,
-			       (ub4)1, OCI_FETCH_ABSOLUTE, (sb4)rowidx+1, OCI_DEFAULT);
+	status = OCIStmtFetch2(stmt, Oconn->err, 1, OCI_FETCH_ABSOLUTE, rowidx+1, OCI_DEFAULT);
 
 	curfield = 0;
 	while (curfield < result->numfields) {
@@ -592,8 +561,9 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			switch (sizeattrib) {
 			case DBI_DECIMAL_SIZE4:
 			case DBI_DECIMAL_SIZE8:
-			default:				
+			default:			
 				data->d_double = (double) strtod(cols[curfield], NULL);
+				//fprintf(stderr, "Double: %s:%f\n", cols[curfield], data->d_double);
 				break;
 			}
 
@@ -620,21 +590,44 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		case DBI_TYPE_BINARY:
 			data->d_string = malloc(row->field_sizes[curfield]);
 			memcpy(data->d_string, cols[curfield],row->field_sizes[curfield]);
-			free(cols[curfield]);
-			break;
-
-		case DBI_TYPE_DATETIME:
-
 			break;
 		}
-    
 		if (cols[curfield]) free(cols[curfield]);
 		curfield++;
-	}
+	}		
+}
+
+unsigned long long _oracle_query_to_longlong(dbi_conn_t *conn, const char *query)
+{
+	OCIStmt *stmt = NULL;
+	sword val = 0;
+	OCIDefine *defnp = NULL;
+	
+	Oraconn *Oconn = conn->connection;
+	
+	OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &stmt,
+			OCI_HTYPE_STMT, (size_t) 0, (dvoid **) 0);
+	OCIStmtPrepare(stmt, Oconn->err, (char  *) query,
+		       (ub4) strlen(query), (ub4) OCI_NTV_SYNTAX, (ub4) OCI_DEFAULT);
+		
+	OCIDefineByPos(stmt, &defnp, Oconn->err, 1, (dvoid *) &val,
+		       (sword) sizeof(sword), SQLT_INT, (dvoid *) 0, (ub2 *)0,
+		       (ub2 *)0, OCI_DEFAULT);
+  
+	OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
+		       (ub4) 1, (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
+		       OCI_DEFAULT); 
+  
+	OCIStmtFetch(stmt, Oconn->err, (ub4) 1, (ub4) OCI_FETCH_NEXT,
+		     (ub4) OCI_DEFAULT);
+  
+	(void) OCIHandleFree((dvoid *) stmt, OCI_HTYPE_STMT);
+	
+	return (unsigned long long) (val ? val : 0);
 }
 
 
-void checkerr(OCIError * errhp, sword status)
+void _checkerr(OCIError * errhp, sword status)
 {
 	text errbuf[512];
 	ub4 buflen;
@@ -657,7 +650,7 @@ void checkerr(OCIError * errhp, sword status)
 		(void) OCIErrorGet (errhp, (ub4) 1, (text *) NULL, &errcode,
 				    errbuf, (ub4) sizeof(errbuf), OCI_HTYPE_ERROR);
 
-		(void) fprintf(stderr,"Error - %s\n", errbuf);
+		(void) fprintf(stderr,"Error - %s Code: %d\n", errbuf, errcode);
 		break;
 	case OCI_INVALID_HANDLE:
 		(void) fprintf(stderr,"Error - OCI_INVALID_HANDLE\n");

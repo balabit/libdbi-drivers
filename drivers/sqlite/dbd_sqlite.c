@@ -794,6 +794,16 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) {
   return 0;
 }
 
+int dbd_ping(dbi_conn_t *conn) {
+
+	if (dbd_query(conn, "SELECT 1") == NULL) {
+	  return 0;
+	}
+	else {
+	  return 1;
+	}
+}
+
 /* CORE SQLITE DATA FETCHING STUFF */
 
 void _translate_sqlite_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs) {

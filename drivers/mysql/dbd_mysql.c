@@ -40,13 +40,13 @@
 #include <dbi/dbd.h>
 
 #include <mysql/mysql.h>
-#include "mysql-stuff.h"
+#include "dbd_mysql.h"
 
 static const dbi_info_t driver_info = {
 	"mysql",
 	"MySQL database support (using libmysqlclient)",
 	"Mark M. Tobenkin <mark@brentwoodradio.com>",
-	"http://libdbi.sourceforge.net",
+	"http://libdbi-drivers.sourceforge.net",
 	"dbd_mysql v" VERSION,
 	__DATE__
 };

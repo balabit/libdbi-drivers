@@ -18,8 +18,8 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @MYSQL_INCLUDE@
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(mysql_ltlibs)
-libmysql_la_LDFLAGS = $(mysql_ldflags) @MYSQL_LFLAGS@ @MYSQL_LIBS@
+libmysql_la_LDFLAGS = $(mysql_ldflags) @MYSQL_LDFLAGS@ @MYSQL_LIBS@
 libmysql_la_SOURCES = $(mysql_sources)
-libmysql_la_DEPENDENCIES = $(top_srcdir)/include/dbi/dbd.h $(top_srcdir)/include/dbi/dbi-dev.h $(top_srcdir)/include/dbi/dbi.h mysql-stuff.h
+libmysql_la_DEPENDENCIES = dbd_mysql.h
 
-EXTRA_DIST = dbd_mysql.c mysql-stuff.h
+EXTRA_DIST = dbd_mysql.c dbd_mysql.h

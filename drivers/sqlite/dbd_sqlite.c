@@ -52,7 +52,7 @@ static const dbi_info_t driver_info = {
   "sqlite",
   "SQLite database support (using libsqlite)",
   "Markus Hoenicka <mhoenicka@users.sourceforge.net>",
-  "http://libdbi.sourceforge.net",
+  "http://libdbi-drivers.sourceforge.net",
   "dbd_sqlite v" VERSION,
   __DATE__
 };

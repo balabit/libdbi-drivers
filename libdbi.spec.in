@@ -2,13 +2,13 @@
 %define version	@VERSION@
 %define release 1
 
-Summary:	Database Independent Abstraction Layer for C
+Summary:	Database drivers for libdbi
 Name:		%{name}
 Version:	%{version}
 Release:	%{release}
 Group:		Development/Libraries
 Copyright:	LGPL
-URL:		http://libdbi.sourceforge.net/
+URL:		http://libdbi-drivers.sourceforge.net/
 Vendor:		Neon Goat Productions
 Packager:	David A. Parker <david@neongoat.com>
 Source:		%{name}-%{version}.tar.gz
@@ -16,18 +16,17 @@ BuildRoot:	%{_tmppath}/%{name}-root
 
 %description
 libdbi implements a database-independent abstraction layer in C, similar to the
-DBI/DBD layer in Perl. Writing one generic set of code, programmers can
-leverage the power of multiple databases and multiple simultaneous database
-connections by using this framework.
+DBI/DBD layer in Perl. Drivers are distributed seperately from the library
+itself.
 
-%package devel
-Summary: Development files for libdbi (Database Independent Abstraction Layer for C)
-Group: Development/Libraries
-Requires:	%{name} = %{version}-%{release}
-
-%description devel
-The libdbi-devel package contains the header files and documentation
-needed to develop applications with libdbi.
+#%package devel
+#Summary: Development files for libdbi (Database Independent Abstraction Layer for C)
+#Group: Development/Libraries
+#Requires:	%{name} = %{version}-%{release}
+#
+#%description devel
+#The libdbi-devel package contains the header files and documentation
+#needed to develop applications with libdbi.
 
 %package dbd-mysql
 Summary: MySQL driver for libdbi
@@ -60,29 +59,6 @@ make
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
 make DESTDIR=$RPM_BUILD_ROOT install
 
-%files
-%defattr(-,root,root)
-%doc AUTHORS
-%doc ChangeLog
-%doc COPYING
-%doc README
-%doc README.drivers
-/usr/lib/libdbi.so.*
-
-%files devel
-%doc README
-%doc TODO
-%doc doc/programmers-guide.pdf
-%doc doc/programmers-guide/
-%doc doc/driver-guide.pdf
-%doc doc/driver-guide/
-/usr/include/dbi/dbi.h
-/usr/include/dbi/dbi-dev.h
-/usr/include/dbi/dbd.h
-/usr/lib/libdbi.a
-/usr/lib/libdbi.la
-/usr/lib/libdbi.so
-
 %files dbd-mysql
 /usr/lib/dbd/libmysql.so
 /usr/lib/dbd/libmysql.la
@@ -101,5 +77,7 @@ make DESTDIR=$RPM_BUILD_ROOT install
 /sbin/ldconfig
 
 %changelog
+* Fri Mar 28 2003 David Parker <david@neongoat.com>
+- updated for libdbi-drivers split
 * Sat Aug 4 2001 David Parker <david@neongoat.com>
 - initial spec file created

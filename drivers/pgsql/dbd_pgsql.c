@@ -39,13 +39,13 @@
 #include <dbi/dbd.h>
 
 #include <libpq-fe.h>
-#include "pgsql-stuff.h"
+#include "dbd_pgsql.h"
 
 static const dbi_info_t driver_info = {
 	"pgsql",
 	"PostgreSQL database support (using libpq)",
 	"David A. Parker <david@neongoat.com>",
-	"http://libdbi.sourceforge.net",
+	"http://libdbi-drivers.sourceforge.net",
 	"dbd_pgsql v" VERSION,
 	__DATE__
 };

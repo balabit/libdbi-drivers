@@ -91,16 +91,31 @@ int dbd_initialize(dbi_driver_t *driver)
 
 int dbd_connect(dbi_conn_t *conn) 
 {
+	char dpb_buffer[256], *dpb; 
+	short dpb_length; 
+
         isc_db_handle db = NULL; /* database handle */
         isc_tr_handle trans = NULL; /* transaction handle */
 	ibase_conn_t *iconn = (ibase_conn_t * ) malloc(sizeof(ibase_conn_t));
+
 	const char *dbase =  dbi_conn_get_option(conn, "dbname");
+	const char *username = dbi_conn_get_option(conn, "username");
+	const char *password = dbi_conn_get_option(conn, "password");
 
-	/**
-	 * Username and password ?!
-	 */
 
-	if (isc_attach_database(iconn->status, 0, (char*)dbase, &db, 0, NULL)  || 
+	dpb = dpb_buffer;
+	*dpb++ = isc_dpb_version1;
+	*dpb++ = isc_dpb_num_buffers;
+	*dpb++ = 1;
+	*dpb++ = 90;
+	dpb_length = dpb - dpb_buffer;
+	
+	isc_expand_dpb(&dpb, &dpb_length,
+		       isc_dpb_user_name, username,
+		       isc_dpb_password, password,
+		       NULL);
+
+	if (isc_attach_database(iconn->status, 0, (char*)dbase, &db, dpb_length, dpb_buffer)  || 
 	    isc_start_transaction(iconn->status, &trans, 1, &db, 0, NULL)) {
 		isc_print_status(iconn->status);
 		free(iconn);
@@ -323,6 +338,11 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
         
 	TEXT errbuf[MAXLEN];
         ISC_STATUS *vec;
+	
+	if ( conn->connection == NULL) {
+                *errstr = strdup("Unable to connect to database.");
+		return 1;
+	}
 	
         vec = iconn->status;
 	isc_interprete(errbuf, &vec);

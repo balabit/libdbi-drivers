@@ -284,7 +284,7 @@ void _translate_msql_type(int fieldtype, unsigned short *type, unsigned int *att
 		/* fall trough */
 	case INT8_TYPE:
 		_type = DBI_TYPE_INTEGER;
-		_attribs |= DBI_INTEGER_SIZE2;
+		_attribs |= DBI_INTEGER_SIZE1;
 		break;
 		
 	case UINT16_TYPE:
@@ -292,9 +292,9 @@ void _translate_msql_type(int fieldtype, unsigned short *type, unsigned int *att
 		/* fall trough */
 	case INT16_TYPE:
 		_type = DBI_TYPE_INTEGER;
-		_attribs |= DBI_INTEGER_SIZE4;
+		_attribs |= DBI_INTEGER_SIZE2;
 		break;
-	
+		
 	case BYTE_TYPE:
 		_type = DBI_TYPE_INTEGER;
 		_attribs |= DBI_INTEGER_SIZE1;
@@ -320,7 +320,7 @@ void _translate_msql_type(int fieldtype, unsigned short *type, unsigned int *att
 			
 	case REAL_TYPE:
 		_type = DBI_TYPE_DECIMAL;
-		_attribs |= DBI_DECIMAL_SIZE8;
+		_attribs |= DBI_DECIMAL_SIZE4;
 		break;
 	
 	case IDENT_TYPE:

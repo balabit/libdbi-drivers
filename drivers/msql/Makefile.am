@@ -51,3 +51,5 @@ install-data-local:
 	@for f in $(noinst_DATA); do \
 		$(INSTALL_DATA) $(srcdir)/$$f $(DESTDIR)$(doc_dir)/$$f; \
 	done
+
+#endif /* HAVE_MSQL */

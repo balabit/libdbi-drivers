@@ -47,8 +47,8 @@ all: libmysql-dll libpgsql-dll libsqlite-dll
 libmysql-dll: $(top_srcdir)/drivers/mysql/dbd_mysql.o 
 	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(top_srcdir)/drivers/mysql/*.o $(MYSQL_LIBS)
 
-libpgsql-dll: $(top_srcdir)/drivers/postgresql/dbd_pgsql.o
-	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/postgresql/.libs/$(LIBPGSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/postgresql/.libs/$(LIBPGSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(top_srcdir)/drivers/postgresql/*.o $(PGSQL_LIBS)
+libpgsql-dll: $(top_srcdir)/drivers/pgsql/dbd_pgsql.o
+	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(top_srcdir)/drivers/pgsql/*.o $(PGSQL_LIBS)
 
 libsqlite-dll: $(top_srcdir)/drivers/sqlite/dbd_sqlite.o 
 	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) -o $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME)  $(top_srcdir)/drivers/sqlite/*.o $(SQLITE_LIBS)
@@ -56,8 +56,8 @@ libsqlite-dll: $(top_srcdir)/drivers/sqlite/dbd_sqlite.o
 install:
 	cp $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_NAME) $(driverdir) && \
 	cp $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_EXP_LIB) $(driverdir) && \
-	cp $(top_srcdir)/drivers/postgresql/.libs/$(LIBPGSQL_DLL_NAME) $(driverdir) && \
-	cp $(top_srcdir)/drivers/postgresql/.libs/$(LIBPGSQL_DLL_EXP_LIB) $(driverdir)
+	cp $(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_NAME) $(driverdir) && \
+	cp $(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_EXP_LIB) $(driverdir)
 	cp $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME) $(driverdir) && \
 	cp $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) $(driverdir)
 

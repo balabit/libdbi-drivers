@@ -29,7 +29,7 @@ host_triplet = i686-pc-cygwin
 AS = @AS@
 CC = gcc
 DEBUG = -g -Wall -D__NO_MATH_INLINES -fsigned-char
-MYSQL_LIBS = -L /usr/local/lib -ldbi -lmysqlclient -liberty
+MYSQL_LIBS = -L /usr/local/lib -ldbi -lmysqlclient -liberty -lz
 PGSQL_LIBS = -L /usr/local/lib -ldbi -ldbi -lpq -liberty
 SQLITE_LIBS = -L /usr/local/lib -ldbi -ldbi -lsqlite -liberty
 driverdir = ${exec_prefix}/lib/dbd
@@ -46,13 +46,13 @@ LIBSQLITE_DLL_EXP_LIB = libsqlite.dll.a
 all: libmysql-dll libpgsql-dll
 
 libmysql-dll: $(top_srcdir)/drivers/mysql/dbd_mysql.o 
-	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(top_srcdir)/drivers/mysql/*.o $(MYSQL_LIBS)
+	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(LDFLAGS) $(top_srcdir)/drivers/mysql/*.o $(MYSQL_LIBS)
 
 libpgsql-dll: $(top_srcdir)/drivers/pgsql/dbd_pgsql.o
-	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(top_srcdir)/drivers/pgsql/*.o $(PGSQL_LIBS)
+	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(LDFLAGS) $(top_srcdir)/drivers/pgsql/*.o $(PGSQL_LIBS)
 
 libsqlite-dll: $(top_srcdir)/drivers/sqlite/dbd_sqlite.o 
-	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) -o $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME)  $(top_srcdir)/drivers/sqlite/*.o $(SQLITE_LIBS)
+	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) -o $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME)  $(LDFLAGS) $(top_srcdir)/drivers/sqlite/*.o $(SQLITE_LIBS)
 
 #install: install-libmysql install-libpgsql install-libsqlite
 install: install-libmysql install-libpgsql

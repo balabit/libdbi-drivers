@@ -466,7 +466,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     }
 
     if (!table) {
-      fprintf(stderr, "no from keyword found\n");
+/*       fprintf(stderr, "no from keyword found\n"); */
       return 0;
     }
     

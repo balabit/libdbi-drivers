@@ -1,8 +1,10 @@
 $Id$
 
-- the sqlite code may be incomplete or may not fully use the features
-  provided by the libdbi 0.6.6 framework. Thorough testing and code
-  reading is required.
+- add and test support for more platforms
+
+- add drivers for all free database engines which are currently not
+  yet supported
+
 
 
 

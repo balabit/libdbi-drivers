@@ -93,7 +93,7 @@ int dbd_connect(dbi_conn_t *conn)
 	
 	const char *username =  dbi_conn_get_option(conn, "username");
 	const char *password =  dbi_conn_get_option(conn, "password");
-	const char *sid      =  dbi_conn_get_option(conn, "oracle_sid");
+	const char *sid      =  dbi_conn_get_option(conn, "dbname");
   
 	if(! sid )
 		sid = getenv("ORACLE_SID");
@@ -184,7 +184,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 {
 	dbi_result_t *res;
 	char *sql_cmd;
-  
+	
 	/* We just ignore the db param, becouse of Oracle can't read from diffrent databases at runtime */
 	if (pattern == NULL) {
 		asprintf(&sql_cmd, "SELECT table_name FROM user_tables"); 
@@ -218,12 +218,14 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, unsigned long st_length) 
 {
 	OCIStmt *stmt;
+	OCIDefine *defnp;
 	ub2 stmttype = 0;
 	ub4 numfields = 0;
 	dbi_result_t *result;
 	ub4 numrows =  0, affectedrows = 0;
 	Oraconn *Oconn = conn->connection;
-	sword status;
+	sword status,notused;
+	ub4 cache_rows = 0;
 
 	OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &stmt,
 			OCI_HTYPE_STMT, (size_t) 0, (dvoid **) 0);
@@ -239,41 +241,57 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 			(ub4 *) 0, (ub4) OCI_ATTR_STMT_TYPE, Oconn->err) != OCI_SUCCESS) {
 	}
 	
+	OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
+		       (ub4) (stmttype == OCI_STMT_SELECT ? 0 : 1), 
+		       (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
+		       OCI_STMT_SCROLLABLE_READONLY);
 
-	if( OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
-			   (ub4) (stmttype == OCI_STMT_SELECT ? 0 : 1), 
-			   (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
-			   OCI_STMT_SCROLLABLE_READONLY) != OCI_NO_DATA);
 
-      
-	if( stmttype == OCI_STMT_SELECT) /* get the number of columns */
+	
+       
+	if( stmttype == OCI_STMT_SELECT) { 
+                /* get the number of columns */
 		OCIAttrGet (stmt, OCI_HTYPE_STMT, (dvoid *) &numfields, 
 			    (ub4 *) 0, (ub4) OCI_ATTR_PARAM_COUNT, Oconn->err); 
-  
 
-	
-	
-	/* 
-	   To find out how many rows there is in a result set we need to call 
-	   OCIStmtFetch2() with OCI_FETCH_LAST and then use OCIAttrGet()
-	   with OCI_ATTR_CURRENT_POSITION, This is really not that great 
-	   becouse it might be very very very slow..... But It's the only way i know
-	   It would be really great if libdbi didn't have to know how large a result set is
-	   at this early point.
-	*/
-	
-	status = OCIStmtFetch2(stmt, Oconn->err,
-			       (ub4)1, OCI_FETCH_LAST, 0, OCI_DEFAULT);
-	checkerr(Oconn->err, status);
+		
+		/* 
+		   To find out how many rows there is in a result set we need to call 
+		   OCIStmtFetch2() with OCI_FETCH_LAST and then use OCIAttrGet()
+		   with OCI_ATTR_CURRENT_POSITION, This is really not that great 
+		   becouse it might be very very very slow..... But It's the only way i know
+		   It would be really great if libdbi didn't have to know how large a result set is
+		   at this early point.
+		*/
 
-	status = OCIAttrGet (stmt, OCI_HTYPE_STMT, (dvoid *) &numrows, 
-			     (ub4 *) 0, (ub4) OCI_ATTR_CURRENT_POSITION, Oconn->err); 
-	checkerr(Oconn->err, status); 
-	numrows = 8; /* hack until i know why OCIStmtFetch2 return internal error */
-	//(void) fprintf(stderr, "fields: %d rows: %d", numfields, numrows);
+		/* dummy define .. We need have atleast one define before fetching. Duh!!! */
+		OCIDefineByPos(stmt, &defnp, Oconn->err, 1, (dvoid *) &notused,
+			       (sword) sizeof(sword), SQLT_INT, (dvoid *) 0, (ub2 *)0,
+			       (ub2 *)0, OCI_DEFAULT); 
 
-	/* howto handle affected rows? I don't know .... */
-	
+		
+		status = OCIStmtFetch2(stmt, Oconn->err,
+			       (ub4)10, OCI_FETCH_LAST, 0, OCI_DEFAULT);
+		checkerr(Oconn->err, status);
+
+		status = OCIAttrGet (stmt, OCI_HTYPE_STMT, (dvoid *) &numrows, 
+				     (ub4 *) 0, (ub4) OCI_ATTR_CURRENT_POSITION, Oconn->err); 
+		checkerr(Oconn->err, status);
+
+		/* cache should be about 20% of all rows. */
+		if(dbi_conn_get_option_numeric(conn, "oracle_prefetch_rows")) {
+			cache_rows = (ub4)numrows/5;
+			OCIAttrSet(stmt, OCI_HTYPE_STMT,
+				   &cache_rows, sizeof(cache_rows), OCI_ATTR_PREFETCH_ROWS,
+				   Oconn->err);
+		}
+		//(void) fprintf(stderr, "fields: %d rows: %d cached rows %d\n", numfields, numrows, cache_rows);
+		
+
+		/* howto handle affected rows? I don't know .... */
+		
+	}
+
 
 	result = _dbd_result_create(conn, (void *)stmt, numrows , affectedrows);
 	_dbd_result_set_numfields(result, numfields);
@@ -319,7 +337,7 @@ unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence)
 	OCIStmt *stmt;
 	char *sql_cmd;
 	sword currval = 0;
-	static OCIDefine *defnp = (OCIDefine *) 0;
+	OCIDefine *defnp = (OCIDefine *) 0;
 	
 	Oraconn *Oconn = conn->connection;
 	
@@ -471,10 +489,6 @@ void _get_field_info(dbi_result_t *result)
 }
 
 
-/*
-  This function is far from complete.. 
-*/
-
 
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) 
 {
@@ -515,7 +529,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			case DBI_INTEGER_SIZE4:
 			case DBI_INTEGER_SIZE8:
 				//(void) fprintf(stderr, "Got a integer\n");
-
+				
 				break;
 			default:
 				break;
@@ -607,6 +621,7 @@ void checkerr(OCIError * errhp, sword status)
 	case OCI_ERROR:
 		(void) OCIErrorGet (errhp, (ub4) 1, (text *) NULL, &errcode,
 				    errbuf, (ub4) sizeof(errbuf), OCI_HTYPE_ERROR);
+
 		(void) fprintf(stderr,"Error - %s\n", errbuf);
 		break;
 	case OCI_INVALID_HANDLE:

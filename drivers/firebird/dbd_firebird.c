@@ -563,15 +563,22 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			blob_stat = isc_get_segment( iconn->status, &blob_handle,  &actual_seg_len,  
 						     sizeof(blob_segment), blob_segment  );
 
-			while (blob_stat == 0 || iconn->status[1] == isc_segment) {
+			data->d_string = malloc(sizeof(actual_seg_len));
+			memcpy(data->d_string, blob_segment, actual_seg_len);
+			row->field_sizes[curfield] = actual_seg_len;
 
-				
-				//realloc and memcpy .. 
-				printf("%*.*s", actual_seg_len, actual_seg_len, blob_segment); 
-				blob_stat = isc_get_segment(iconn->status, &blob_handle, &actual_seg_len, 
+			while (blob_stat == 0 || iconn->status[1] == isc_segment) { 
+				blob_stat = isc_get_segment(iconn->status, &blob_handle, 
+							    &actual_seg_len, 
 							    sizeof(blob_segment), blob_segment); 
-				printf("\n"); 
-			}; 
+
+				data->d_string = realloc(data->d_string, 
+							 row->field_sizes[curfield] + 
+							 actual_seg_len);
+				memcpy(data->d_string+row->field_sizes[curfield], 
+				       blob_segment, actual_seg_len);
+				row->field_sizes[curfield] += actual_seg_len;
+			} 
 			isc_close_blob(iconn->status, &blob_handle);
 			break;
 				
@@ -604,9 +611,9 @@ static unsigned long long return_generator_value(dbi_conn_t *conn, const char *s
 
 	istmt = result->result_handle;
 	if(! isc_dsql_fetch(iconn->status, &(istmt->stmt), SQL_DIALECT_V6, istmt->osqlda) ) {
-		retval = (long)istmt->osqlda->sqlvar[0].sqllen;
-		dbi_result_free(result);
+		retval = *(long *) istmt->osqlda->sqlvar[0].sqldata;
 	}
+	dbi_result_free(result);
 	free(sql_cmd);
 	return retval;
 } 

@@ -74,7 +74,6 @@ void _translate_sqlite_type(enum enum_field_types fieldtype, unsigned short *typ
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx);
 int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement);
 char* get_field_type(const char* statement, const char* curr_field_name);
-time_t _parse_datetime(const char *raw, unsigned long attribs);
 static unsigned long sqlite_escape_string(char *to, const char *from, unsigned long length);
 int wild_case_compare(const char *str,const char *str_end,
 		      const char *wildstr,const char *wildend,
@@ -686,12 +685,15 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   else if (strstr(curr_type, "TIME")) {
     type = FIELD_TYPE_TIME;
   }
-  else if (strstr(curr_type, "REAL")
-	   || strstr(curr_type, "FLOAT")) {
-    type = FIELD_TYPE_FLOAT;
-  }
-  else if (strstr(curr_type, "DOUBLE")) {
+  else if (strstr(curr_type, "DOUBLE")
+	   || strstr(curr_type, "double precision")
+	   || strstr(curr_type, "FLOAT8")) {
     type = FIELD_TYPE_DOUBLE;
+  }
+  else if (strstr(curr_type, "REAL")
+	   || strstr(curr_type, "FLOAT")
+	   || strstr(curr_type, "FLOAT4")) {
+    type = FIELD_TYPE_FLOAT;
   }
   else {
     type = FIELD_TYPE_STRING; /* most reasonable default */
@@ -834,7 +836,7 @@ int dbd_ping(dbi_conn_t *conn) {
 void _translate_sqlite_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs) {
   unsigned int _type = 0;
   unsigned int _attribs = 0;
-
+/*   printf("fieldtype:%d<<\n", fieldtype); */
   switch (fieldtype) {
   case FIELD_TYPE_TINY:
     _type = DBI_TYPE_INTEGER;
@@ -981,41 +983,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
     
     curfield++;
   }
-}
-
-time_t _parse_datetime(const char *raw, unsigned long attribs) {
-  struct tm unixtime;
-  char *unparsed;
-  char *cur;
-
-  unixtime.tm_sec = unixtime.tm_min = unixtime.tm_hour = 0;
-  unixtime.tm_mday = unixtime.tm_mon = unixtime.tm_year = 0;
-  unixtime.tm_isdst = -1;
-	
-  if (raw && (unparsed = strdup(raw)) != NULL) {
-    cur = unparsed;
-    if (strlen(raw) > 10 && attribs & DBI_DATETIME_DATE) {
-      cur[4] = '\0';
-      cur[7] = '\0';
-      cur[10] = '\0';
-      unixtime.tm_year = atoi(cur)-1900;
-      unixtime.tm_mon = atoi(cur+5);
-      unixtime.tm_mday = atoi(cur+8);
-      if (attribs & DBI_DATETIME_TIME) cur += 11;
-    }
-    
-    if (strlen(cur) > 5 && attribs & DBI_DATETIME_TIME) {
-      cur[2] = '\0';
-      cur[5] = '\0';
-      unixtime.tm_hour = atoi(cur);
-      unixtime.tm_min = atoi(cur+3);
-      unixtime.tm_sec = atoi(cur+6);
-    }
-
-    free(unparsed);
-  }
-
-  return mktime(&unixtime);
 }
 
 /* this function is stolen from MySQL and somewhat simplified for our

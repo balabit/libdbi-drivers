@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
 	
 	printf("\nTest 6: Insert row: \n");
 	
-	if ((result = dbi_conn_query(conn, "INSERT INTO test_datatypes VALUES (-127, 255, -32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+308, 'this is a test', '2001-12-31 23:59:59')")) == NULL) {
+	if ((result = dbi_conn_query(conn, "INSERT INTO test_datatypes VALUES (-127, 255, -32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, 'this is a test', '2001-12-31 23:59:59')")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't insert data! Error message: %s\n", errmsg);
 		dbi_conn_close(conn);
@@ -373,9 +373,9 @@ int main(int argc, char **argv) {
 		  printf("the_datetime errflag=%d\n", errflag);
 		}
 
-		ptr_tm = gmtime(&the_datetime);
+		ptr_tm = localtime(&the_datetime);
 
-		printf("the_char: in:-127 out:%d<<\nthe_uchar: in:255 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%f<<\nthe_double: in:1.7976931348623157E+308 out:%lf\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_string, ptr_tm->tm_year+1900, ptr_tm->tm_mon+1, ptr_tm->tm_mday, ptr_tm->tm_hour, ptr_tm->tm_min, ptr_tm->tm_sec);
+		printf("the_char: in:-127 out:%d<<\nthe_uchar: in:255 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_string, ptr_tm->tm_year+1900, ptr_tm->tm_mon+1, ptr_tm->tm_mday, ptr_tm->tm_hour, ptr_tm->tm_min, ptr_tm->tm_sec);
 
 	}
 	

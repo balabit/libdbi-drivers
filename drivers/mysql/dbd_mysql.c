@@ -464,35 +464,37 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 }
 
 time_t _parse_datetime(const char *raw, unsigned long attribs) {
-	struct tm unixtime;
-	char *unparsed = strdup(raw);
-	char *cur = unparsed;
+  struct tm unixtime;
+  char *unparsed;
+  char *cur;
 
-	unixtime.tm_sec = unixtime.tm_min = unixtime.tm_hour = 0;
-	unixtime.tm_mday = 1;
-	unixtime.tm_mon = 0;
-	unixtime.tm_year = 70;
-	unixtime.tm_isdst = -1;
+  unixtime.tm_sec = unixtime.tm_min = unixtime.tm_hour = 0;
+  unixtime.tm_mday = unixtime.tm_mon = unixtime.tm_year = 0;
+  unixtime.tm_isdst = -1;
 	
-	if (attribs & DBI_DATETIME_DATE) {
-		cur[4] = '\0';
-		cur[7] = '\0';
-		cur[10] = '\0';
-		unixtime.tm_year = atoi(cur)-1900;
-		unixtime.tm_mon = atoi(cur+5)-1;
-		unixtime.tm_mday = atoi(cur+8);
-		if (attribs & DBI_DATETIME_TIME) cur = cur+11;
-	}
-	
-	if (attribs & DBI_DATETIME_TIME) {
-		cur[2] = '\0';
-		cur[5] = '\0';
-		unixtime.tm_hour = atoi(cur);
-		unixtime.tm_min = atoi(cur+3);
-		unixtime.tm_sec = atoi(cur+6);
-	}
+  if (raw && (unparsed = strdup(raw)) != NULL) {
+    cur = unparsed;
+    if (strlen(raw) > 10 && attribs & DBI_DATETIME_DATE) {
+      cur[4] = '\0';
+      cur[7] = '\0';
+      cur[10] = '\0';
+      unixtime.tm_year = atoi(cur)-1900;
+      unixtime.tm_mon = atoi(cur+5);
+      unixtime.tm_mday = atoi(cur+8);
+      if (attribs & DBI_DATETIME_TIME) cur += 11;
+    }
+    
+    if (strlen(raw) > 5 && attribs & DBI_DATETIME_TIME) {
+      cur[2] = '\0';
+      cur[5] = '\0';
+      unixtime.tm_hour = atoi(cur);
+      unixtime.tm_min = atoi(cur+3);
+      unixtime.tm_sec = atoi(cur+6);
+    }
 
-	free(unparsed);
-	return mktime(&unixtime);
+    free(unparsed);
+  }
+
+  return mktime(&unixtime);
 }
 

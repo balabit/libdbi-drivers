@@ -126,6 +126,8 @@
       <screen><userinput>CREATE TABLE foo (a INTEGER,b TEXT,c VARCHAR(64))</userinput></screen>
       <para>Another difference is the lack of access control on the database engine level. Most SQL database servers implement some mechanisms to restrict who is allowed to fiddle with the databases and who is not. As SQLite uses regular files to store its databases, all available access control is on the filesystem level. There is no SQL interface to this kind of access control, but <command>chmod</command> and <command>chown</command> are your friends.</para>
       <para>SQLite appears to implement row and column counters as C long int values. This limits the maximum number of rows somewhat compared to other SQL database engines.</para>
+      <para>SQLite does not have specific support for binary data. If you want to store binary data (e.g. character sequences containing NULL bytes) in a fashion that is portable across all database servers supported by libdbi, think about encoding these data, using either CGI-style or base64 algorithms. Free or public domain implementations of both algorithms can be found all over the place in the internet. The SQLite sources also contain a file <filename moreinfo="none">src/encode.c</filename> that provides suitable endoding and decoding functions.</para>
+      <para>SQLite currently supports different character encodings only as compile-time options. There is no way to change the encoding at runtime or per database.</para>
     </sect1>
     <sect1>
       <title>sqlite driver misfeatures</title>
@@ -147,7 +149,7 @@
 	  <para>Listing tables with the <function>dbi_conn_get_table_list()</function> libdbi function currently returns only permanent tables. Temporary tables are ignored.</para>
 	</listitem>
 	<listitem>
-	  <para>The sqlite driver assumes that table and field names do not exceed 128 characters in length, including the trailing \0. I don't know whether SQLite internally has such a limit or not (both MySQL and PostgreSQL have a lower limit).</para>
+	  <para>The sqlite driver assumes that table and field names do not exceed 128 characters in length, including the trailing \0. I don't know whether SQLite internally has such a limit or not (both MySQL and PostgreSQL have a lower limit). The limit can be increased by changing a single #define in the <filename moreinfo="none">dbd_sqlite.h</filename> header file.</para>
 	</listitem>
 	<listitem>
 	  <para>In a few cases, the sqlite driver expects you to type SQL keywords in all lowercase or all uppercase, but not mixed. This holds true for the 'from' in a SELECT statement. Type it either as 'from' or as 'FROM', but refrain from using 'fRoM' or other funny mixtures of uppercase and lowercase. Most other database engines treat the keywords as case-insensitive and would accept all variants.</para>

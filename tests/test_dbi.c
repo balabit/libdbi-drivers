@@ -451,7 +451,7 @@ int main(int argc, char **argv) {
 		  printf("the_time errflag=%d\n", errflag);
 		}
 			
-		ptr_tm = localtime(&the_datetime);
+		ptr_tm = gmtime(&the_datetime);
 		year_dt = ptr_tm->tm_year+1900;
 		mon_dt = ptr_tm->tm_mon+1;
 		day_dt = ptr_tm->tm_mday;
@@ -459,12 +459,12 @@ int main(int argc, char **argv) {
 		min_dt = ptr_tm->tm_min;
 		sec_dt = ptr_tm->tm_sec;
 
-		ptr_tm_date = localtime(&the_date_dt);
+		ptr_tm_date = gmtime(&the_date_dt);
 		year = ptr_tm_date->tm_year+1900;
 		mon = ptr_tm_date->tm_mon+1;
 		day = ptr_tm_date->tm_mday;
 
-		ptr_tm_time = localtime(&the_time_dt);
+		ptr_tm_time = gmtime(&the_time_dt);
 		hour = ptr_tm_time->tm_hour;
 		min = ptr_tm_time->tm_min;
 		sec = ptr_tm_time->tm_sec;

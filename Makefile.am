@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign dist-zip
 
-SUBDIRS = drivers tests doc
+SUBDIRS = drivers tests
 
 EXTRA_DIST = AUTHORS COPYING ChangeLog INSTALL README README.drivers README.win32 TODO libdbi.spec.in config.h.in Makefile.w32 autogen.sh
 

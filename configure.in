@@ -96,17 +96,22 @@ case $host in
 	*-*-win32*)
 		shlib_ext=.dll ;;
 	*-*-darwin*)
-		shlib_ext=.bundle ;;
+		shlib_ext=.dylib ;;
 	*)
 		shlib_ext=.so ;;
 esac
+
+AC_ARG_WITH(shlib-ext,
+	[ --with-shlib-ext	  Specifies the filename extension of loadable modules (usually not necessary).],
+	[ shlib_ext=$withval ])
+
+AC_DEFINE_UNQUOTED(DRIVER_EXT, "$shlib_ext", [ Specifies the filename extension of loadable modules ])
 
 AC_CHECK_FUNCS(strtoll)
 AC_REPLACE_FUNCS(atoll)
 dnl i think we'll eventually get an error here...
 AC_CHECK_FUNCS(vasprintf)
 AC_REPLACE_FUNCS(asprintf)
-AC_DEFINE_UNQUOTED(DRIVER_EXT, "$shlib_ext", [ Specifies the filename extension of loadable modules ])
 
 dnl ==============================
 dnl Checks for header files

@@ -46,7 +46,7 @@
 #include <dbi/dbd.h>
 
 #include <sqlite.h>
-#include "sqlite-stuff.h"
+#include "dbd_sqlite.h"
 
 static const dbi_info_t driver_info = {
   "sqlite",
@@ -188,14 +188,11 @@ int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum) {
   if (result->result_state == NOTHING_RETURNED) return -1;
 	
   if (result->result_state == ROWS_RETURNED) {
-    /* this is the first time we've been here */
-    result->result_state = GETTING_ROWS;
+    /* get row here */
+    row = _dbd_row_allocate(result->numfields);
+    _get_row_data(result, row, rownum);
+    _dbd_row_finalize(result, row, rownum);
   }
-
-  /* get row here */
-  row = _dbd_row_allocate(result->numfields);
-  _get_row_data(result, row, rownum);
-  _dbd_row_finalize(result, row, rownum);
 	
   return 1; /* 0 on error, 1 on successful fetchrow */
 }
@@ -941,8 +938,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
       data->d_datetime = _parse_datetime(raw, sizeattrib);
       break;
       
-    case DBI_TYPE_ENUM:
-    case DBI_TYPE_SET:
     default:
       data->d_string = strdup(raw);
       row->field_sizes[curfield] = strlen(raw);

@@ -317,11 +317,11 @@ void _translate_msql_type(int fieldtype, unsigned short *type, unsigned int *att
 		break;
 		
 	case DATE_TYPE:
-		_type = DBI_TYPE_STRING;
+		_type = DBI_TYPE_DATETIME;
 		_attribs |= DBI_DATETIME_DATE;
 		break;
 	case TIME_TYPE:
-		_type = DBI_TYPE_STRING;
+		_type = DBI_TYPE_DATETIME;
 		_attribs |= DBI_DATETIME_TIME;
 		break;
 			
@@ -408,7 +408,11 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			data->d_string = strdup(raw);
 			row->field_sizes[curfield] = (unsigned long long) strlen( raw );
 			break;
-			
+		case DBI_TYPE_DATETIME:
+		  sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DATETIME_DATE\
+					       , DBI_DATETIME_TIME);
+		  data->d_datetime = _dbd_parse_datetime(raw, sizeattrib); 
+		  break;
 		default:	  
 			data->d_string = strdup(raw);
 			row->field_sizes[curfield] = (unsigned long long) strlen( raw );

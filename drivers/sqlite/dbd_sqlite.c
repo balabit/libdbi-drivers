@@ -100,10 +100,14 @@ int dbd_initialize(dbi_driver_t *driver) {
 
 
 int dbd_connect(dbi_conn_t *conn) {
+  /* connect using the database set with the "dbname" option */
   return _real_dbd_connect(conn, "");
 }
 
 int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
+  /* connect using the database passed as an argument. If passed NULL
+     or an empty string, this function tries to use the database set
+     with the "dbname" option */
   sqlite *sqcon;
   char* sq_errmsg = NULL;
   char* db_fullpath = NULL;
@@ -166,6 +170,10 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   free(db_fullpath);
 	
   if (!sqcon) {
+    /* sqlite creates a database the first time we try to access
+       it. If this function fails, there's usually a problem with
+       access rights or an existing database is corrupted or created
+       with an incompatible version */
     if (sq_errmsg) {
       _dbd_internal_error_handler(conn, sq_errmsg, 0);
       free(sq_errmsg);
@@ -253,8 +261,8 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
    Update: Now apparently there is a system table that lists
    temporary tables, but the DROP TABLE error doesn't hurt and is
    most likely faster than checking for the existence of the table */
-  dbd_query(conn, "DROP TABLE databases");
-  dbd_query(conn, "CREATE TEMPORARY TABLE databases (dbname VARCHAR(255))");
+  dbd_query(conn, "DROP TABLE libdbi_databases");
+  dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_databases (dbname VARCHAR(255))");
 
   if (sq_datadir && (dp = opendir(sq_datadir)) == NULL) {
     _dbd_internal_error_handler(conn, "could not open data directory", 0);
@@ -300,7 +308,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
 	/* match filename to a pattern, or use all found files */
 	if (pattern) {
 	  if (wild_case_compare(entry->d_name, &entry->d_name[strlen(entry->d_name)], pattern, &pattern[strlen(pattern)], '\\') == 0) {
-	    retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO databases VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
+	    retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO libdbi_databases VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
 	    if (sq_errmsg) {
 	      _dbd_internal_error_handler(conn, sq_errmsg, retval);
 	      free(sq_errmsg);
@@ -309,7 +317,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
 	  }
 	}
 	else {
-	  retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO databases  VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
+	  retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO libdbi_databases  VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
 	  
 	  if (sq_errmsg) {
 	    _dbd_internal_error_handler(conn, sq_errmsg, retval);
@@ -325,7 +333,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
   chdir(old_cwd);
 
   /* now query our temporary table */
-  return dbd_query(conn, "SELECT dbname FROM databases");
+  return dbd_query(conn, "SELECT dbname FROM libdbi_databases");
 }
 
 dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *pattern) {
@@ -355,8 +363,8 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   
   /* create temporary table for table names. The DROP command won't hurt
      if the table doesn't exist yet */
-  dbd_query(conn, "DROP TABLE tablenames");
-  dbd_query(conn, "CREATE TEMPORARY TABLE tablenames (tablename VARCHAR(255))");
+  dbd_query(conn, "DROP TABLE libdbi_tablenames");
+  dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_tablenames (tablename VARCHAR(255))");
 /*   fprintf(stderr, "created temporary table\n"); */
 
   /* sqlite does not support the SHOW command, so we have to extract the
@@ -372,7 +380,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 /*   fprintf(stderr, "select from sqlite_master has run\n"); */
   if (dbi_result) {
     while (dbi_result_next_row(dbi_result)) {
-      retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO tablenames VALUES ('%s')", NULL, NULL, &sq_errmsg, dbi_result_get_string(dbi_result, "name"));
+      retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO libdbi_tablenames VALUES ('%s')", NULL, NULL, &sq_errmsg, dbi_result_get_string(dbi_result, "name"));
     }
     dbi_result_free(dbi_result);
   }
@@ -383,7 +391,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 
   sqlite_close((sqlite*)(tempconn->connection));
 
-  return dbd_query(conn, "SELECT tablename FROM tablenames ORDER BY tablename");
+  return dbd_query(conn, "SELECT tablename FROM libdbi_tablenames ORDER BY tablename");
 }
 
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) {
@@ -478,15 +486,16 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
      the following to work
 
      The code assumes that table and field names do not exceed a given
-     length limit. PostgreSQL uses 32 which is a bit low. SQLite
-     does not seem to have fixed limits. We use a limit of 128 here.
+     length limit. PostgreSQL uses 32 which is a bit low. SQLite does
+     not seem to have fixed limits. We use a default limit of 128 here
+     which can be increased in dbd_sqlite.h if need arises.
    */
 
   char* item;
   char* table;
-  char curr_table[128] = "";
-  char curr_field_name[128];
-  char curr_field_name_up[128];
+  char curr_table[MAX_IDENT_LENGTH] = "";
+  char curr_field_name[MAX_IDENT_LENGTH];
+  char curr_field_name_up[MAX_IDENT_LENGTH];
   char **table_result_table;
   char *curr_type;
   char* errmsg;
@@ -563,6 +572,10 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
      of field names. There is some overlap, i.e. some function work
      both on strings and numbers. These cases would have to be
      analyzed by checking the arguments */
+  /* ToDo: find the matching closing bracket and submit this function
+     call to the builtin typeof() SQL function. This should return a
+     distinction between text and numeric types. However, the size and
+     subtype of a numeric column can't be deduced as easily */
   strcpy(curr_field_name_up, curr_field_name);
 
   /* uppercase string, reuse item */
@@ -646,14 +659,24 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     item++;
   }
 
+
+  /* the following code tries to support as many of the SQL types as
+     possible, including those extensions supported by MySQL and
+     PostgreSQL. Some conflicts remain, like the REAL type which is a
+     different thing in MySQL and PostgreSQL */
+
 /*   printf("field type: %s<<\n", curr_type); */
   if (strstr(curr_type, "BLOB")
-      || strstr(curr_type, "CHAR(")
+      || strstr(curr_type, "CHAR(") /* note the opening bracket */
       || strstr(curr_type, "CLOB")
-      || strstr(curr_type, "TEXT")) {
+      || strstr(curr_type, "TEXT") /* also catches TINYTEXT */
+      || strstr(curr_type, "VARCHAR")
+      || strstr(curr_type, "ENUM")
+      || strstr(curr_type, "SET")
+      || strstr(curr_type, "YEAR")) { /* MySQL 2 or 4 digit year (string) */
     type = FIELD_TYPE_STRING;
   }
-  else if (strstr(curr_type, "CHAR")
+  else if (strstr(curr_type, "CHAR") /* this is a 1-byte value */
 	   || strstr(curr_type, "TINYINT")
 	   || strstr(curr_type, "INT1")) {
     type = FIELD_TYPE_TINY;
@@ -661,6 +684,9 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   else if (strstr(curr_type, "SMALLINT")
 	   || strstr(curr_type, "INT2")) {
     type = FIELD_TYPE_SHORT;
+  }
+  else if (strstr(curr_type, "MEDIUMINT")) {
+    type = FIELD_TYPE_INT24;
   }
   else if (strstr(curr_type, "BIGINT")
 	   || strstr(curr_type, "INT8")) {
@@ -685,12 +711,13 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   else if (strstr(curr_type, "TIME")) {
     type = FIELD_TYPE_TIME;
   }
-  else if (strstr(curr_type, "DOUBLE")
-	   || strstr(curr_type, "double precision")
+  else if (strstr(curr_type, "DOUBLE") /* also catches "double precision" */
 	   || strstr(curr_type, "FLOAT8")) {
     type = FIELD_TYPE_DOUBLE;
   }
-  else if (strstr(curr_type, "REAL")
+  else if (strstr(curr_type, "REAL") /* this is PostgreSQL "real", not
+					MySQL "real" which is a
+					synonym of "double" */
 	   || strstr(curr_type, "FLOAT")
 	   || strstr(curr_type, "FLOAT4")) {
     type = FIELD_TYPE_FLOAT;

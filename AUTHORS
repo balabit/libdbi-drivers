@@ -1,0 +1,13 @@
+
+The following people have been involved in libdbi-drivers development:
+
+Main developer:
+* Markus Hoenicka <markus at mhoenicka.de>
+
+Main developers of the libdbi project that provides the framework
+used by the libdbi-drivers database drivers:
+* David A. Parker <david at neongoat.com>
+* Mark Tobenkin <mark at brentwoodradio.com>
+
+
+$Id$

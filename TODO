@@ -1,0 +1,11 @@
+$Id$
+
+- the sqlite code may be incomplete or may not fully use the features
+  provided by the libdbi 0.6.6 framework. Thorough testing and code
+  reading is required.
+
+- plugins:(unless the libdbi project wants to do them)
+	* msql?
+
+
+

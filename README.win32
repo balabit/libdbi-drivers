@@ -1,0 +1,49 @@
+
+libdbi-drivers - 3rd-party drivers for libdbi, the Database
+Independent Abstraction Layer for C
+
+Copyright (C) 2001-2002, Markus Hoenicka
+http://libdbi-drivers.sourceforge.net
+
+
+WINDOWS-SPECIFIC INSTALLATION INSTRUCTIONS:
+-------------------------------------------
+
+libdbi-drivers can be compiled into DLL files on Win32 with the Cygwin
+package, available at http://www.cygwin.com/. libdbi must be properly
+installed before attempting to build libdbi-drivers.
+
+./configure --with-sqlite
+make
+make install
+make -f Makefile.w32
+make -f Makefile.w32 install
+
+
+CYGWIN DETAILS:
+---------------
+
+There are unfortunately no "Cygwin" releases in a sense as there are Debian 2.2
+or FreeBSD 4.5. All components, including the cygwin1.dll, gcc, bash etc. have
+their own independent versions. The most important package for the new-style
+Makefile to work is the binutils package (linker and such), which should be
+"binutils-20011002-1" or newer.
+
+
+USAGE:
+------
+
+Once libdbi is compiled for Win32 and you have a DLL, you can use that DLL like
+any other. The only requirement is that the cygwin runtime DLL is available on
+the target machine also, since non-Windows API functions are implemented by
+cygwin.
+
+
+MODIFICATIONS AND REDISTRIBUTION (GPL):
+----------------------------------------
+
+See the file COPYING or http://www.gnu.org for more details.
+
+
+$Id$
+

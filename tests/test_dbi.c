@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <dbi/dbi.h>
+#include <time.h>
 
-#define QUERY_LEN 200
+#define QUERY_LEN 512
 
 
 int main(int argc, char **argv) {
@@ -222,14 +223,7 @@ int main(int argc, char **argv) {
 	
 	printf("\nTest 4: Create table: \n");
 	
-	if(!strcmp(drivername, "msql")) {
-		snprintf(query, QUERY_LEN, "CREATE TABLE test_address ( street CHAR(64), number INT, state CHAR(2),"
-			                   "city CHAR(64), zip INT)");
-	} else {
-		snprintf(query, QUERY_LEN, "CREATE TABLE test_address (street VARCHAR(64), number INTEGER, state CHAR(2),"
-				           " city VARCHAR(64), zip INTEGER)");
-	}
-
+	snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME)");
 	if ((result = dbi_conn_query(conn, query)) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't create table! Error message: %s\n", errmsg);
@@ -261,7 +255,7 @@ int main(int argc, char **argv) {
 	
 	printf("\nTest 6: Insert row: \n");
 	
-	if ((result = dbi_conn_query(conn, "INSERT INTO test_address VALUES ('Spellman',5946,'TX','Houston',77096)")) == NULL) {
+	if ((result = dbi_conn_query(conn, "INSERT INTO test_datatypes VALUES ('a','a',-32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+308, 'this is a test', '2001-12-31 23:59:59')")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't insert data! Error message: %s\n", errmsg);
 		dbi_conn_close(conn);
@@ -274,33 +268,114 @@ int main(int argc, char **argv) {
 
 	printf("\nTest 7: Retrieve data: \n");
 	
-	if ((result = dbi_conn_query(conn, "SELECT * from test_address")) == NULL) {
+	if ((result = dbi_conn_query(conn, "SELECT * from test_datatypes")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't get read data! Error message: %s\n", errmsg);
 		dbi_conn_close(conn);
 		dbi_shutdown();
 		return 1;
 	}
-	printf("\tGot result, try to access rows\n\t\t");
+	printf("\tGot result, try to access rows\n");
 	while (dbi_result_next_row(result)) {
-		const char *street = NULL;
-		int number = 0;
-		const char *state = NULL;
-		const char *city = NULL;
-		int zip = 0;
-		street = dbi_result_get_string(result, "street");
-		number = dbi_result_get_long(result, "number");
-		state = dbi_result_get_string(result, "state");
-		city = dbi_result_get_string(result, "city");
-		zip = dbi_result_get_long(result, "zip");
-		printf("I used to live in %d %s, %s, %s %d\n", number, street, city, state, zip);
+		signed char the_char;
+		unsigned char the_uchar;
+		short the_short;
+		unsigned short the_ushort;
+		long the_long;
+		unsigned long the_ulong;
+		long long the_longlong;
+		unsigned long long the_ulonglong;
+		float the_float;
+		double the_double;
+		const char* the_string;
+/* 		const unsigned char* the_binary; */
+		time_t the_datetime;
+		struct tm* ptr_tm;
+		dbi_error_flag errflag;
+
+		the_char = dbi_result_get_char(result, "the_char");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_char errflag=%d\n", errflag);
+		}
+
+		the_uchar = dbi_result_get_uchar(result, "the_uchar");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_uchar errflag=%d\n", errflag);
+		}
+
+		the_short = dbi_result_get_short(result, "the_short");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_short errflag=%d\n", errflag);
+		}
+
+		the_ushort = dbi_result_get_ushort(result, "the_ushort");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_ushort errflag=%d\n", errflag);
+		}
+
+		the_long = dbi_result_get_long(result, "the_long");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_long errflag=%d\n", errflag);
+		}
+
+		the_ulong = dbi_result_get_ulong(result, "the_ulong");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_ulong errflag=%d\n", errflag);
+		}
+
+		the_longlong = dbi_result_get_longlong(result, "the_longlong");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_longlong errflag=%d\n", errflag);
+		}
+
+		the_ulonglong = dbi_result_get_ulonglong(result, "the_ulonglong");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_ulonglong errflag=%d\n", errflag);
+		}
+
+		the_float = dbi_result_get_float(result, "the_float");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_float errflag=%d\n", errflag);
+		}
+
+		the_double = dbi_result_get_double(result, "the_double");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_double errflag=%d\n", errflag);
+		}
+
+		the_string = dbi_result_get_string(result, "the_string");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_string errflag=%d\n", errflag);
+		}
+
+		the_datetime = dbi_result_get_datetime(result, "the_datetime");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_datetime errflag=%d\n", errflag);
+		}
+
+		ptr_tm = gmtime(&the_datetime);
+
+		printf("the_char: in:'a' out:%d<<\nthe_uchar: in:'a' out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%f<<\nthe_double: in:1.7976931348623157E+308 out:%lf\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_string, ptr_tm->tm_year+1900, ptr_tm->tm_mon+1, ptr_tm->tm_mday, ptr_tm->tm_hour, ptr_tm->tm_min, ptr_tm->tm_sec);
+
 	}
 	
 	dbi_result_free(result);
 	
 	printf("\nTest 8: Drop table: \n");
 	
-	if ((result = dbi_conn_query(conn, "DROP TABLE test_address")) == NULL) {
+	if ((result = dbi_conn_query(conn, "DROP TABLE test_datatypes")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't drop table! Error message: %s\n", errmsg);
 		dbi_conn_close(conn);

@@ -203,7 +203,19 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern)
 
 dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *pattern) 
 {
-	return NULL;
+
+	if (pattern == NULL) {
+		return  dbd_query(conn, "SELECT RDB$RELATION_NAME FROM RDB$RELATIONS WHERE RDB$SYSTEM_FLAG = 0");
+	}
+	else {
+		dbi_result_t *res;
+		char *sql_cmd;
+		asprintf(&sql_cmd, "SELECT RDB$RELATION_NAME FROM RDB$RELATIONS WHERE RDB$SYSTEM_FLAG = 0 "
+			           " AND RDB$RELATION_NAME LIKE '%s'", pattern);
+		res = dbd_query(conn, sql_cmd);
+		free(sql_cmd);
+		return res;
+	}
 }
 
 

@@ -73,7 +73,7 @@ static const char *reserved_words[] = FIREBIRD_RESERVED_WORDS;
 
 void _translate_firebird_type(int field_type,  unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
-void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
+int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 static unsigned long long return_generator_value(dbi_conn_t *conn, const char *sequence, int type);
 
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, 
@@ -116,11 +116,11 @@ int dbd_connect(dbi_conn_t *conn)
 		       isc_dpb_password, password,
 		       NULL);
 
-	if (isc_attach_database(iconn->status, 0, (char*)dbase, &db, dpb_length, dpb_buffer)  || 
-	    isc_start_transaction(iconn->status, &trans, 1, &db, 0, NULL)) {
+	if ( isc_attach_database(iconn->status, 0, (char*)dbase, &db, dpb_length, dpb_buffer) ||
+	     isc_start_transaction(iconn->status, &trans, 1, &db, 0, NULL)) {
 		free(iconn);
 		iconn = NULL;
-		return 1;
+		return -1;
 	}
 
 	iconn->trans = trans;
@@ -156,7 +156,9 @@ int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum)
 	if (result->result_state == NOTHING_RETURNED) return -1;
 	if (result->result_state == ROWS_RETURNED) {
 	        row = _dbd_row_allocate(result->numfields);
-		_get_row_data(result, row, rownum);
+		if( _get_row_data(result, row, rownum) == 0 ) 
+			return 0;
+		
 		_dbd_row_finalize(result, row, rownum);
 	}
   
@@ -501,7 +503,7 @@ void _get_field_info(dbi_result_t *result)
 	}
 }
 
-void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) 
+int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) 
 {
 	int curfield = 0;
 	XSQLVAR var;
@@ -519,15 +521,24 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 
 	fetch_stat = isc_dsql_fetch(iconn->status, &(istmt->stmt), SQL_DIALECT_V6, istmt->osqlda);
 
+	if (fetch_stat != 0) {
+		result->numrows_matched--;
+		return 0;
+	}
+
 	while (curfield < result->numfields) {
 		var = istmt->osqlda->sqlvar[curfield];
 		data = &row->field_values[curfield];
 
-		
-		/** the fcolumn is NULL */
-		if ((var->sqltype & 1) && (*var->sqlind < 0)) 
+		/**
+		 * If the column holds a NULL value mark it as NULL 
+		 */
+		if ( (var.sqltype & 1) && ( *var.sqlind < 0)) {
 			_set_field_flag( row, curfield, DBI_VALUE_NULL, 1);
-
+			curfield++;
+			continue;
+		}
+		
 		
 		switch ( result->field_types[curfield] ) {
 		case DBI_TYPE_STRING: 
@@ -639,12 +650,12 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		curfield++;
 	}
 
-	/** Allocate space for the next row */
-	/* Yes, this is dirty hack and I know it..... but what can I do ?! */
 	if( fetch_stat != 100L ) {
 		result->rows = realloc(result->rows, (sizeof(dbi_row_t *) * (result->numrows_matched+1)));
 		result->numrows_matched++;
 	}
+
+	return result->numrows_matched;
 }
 
 static unsigned long long return_generator_value(dbi_conn_t *conn, const char *sequence, int type)

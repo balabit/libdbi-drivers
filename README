@@ -1,7 +1,7 @@
 
-libdbi-drivers - 3rd party drivers for libdbi, a database abstraction
+libdbi-drivers - drivers for libdbi, a database abstraction
 layer implemented in C
-Copyright (C) 2001-2002, Markus Hoenicka
+Copyright (C) 2001-2003, Markus Hoenicka
 http://libdbi-drivers.sourceforge.net
 
 
@@ -13,18 +13,20 @@ DBI/DBD layer in Perl. Writing one generic set of code, programmers can
 leverage the power of multiple databases and multiple simultaneous database
 connections by using this framework.
 
-libdbi-drivers supplies additional drivers for databases not covered
-by the libdbi core distribution.
+libdbi-drivers supplies the drivers that the libdbi framework utilizes
+to talk to the supported database servers.
+
 
 
 INSTALLATION:
 -------------
 
-Perform the regular ./configure, make, make install. See INSTALL for the
-generic details of each step. Some of the libdbi-specific options to configure
-that may interest you are: --with-sqlite. This will enable
-compilation of the only database drivers that is available currently.
-See ./configure --help for more libdbi-drivers configuration options.
+Perform the regular ./configure, make, make install. See INSTALL for
+the generic details of each step. It is important to understand that
+you have to request the driver(s) that you want to build on the
+configure command line. E.g. to build both the SQLite and the
+PostgreSQL drivers, use "./configure --with-sqlite --with-pgsql". See
+./configure --help for more libdbi-drivers configuration options.
 
 If you are building the Win32 port, see README.win32.
 

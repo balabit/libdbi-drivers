@@ -354,7 +354,7 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
   unsigned int len;
 	
   strcpy(dest, "'");
-  len = sqlite_escape_string(dest, orig, strlen(orig));	
+  len = sqlite_escape_string(dest+1, orig, strlen(orig));	
   strcat(dest, "'");
 	
   return len+2;
@@ -1018,7 +1018,9 @@ int wild_case_compare(const char *str,const char *str_end,
   return (str != str_end ? 1 : 0);
 }
 
-/* this function is stolen from MySQL and used regardless of how cryptic it is */
+/* this function is stolen from MySQL. The quoting was changed to the
+ SQL standard, i.e. single and double quotes are escaped by doubling,
+ not by a backslash */
 static unsigned long sqlite_escape_string(char *to, const char *from, unsigned long length)
 {
   const char *to_start=to;
@@ -1039,16 +1041,16 @@ static unsigned long sqlite_escape_string(char *to, const char *from, unsigned l
 	*to++= '\\';
 	*to++= 'r';
 	break;
-      case '\\':
-	*to++= '\\';
-	*to++= '\\';
-	break;
+/*       case '\\': */
+/* 	*to++= '\\'; */
+/* 	*to++= '\\'; */
+/* 	break; */
       case '\'':
-	*to++= '\\';
+	*to++= '\''; /* double single quote */
 	*to++= '\'';
 	break;
       case '"':				/* Better safe than sorry */
-	*to++= '\\';
+	*to++= '"'; /* double double quote */
 	*to++= '"';
 	break;
       case '\032':			/* This gives problems on Win32 */

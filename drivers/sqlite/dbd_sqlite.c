@@ -93,8 +93,7 @@ int dbd_initialize(dbi_driver_t *driver) {
 
 
 int dbd_connect(dbi_conn_t *conn) {
-    return _real_dbd_connect(conn, "");
-  return 0;
+  return _real_dbd_connect(conn, "");
 }
 
 int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
@@ -450,10 +449,6 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
     idx++;
   }
   
-  /* ToDo: result_table is allocated memory, but we can't free
-   it here lest we want segfaults. It is quite unclear to me when, if
-   at all, this memory is deallocated */
-
   return result;
 }
 
@@ -570,24 +565,24 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     item++;
   }
 
-  if (strstr(curr_field_name, "ABS(")
-      || strstr(curr_field_name, "LAST_INSERT_ROWID(")
-      || strstr(curr_field_name, "LENGTH(")
-      || strstr(curr_field_name, "MAX(")
-      || strstr(curr_field_name, "MIN(")
-      || strstr(curr_field_name, "RANDOM(*)")
-      || strstr(curr_field_name, "ROUND(")
-      || strstr(curr_field_name, "AVG(")
-      || strstr(curr_field_name, "COUNT(")
-      || strstr(curr_field_name, "SUM(")) {
+  if (strstr(curr_field_name_up, "ABS(")
+      || strstr(curr_field_name_up, "LAST_INSERT_ROWID(")
+      || strstr(curr_field_name_up, "LENGTH(")
+      || strstr(curr_field_name_up, "MAX(")
+      || strstr(curr_field_name_up, "MIN(")
+      || strstr(curr_field_name_up, "RANDOM(*)")
+      || strstr(curr_field_name_up, "ROUND(")
+      || strstr(curr_field_name_up, "AVG(")
+      || strstr(curr_field_name_up, "COUNT(")
+      || strstr(curr_field_name_up, "SUM(")) {
     return FIELD_TYPE_LONG;
   }
-  else if (strstr(curr_field_name, "COALESCE(")
-	   || strstr(curr_field_name, "GLOB(")
-	   || strstr(curr_field_name, "LIKE(")
-	   || strstr(curr_field_name, "LOWER(")
-	   || strstr(curr_field_name, "SUBSTR(")
-	   || strstr(curr_field_name, "UPPER(")) {
+  else if (strstr(curr_field_name_up, "COALESCE(")
+	   || strstr(curr_field_name_up, "GLOB(")
+	   || strstr(curr_field_name_up, "LIKE(")
+	   || strstr(curr_field_name_up, "LOWER(")
+	   || strstr(curr_field_name_up, "SUBSTR(")
+	   || strstr(curr_field_name_up, "UPPER(")) {
     return FIELD_TYPE_STRING;
   }
       
@@ -971,32 +966,36 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
 
 time_t _parse_datetime(const char *raw, unsigned long attribs) {
   struct tm unixtime;
-  char *unparsed = strdup(raw);
-  char *cur = unparsed;
+  char *unparsed;
+  char *cur;
 
   unixtime.tm_sec = unixtime.tm_min = unixtime.tm_hour = 0;
   unixtime.tm_mday = unixtime.tm_mon = unixtime.tm_year = 0;
   unixtime.tm_isdst = -1;
 	
-  if (attribs & DBI_DATETIME_DATE) {
-    cur[4] = '\0';
-    cur[7] = '\0';
-    cur[10] = '\0';
-    unixtime.tm_year = atoi(cur)-1900;
-    unixtime.tm_mon = atoi(cur+5);
-    unixtime.tm_mday = atoi(cur+8);
-    if (attribs & DBI_DATETIME_TIME) cur = cur+11;
-  }
-	
-  if (attribs & DBI_DATETIME_TIME) {
-    cur[2] = '\0';
-    cur[5] = '\0';
-    unixtime.tm_hour = atoi(cur);
-    unixtime.tm_min = atoi(cur+3);
-    unixtime.tm_sec = atoi(cur+6);
+  if (raw && (unparsed = strdup(raw)) != NULL) {
+    cur = unparsed;
+    if (strlen(raw) > 10 && attribs & DBI_DATETIME_DATE) {
+      cur[4] = '\0';
+      cur[7] = '\0';
+      cur[10] = '\0';
+      unixtime.tm_year = atoi(cur)-1900;
+      unixtime.tm_mon = atoi(cur+5);
+      unixtime.tm_mday = atoi(cur+8);
+      if (attribs & DBI_DATETIME_TIME) cur += 11;
+    }
+    
+    if (strlen(raw) > 5 && attribs & DBI_DATETIME_TIME) {
+      cur[2] = '\0';
+      cur[5] = '\0';
+      unixtime.tm_hour = atoi(cur);
+      unixtime.tm_min = atoi(cur+3);
+      unixtime.tm_sec = atoi(cur+6);
+    }
+
+    free(unparsed);
   }
 
-  free(unparsed);
   return mktime(&unixtime);
 }
 

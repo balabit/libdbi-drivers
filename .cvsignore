@@ -34,4 +34,4 @@ autom4te.cache
 .gdb_history
 build
 autom4te*
-
+.gdb

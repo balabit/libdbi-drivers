@@ -1,4 +1,4 @@
 .cvsignore
 Makefile.in
 Makefile
-
+.gdb_history

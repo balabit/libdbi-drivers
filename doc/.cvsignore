@@ -2,3 +2,4 @@
 *.ps
 Makefile.in
 Makefile
+.gdb_history

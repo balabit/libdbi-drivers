@@ -2,22 +2,7 @@ libdbi.spec
 .cvsignore
 *.pdf
 *.ps
-libltdl
-config.guess
-config.h.in
-config.sub
-ltconfig
-ltmain.sh
-aclocal.m4
-stamp-h.in
 Makefile.in
-configure
-config.log
-config.h
-config.cache
-libtool
-config.status
-stamp-h
 Makefile
 .deps
 .libs
@@ -25,14 +10,5 @@ Makefile
 *.la
 *.tar.gz
 .icons
-old.configure.in
-stamp-h1
-mkinstalldirs
-missing
-install-sh
-depcomp
-autom4te.cache
 .gdb_history
-build
-autom4te*
 

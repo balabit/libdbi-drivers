@@ -7,3 +7,4 @@ Makefile
 *.lo
 *.la
 dbd_pgsql
+.gdb_history

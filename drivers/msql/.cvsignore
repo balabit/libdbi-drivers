@@ -7,3 +7,4 @@ Makefile
 .deps
 .libs
 dbd_msql
+.gdb_history

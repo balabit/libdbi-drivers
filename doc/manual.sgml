@@ -8,7 +8,7 @@
       <firstname>Markus</firstname>
       <surname>Hoenicka</surname>
       <affiliation>
-	<address><email>markus.hoenicka@mhoenicka.de</email></address>
+	<address><email>mhoenicka@users.sourceforge.net</email></address>
       </affiliation>
     </author>
     <revhistory>
@@ -50,7 +50,7 @@
 	<varlistentry>
 	  <term>libdbi</term>
 	  <listitem>
-	    <para>This library provides the framework of the database abstraction layer which can utilize the sqlite driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>. The current version of the sqlite driver was built for libdbi-0.6.6 (patches published in the libdbi mailing list are required for proper operation).</para>
+	    <para>This library provides the framework of the database abstraction layer which can utilize the sqlite driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>. The current version of the sqlite driver requires at least libdbi version 0.6.7.</para>
 	  </listitem>
 	</varlistentry>
 	<varlistentry>
@@ -83,7 +83,7 @@
   </chapter>
   <chapter>
     <title>Driver options</title>
-    <para>Your application has to initialize libdbi drivers by setting some driver options with the <function>dbi_conn_set_option</function> and the <function>dbi_conn_set_option_numeric</function> library functions. In contrast to the drivers shipped with libdbi, the sqlite driver supports only the following options (the other common options are meaningless due to the embedded nature of the database engine):</para>
+    <para>Your application has to initialize libdbi drivers by setting some driver options with the <function>dbi_conn_set_option()</function> and the <function>dbi_conn_set_option_numeric()</function> library functions. In contrast to the drivers shipped with libdbi, the sqlite driver supports only the following options (the other common options are meaningless due to the embedded nature of the database engine):</para>
     <variablelist>
       <varlistentry>
 	<term>dbname</term>

@@ -335,7 +335,7 @@ int dbd_ping(dbi_conn_t *conn) {
 void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned int *attribs) {
 	unsigned int _type = 0;
 	unsigned int _attribs = 0;
-	
+
 	switch (oid) {
 		case PG_TYPE_CHAR:
 			_type = DBI_TYPE_INTEGER;
@@ -367,7 +367,12 @@ void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned
 			_type = DBI_TYPE_DECIMAL;
 			_attribs |= DBI_DECIMAL_SIZE8;
 			break;
-
+	case PG_TYPE_DATETIME:
+	case PG_TYPE_TIMESTAMP:
+			_type = DBI_TYPE_DATETIME;
+			_attribs |= DBI_DATETIME_DATE;
+			_attribs |= DBI_DATETIME_TIME;
+			break;
 		case PG_TYPE_NAME:
 		case PG_TYPE_TEXT:
 		case PG_TYPE_CHAR2:
@@ -466,6 +471,10 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				break;
 				
 			case DBI_TYPE_DATETIME:
+				sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DATETIME_DATE, DBI_DATETIME_TIME);
+				data->d_datetime = _parse_datetime(raw, sizeattrib);
+				break;
+				
 			default:
 				break;
 		}

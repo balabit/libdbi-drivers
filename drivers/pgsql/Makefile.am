@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = foreign
 if HAVE_PGSQL
 
 pgsql_ltlibs = libpgsql.la
-pgsql_ldflags = -export-dynamic -avoid-version
+pgsql_ldflags = -module -avoid-version
 pgsql_sources = dbd_pgsql.c
 
 else

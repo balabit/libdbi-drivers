@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = foreign
 if HAVE_MYSQL
 
 mysql_ltlibs = libmysql.la
-mysql_ldflags = -export-dynamic -avoid-version
+mysql_ldflags = -module -avoid-version
 mysql_sources = dbd_mysql.c
 
 else

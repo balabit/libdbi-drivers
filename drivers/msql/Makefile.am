@@ -10,7 +10,7 @@ noinst_DATA = dbd_msql.pdf dbd_msql/*
 
 
 msql_ltlibs = libmsql.la
-msql_ldflags = -export-dynamic -avoid-version
+msql_ldflags = -module -avoid-version
 msql_sources = dbd_msql.c
 
 else

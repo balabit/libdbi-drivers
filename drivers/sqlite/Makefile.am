@@ -11,7 +11,7 @@ html_subdir = dbd_sqlite
 noinst_DATA = dbd_sqlite.pdf dbd_sqlite/* 
 
 sqlite_ltlibs = libsqlite.la
-sqlite_ldflags = -export-dynamic -avoid-version
+sqlite_ldflags = -module -avoid-version
 sqlite_sources = dbd_sqlite.c
 
 else

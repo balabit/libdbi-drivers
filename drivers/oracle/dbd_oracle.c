@@ -479,20 +479,32 @@ void _get_field_info(dbi_result_t *result)
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) 
 {
 	OCIStmt *stmt = result->result_handle;
-	static OCIDefine *defnp = (OCIDefine *) 0;
+	OCIDefine *defnp = (OCIDefine *) 0;
 	OCIParam *param;
 	Oraconn *Oconn = result->conn->connection; 
 	int curfield = 0, length = 0;
-	unsigned long *strsizes = NULL;
 	unsigned long sizeattrib;
 	dbi_data_t *data;
 	dword status;
-  
+	ub1 nullable;
+
 	while (curfield < result->numfields) {
 		
 		data = &row->field_values[curfield];
 		row->field_sizes[curfield] = 0;
         
+		OCIParamGet(stmt, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
+			    (ub4) curfield+1);
+		
+		OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
+			   (dvoid*) &length,(ub4 *) 0, (ub4) OCI_ATTR_DATA_SIZE,
+			   (OCIError *) Oconn->err  );
+
+		OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
+			   (dvoid*) &nullable,(ub4 *) 0, (ub4) OCI_ATTR_IS_NULL,
+			   (OCIError *) Oconn->err  );
+
+
 		switch (result->field_types[curfield]) {
 		case DBI_TYPE_INTEGER:
 			sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_INTEGER_SIZE1, DBI_INTEGER_SIZE8);
@@ -522,24 +534,14 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			break;
 		case DBI_TYPE_BINARY:
 		case DBI_TYPE_STRING:
-			/* check for null's OCI_ATTR_IS_NULL */
-
-
 			//(void) fprintf(stderr, "we have a string\n");
-			OCIParamGet(stmt, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
-				    (ub4) curfield+1);
-			
-			OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
-				   (dvoid*) &length,(ub4 *) 0, (ub4) OCI_ATTR_DATA_SIZE,
-				   (OCIError *) Oconn->err  );
 
 			data->d_string = (char *)calloc(1, length +1);
+			row->field_sizes[curfield] = length;
 			
 			OCIDefineByPos(stmt, &defnp, Oconn->err, curfield+1, data->d_string,
 				       (sword) length, SQLT_CHR, (dvoid *) 0, (ub2 *)0, 
 				       (ub2 *)0, OCI_DEFAULT);
-      
-			row->field_sizes[curfield] = length;
 			break;
 
 		case DBI_TYPE_DATETIME:
@@ -555,12 +557,33 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		//(void) fprintf(stderr, "\nOn culumn: %d\n", curfield);
 	}
 
-
+	
 	status = OCIStmtFetch2(stmt, Oconn->err,
 			       (ub4)1, OCI_FETCH_ABSOLUTE, (sb4)rowidx+1, OCI_DEFAULT);
-  
 	checkerr(Oconn->err, status);
+
+
+	if (dbi_conn_get_option_numeric(result->conn, "oracle_chop_blanks")) {
+
+		unsigned short column = result->numfields;
+		char *ptr;
+		int slen;
+		
+		while(column--) {
+			slen = row->field_sizes[column];
+			ptr = row->field_values[column].d_string;
+
+			if(ptr  && *ptr != '\0') { /* the column is a string type. */
+				while(slen && ptr[slen - 1] == ' ')
+					--slen;
+				
+				ptr[slen] = '\0'; /* Chop blanks */
+				row->field_sizes[column] = slen; /* alter field length */
+			}
+		}
+	}
 }
+
 
 void checkerr(OCIError * errhp, sword status)
 {

@@ -1,3 +1,5 @@
+## Process this with automake to create Makefile.in
+
 AUTOMAKE_OPTIONS = foreign
 
 if HAVE_MSQL
@@ -22,4 +24,4 @@ libmsql_la_LDFLAGS = $(msql_ldflags) @MSQL_LDFLAGS@ @MSQL_LIBS@
 libmsql_la_SOURCES = $(msql_sources)
 libmsql_la_DEPENDENCIES = dbd_msql.h
 
-EXTRA_DIST = dbd_myql.c dbd_msql.h
+EXTRA_DIST = dbd_msql.c dbd_msql.h

@@ -23,6 +23,7 @@ done
 
 AC_DEFUN(AC_CHECK_MYSQL,
 [
+AM_CONDITIONAL(HAVE_MYSQL, false)
 ac_mysql="NO"
 ac_mysql_incdir="NO"
 ac_mysql_libdir="NO"
@@ -83,6 +84,7 @@ fi
 
 AC_DEFUN(AC_CHECK_PGSQL,
 [
+AM_CONDITIONAL(HAVE_PGSQL, false)
 ac_pgsql="NO"
 ac_pgsql_incdir="NO"
 ac_pgsql_libdir="NO"

@@ -78,7 +78,7 @@ case $host in
 		dlopen_flag="RTLD_NOW" ;;
 esac
 
-AC_DEFINE_UNQUOTED(DLOPEN_FLAG, $dlopen_flag, [ ])
+AC_DEFINE_UNQUOTED(DLOPEN_FLAG, $dlopen_flag, [ Specifies the mode of dlopen behavior ])
 
 dnl ==============================
 dnl Check for libraries
@@ -95,6 +95,8 @@ dnl ==============================
 case $host in
 	*-*-win32*)
 		shlib_ext=.dll ;;
+	*-*-darwin*)
+		shlib_ext=.bundle
 	*)
 		shlib_ext=.so ;;
 esac
@@ -104,7 +106,7 @@ AC_REPLACE_FUNCS(atoll)
 dnl i think we'll eventually get an error here...
 AC_CHECK_FUNCS(vasprintf)
 AC_REPLACE_FUNCS(asprintf)
-AC_DEFINE_UNQUOTED(DRIVER_EXT, "$shlib_ext", [ ])
+AC_DEFINE_UNQUOTED(DRIVER_EXT, "$shlib_ext", [ Specifies the filename extension of loadable modules ])
 
 dnl ==============================
 dnl Checks for header files

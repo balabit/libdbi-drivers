@@ -232,8 +232,22 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, u
 }
 
 char *dbd_select_db(dbi_conn_t *conn, const char *db) {
-	/* postgresql doesn't support switching databases without reconnecting */
-	return NULL;
+  /* postgresql doesn't support switching databases without reconnecting */
+  if (!db || !*db) {
+    return NULL;
+  }
+
+  if (conn->connection) {
+    PQfinish((PGconn *)conn->connection);
+    conn->connection = NULL;
+  }
+
+  dbi_conn_set_option(conn, "dbname", db);
+  if (dbd_connect(conn)) {
+    return NULL;
+  }
+
+  return (char *)db;
 }
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) {

@@ -1,6 +1,8 @@
 $Id$
 
 - finish documentation
+- support new connection options, see
+  http://www.postgresql.org/docs/view.php?version=7.3&idoc=0&file=libpq-connect.html
 - define driver capabilities
 - dbd_query_null ?
 

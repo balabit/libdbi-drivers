@@ -3,19 +3,23 @@
 <!ENTITY freedoc-license SYSTEM "include/copying-fdl.sgml">
 <!ENTITY www 'http://libdbi-drivers.sourceforge.net'>
 <!ENTITY www-libdbi 'http://libdbi.sourceforge.net'>
+
+<!-- customize these and the bookinfo section -->
 <!ENTITY author-email 'david@neongoat.com'>
 <!ENTITY author-name 'David A. Parker'>
 <!ENTITY dbd-name 'pgsql'>
+<!ENTITY proper-name 'PostgreSQL'>
+<!ENTITY www-upstream 'http://www.postgresql.org'>
 
 ]>
 
-<!-- $Id -->
+<!-- $Id$ -->
 
-<book id="dbd_pgsql">
+<book id="dbd_&dbd-name;">
 
 <bookinfo>
-	<title>PostgreSQL Driver Notes</title>
-	<subtitle>Details about the libdbi driver providing support for PostgreSQL servers</subtitle>
+	<title>&proper-name; Driver Notes</title>
+	<subtitle>Details about the libdbi driver providing support for &proper-name; backends</subtitle>
 	<author>
 		<firstname>David</firstname>
 		<othername>A.</othername>
@@ -59,10 +63,10 @@
 		necessary to talk to the supported database servers.
 	</para>
 	<para>
-		This manual provides information about the pgsql driver, which
-		provides support for PostgreSQL database servers. The manual is
+		This manual provides information about the &dbd-name; driver, which
+		provides support for &proper-name; databases. The manual is
 		intended for programmers who write applications linked against libdbi
-		and who want their applications to work with this driver.
+		and who want their applications to use this database backend.
 	</para>
 	<para>
 		Questions and comments about this driver should be sent to the
@@ -71,45 +75,67 @@
 		library should be sent to the appropriate libdbi mailing list.
 	</para>
 	<para>
-		The sqlite driver is maintained by <ulink url="mailto:&author-email;">&author-name;</ulink>.
+		This driver is maintained by <ulink url="mailto:&author-email;">&author-name;</ulink>.
 	</para>
 </preface>
 
 <chapter id="intro"><title>Introduction</title>
 	<para>
-		(put postgres blurb here, main features, list of reasons to choose this DB)
+		PostgreSQL is an object-relational database management system
+		(ORDBMS) based on  POSTGRES, Version 4.2, developed at the University
+		of California at Berkeley Computer Science Department. The POSTGRES
+		project, led by Professor Michael Stonebraker, was sponsored by the
+		Defense Advanced Research Projects Agency (DARPA), the Army Research
+		Office (ARO), the National Science Foundation (NSF), and ESL, Inc.
 	</para>
+	<para>
+		PostgreSQL is an open-source descendant of this original Berkeley
+		code. It provides SQL92/SQL99 language support and other modern
+		features.
+	</para>
+	<para>
+	More information can be found from the <ulink url="&www-upstream;">&proper-name; website</ulink>.
 </chapter>
 
 <chapter id="install"><title>Installation</title>
 	<para>
 		This chapter describes the prerequisites and the procedures to build
-		and install the sqlite driver from the sources.
+		and install this driver from source code.
 	</para>
 	<section id="install-prereq"><title>Prerequisites</title>
 		<para>
-			The following packages have to be installed on your system:
+			The following packages must be installed on your system:
 		</para>
 		<variablelist>
 			<varlistentry>
 				<term>libdbi</term>
 				<listitem>
 					<para>
-						This library provides the framework of the database
-						abstraction layer which can this driver to perform
-						database operations. The download page as well as the
-						mailing lists with bug reports and patches are
-						accessible from the <ulink url="&www-libdbi;">libdbi
+						This library implements the core database abstraction
+						layer, which provides your application with database
+						backend functionality when paired with this driver.
+						More information about libdbi, including mailing
+						lists, documentation, bug reports, and downloads, is
+						available from the <ulink url="&www-libdbi;">libdbi
 						website</ulink>.
 					</para>
 				</listitem>
 			</varlistentry>
 			<varlistentry>
-				<term>libpqX</term>
+				<term>libpq</term>
 				<listitem>
 					<para>
-						blah, link, version, etc.
+						This is the C shared library to enable user programs
+						to communicate with the PostgreSQL database backend.
+						The backend can be on another machine and accessed
+						through TCP/IP. This library is distributed as part of
+						PostgreSQL, and can be found on their website. It may
+						also be packaged independently for your operating
+						system, depending on what you use.
 					</para>
+					<para>
+						The current version of the dbd_pgsql driver was
+						written and tested with libpq3 from PostgreSQL 7.3.3.
 				</listitem>
 			</varlistentry>
 		</variablelist>
@@ -117,18 +143,18 @@
 	<section id="install-build"><title>Build and install the driver</title>
 		<para>
 			First you have to unpack the libdbi-drivers archive in a suitable
-			directory. Unpacking will create a new subdirectory <filename
-			class="directory">libdbi-drivers-X.Y.Z</filename> where "X.Y.Z"
-			denotes the version:
+			directory. Unpacking will create a new subdirectory with the
+			version number, such as <filename
+			class="directory">libdbi-drivers-0.7.0</filename>
 		</para>
-		<screen><prompt>$ </prompt><userinput>tar -xzf libdbi-drivers-0.3.tar.gz</userinput></screen>
+		<screen><prompt>$ </prompt><userinput>tar xfvz libdbi-drivers-0.7.0.tar.gz</userinput></screen>
 		<para>
 			The libdbi-drivers project consists of several drivers that use a
-			common build system. Therefore you <emphasis>must</emphasis> tell
-			configure explicitly that you want to build the sqlite driver (you
+			common build system. Therefore you <emphasis>must</emphasis> explicitly tell
+			the configuration script that you want to build the &dbd-name; driver (you
 			can list as many drivers as you want to build):
 		</para>
-		<screen><prompt>$ </prompt><userinput>cd libdbi-drivers</userinput></screen>
+		<screen><prompt>$ </prompt><userinput>cd libdbi-drivers-0.7.0</userinput></screen>
 		<screen><prompt>$ </prompt><userinput>./configure --with-&dbd-name;</userinput></screen>
 		<para>
 			Run <command>./configure --help</command> to find out about
@@ -157,22 +183,16 @@
 		<screen><prompt>$ </prompt><userinput>make check</userinput></screen>
 		<para>
 			This command creates and runs a test program that performs a few
-			basic input and output tests. The program will ask for a database
-			name. This can be any name that is a valid filename on your
-			system. It will also ask for a data directory. This is the
-			directory that is used to create the test database. Needless to
-			say that you need write access to that directory. If you accept
-			the default ".", the database will be created in the <filename
-			class="directory">tests</filename> subdirectory.
+			basic input and output tests.
 		</para>
 		<note>
 			<para>
 				If for some reason you need to re-create the
 				autoconf/automake-related files, try running <command
-				moreinfo="none">./autogen.sh</command>. I've found out that
+				moreinfo="none">./autogen.sh</command>. In some situations,
 				the current stable autoconf/automake/libtool versions (as
 				found in FreeBSD 4.7 and Debian 3.0) do not cooperate well, so
-				I found it necessary to run the older autoconf 2.13. If
+				it may be necessary to run the older autoconf 2.13. If
 				necessary, edit <filename
 				moreinfo="none">autogen.sh</filename> so that it will catch
 				the older autoconf version on your system.
@@ -183,44 +203,69 @@
 
 <chapter id="options"><title>Driver options</title>
 	<para>
-		Your application has to initialize libdbi drivers by setting some
-		driver options with the <function>dbi_conn_set_option()</function> and
-		the <function>dbi_conn_set_option_numeric()</function> library
-		functions. In contrast to most other drivers, the sqlite driver
-		supports only the following options (the other common options are
-		meaningless due to the embedded nature of the database engine):
+		Before you can initiate a connection, you must usually specify options
+		that tell the database driver what to connect to. This driver supports
+		the standard options of <varname>host</varname>,
+		<varname>username</varname>, <varname>password</varname>,
+		<varname>dbname</varname>, and <varname>port</varname>. You only need
+		to set options that are specific to your application -- sensible
+		defaults will be used for all unspecified options.
+	</para>
+	<para>
+		This driver also offers the following non-standard options, and/or
+		redefines the meaning of the following standard options:
 	</para>
 	<variablelist>
 		<varlistentry>
-			<term>dbname</term>
+			<term>host</term>
 			<listitem>
 				<para>
-					The name of the database you want to work with. As a
-					SQLite database corresponds to one file in your
-					filesystem, <varname>dbname</varname> can be any legal
-					filename. If the database/file doesn't exist when you
-					first try to access it, SQLite will create it on the fly.
-				</para>
-				<para>
-					It is important to understand that the full path of the
-					database is composed of <varname>sqlite-dbdir</varname>
-					and <varname>dbname</varname>. Therefore
-					<varname>dbname</varname> should not contain the full path
-					of a file, but just the name.
+					If this begins with a slash, it specifies Unix-domain
+					communication rather than TCP/IP communication; the value
+					is the name of the directory in which the socket file is
+					stored.
 				</para>
 			</listitem>
 		</varlistentry>
+		<varlistentry>
+			<term>port</term>
+			<listitem>
+				<para>
+					Port number to connect to at the server host, or socket
+					file name extension for Unix-domain connections.
+				</para>
+			</listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>pgsql_options</term>
+			<listitem>
+				<para>
+					Trace/debug options to be sent to the server.
+				</para>
+			</listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>pgsql_tty</term>
+			<listitem>
+				<para>
+					A file or tty for optional debug output from the backend.
+				</para>
+			</listitem>
 	</variablelist>
 </chapter>
 
-<chapter id="specific"><title>PostgreSQL-specific Peculiarities</title>
+<chapter id="specific"><title>&proper-name;-specific Peculiarities</title>
 	<para>
-		This chapter lists known peculiarities of the sqlite driver. This
-		includes SQLite features that differ from what you know from the other
-		database servers supported by libdbi, and it includes features and
-		misfeatures introduced by the sqlite driver. It is the intention of
-		the driver author to reduce the number of misfeatures in future
-		releases if possible.
+		This chapter lists known peculiarities of the &dbd-name; driver.
+		Wherever possible, nonstandard driver behavior is hidden by libdbi's
+		abstractions, but occasionally special considerations must be taken or
+		extra functionality may be utilized for particular drivers.
+	</para>
+	<para>
+		PostgreSQL has no intrinsic concept of unsigned fields (although you
+		can still use the "OID" type as an unsigned long, or define your own
+		user-defined unsigned types). User-defined types are not handled
+		specially. All unrecognized datatypes are preserved as strings.
 	</para>
 </chapter>
 

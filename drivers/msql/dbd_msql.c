@@ -1,0 +1,404 @@
+/*
+ * libdbi - database independent abstraction layer for C.
+ * Copyright (C) 2001-2002, David Parker and Mark Tobenkin.
+ * http://libdbi.sourceforge.net
+ * 
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ * 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * 
+ * dbd_msql.c: mSQL database support 
+ * Copyright (C) 2003, Christian M. Stamgren <christian@centiongroup.com>
+ * http://libdbi-drivers.sourceforge.net
+ * 
+ */
+
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+
+#define _GNU_SOURCE /* we need asprintf */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <dbi/dbi.h>
+#include <dbi/dbi-dev.h>
+#include <dbi/dbd.h>
+
+
+#include <msql.h>
+#include "dbd_msql.h"
+
+
+static const dbi_info_t driver_info = {
+	"msql",
+	"Mini SQL (mSQL) database support",
+	"Christian M. Stamgren <christian@centiongroup.com>",
+	"libdbi-drivers.sourceforge.net", 
+	"dbd_msql v" VERSION,
+	__DATE__
+};
+
+static const char *custom_functions[] = {NULL}; 
+static const char *reserved_words[] = MSQL_RESERVED_WORDS;
+
+void _translate_msql_type(int fieldtype, unsigned short *type, unsigned int *attribs);
+void _get_field_info(dbi_result_t *result);
+void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
+
+
+void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, 
+			 const char ***_reserved_words) 
+{
+        *_driver_info = &driver_info;
+	*_custom_functions = custom_functions;
+	*_reserved_words = reserved_words;
+}
+
+int dbd_initialize(dbi_driver_t *driver) 
+{
+        return 0;
+}
+
+int dbd_connect(dbi_conn_t *conn) 
+{
+        int connection;
+	const char *host = dbi_conn_get_option(conn, "host");
+	const char *dbname = dbi_conn_get_option(conn, "dbname");
+	
+	if(( connection = msqlConnect( (char *)host )) > 0){
+		conn->connection = (void *)connection;
+		if( dbname ) {
+			msqlSelectDB(connection, (char *)dbname);
+			conn->current_db = strdup(dbname);
+		}
+		return 0;
+	}
+	return -1;
+}
+
+int dbd_disconnect(dbi_conn_t *conn) 
+{
+        if (conn->connection) msqlClose((int)conn->connection);
+	return 0;
+}
+
+
+int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum) 
+{
+        dbi_row_t *row = NULL;
+  
+	if (result->result_state == NOTHING_RETURNED) return -1;
+	
+	if (result->result_state == ROWS_RETURNED) {
+		row = _dbd_row_allocate(result->numfields); 
+		_get_row_data(result, row, rownum);
+		_dbd_row_finalize(result, row, rownum);
+	}
+	
+	return 1; 
+}
+
+
+int dbd_free_query(dbi_result_t *result) 
+{
+        if (result->result_handle) msqlFreeResult((m_result *)result->result_handle);
+	return 0;
+}
+
+
+int dbd_goto_row(dbi_result_t *result, unsigned long long row) 
+{
+        msqlDataSeek((m_result *)result->result_handle, row);
+	return 1;
+}
+
+
+int dbd_get_socket(dbi_conn_t *conn)
+{
+        if(! conn->connection) return -1;
+	return (int)conn->connection;
+}
+
+
+dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) 
+{
+	dbi_result_t *result = NULL;
+	m_result *dbs;
+
+	dbs = msqlListDBs((int)conn->connection);
+  
+	if( dbs != NULL ) {
+		result = _dbd_result_create(conn, dbs, (dbs ? msqlNumRows(dbs) : 0), 0);
+		_dbd_result_set_numfields(result, msqlNumFields(((m_result *)result->result_handle)));
+		_get_field_info(result);
+		
+	}
+	return result;
+}
+
+/* This function needs some work, to function like the other drivers */
+dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *pattern) 
+{
+	dbi_result_t *result = NULL;
+	m_result *tables;
+	
+	tables = msqlListTables((int)conn->connection);
+	
+	if( tables != NULL ) {
+		result = _dbd_result_create(conn, (void *)tables, (tables ? msqlNumRows(tables) : 0), 0);
+		_dbd_result_set_numfields(result, msqlNumFields(((m_result *)result->result_handle)));
+		_get_field_info(result);
+		
+	}
+	return result;
+}
+
+
+int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
+{
+	unsigned int len;
+	strcpy(dest, "'");
+	const char *escaped = "\'\"\\";
+	len = _dbd_quote_chars(dest, orig, escaped);
+	
+	strcat(dest, "'");
+	
+	return len+2; 
+}
+
+
+dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) 
+{
+	return NULL;
+}
+
+dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) 
+{
+	dbi_result_t *result = NULL;
+	int rows = 0;
+	m_result *res;
+	
+	if ((rows = msqlQuery((int)conn->connection, (char *)statement)) < 0 ) {
+		_error_handler(conn, DBI_ERROR_DBD);
+		return NULL;
+	}
+   
+	res = msqlStoreResult();
+	result = _dbd_result_create(conn, (void *)res, (rows > 0 ? rows : 0), 0);
+	
+	if(strncasecmp(statement, "select", 6) == 0) { //This is a dirty hack and I know it...
+		_dbd_result_set_numfields(result, msqlNumFields(((m_result *)result->result_handle)));
+		_get_field_info(result);
+	}
+	
+	return result;
+}
+
+
+char *dbd_select_db(dbi_conn_t *conn, const char *db) 
+{
+	if (msqlSelectDB((int)conn->connection, (char *)db) < 0) {
+		_error_handler(conn, DBI_ERROR_DBD);
+		return "";
+	}
+	return (char *)db;
+}
+
+int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) 
+{
+	if(!msqlErrMsg)
+		return -1;
+  
+	*errno = 0;
+	*errstr = strdup(msqlErrMsg);
+	return 2;
+}
+
+
+unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) 
+{  
+	return 0;
+}
+
+
+unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) 
+{	
+	return 0;
+}
+
+
+int dbd_ping(dbi_conn_t *conn) 
+{
+	return 0;
+}
+
+/* CORE MSQL DATA FETCHING STUFF */
+void _translate_msql_type(int fieldtype, unsigned short *type, unsigned int *attribs) 
+{
+	unsigned int _type = 0;
+	unsigned int _attribs = 0;
+	
+	switch (fieldtype) {
+		
+	case UINT_TYPE:
+		_attribs |= DBI_INTEGER_UNSIGNED;
+		/* fall trough */
+	case INT_TYPE:
+		_type = DBI_TYPE_INTEGER;
+		_attribs |= DBI_INTEGER_SIZE3;
+		break;
+		
+	case UINT64_TYPE:
+		_attribs |= DBI_INTEGER_UNSIGNED;
+		/* fall trough */
+	case INT64_TYPE:
+		_type = DBI_TYPE_INTEGER;
+		_attribs |= DBI_INTEGER_SIZE8; 
+		break;
+		
+	case UINT8_TYPE:		
+		_attribs |= DBI_INTEGER_UNSIGNED;
+		/* fall trough */
+	case INT8_TYPE:
+		_type = DBI_TYPE_INTEGER;
+		_attribs |= DBI_INTEGER_SIZE2;
+		break;
+		
+	case UINT16_TYPE:
+		_attribs |= DBI_INTEGER_UNSIGNED;
+		/* fall trough */
+	case INT16_TYPE:
+		_type = DBI_TYPE_INTEGER;
+		_attribs |= DBI_INTEGER_SIZE4;
+		break;
+	
+	case BYTE_TYPE:
+		_type = DBI_TYPE_INTEGER;
+		_attribs |= DBI_INTEGER_SIZE1;
+		break;
+
+	case MONEY_TYPE:
+	case IPV4_TYPE:
+	case CIDR4_TYPE:
+	case CIDR6_TYPE:
+	case TEXT_TYPE:
+	case CHAR_TYPE:
+		_type = DBI_TYPE_STRING;
+		break;
+		
+	case DATE_TYPE:
+		_type = DBI_TYPE_STRING;
+		_attribs |= DBI_DATETIME_DATE;
+		break;
+	case TIME_TYPE:
+		_type = DBI_TYPE_STRING;
+		_attribs |= DBI_DATETIME_TIME;
+		break;
+			
+	case REAL_TYPE:
+		_type = DBI_TYPE_DECIMAL;
+		_attribs |= DBI_DECIMAL_SIZE8;
+		break;
+	
+	case IDENT_TYPE:
+	case NULL_TYPE:	
+	
+	default:
+		_type = DBI_TYPE_STRING;
+		break;
+	}
+
+	*type = _type;
+	*attribs = _attribs;
+}
+ 
+void _get_field_info(dbi_result_t *result) 
+{
+	unsigned int idx = 0;
+	m_field *field;
+	unsigned short fieldtype;
+	unsigned int fieldattribs;
+	
+	while ((field = msqlFetchField((m_result *)result->result_handle)) != NULL) {
+		_translate_msql_type(field->type, &fieldtype, &fieldattribs);
+		_dbd_result_add_field(result, idx, field->name, fieldtype, fieldattribs);
+		idx++;
+	}
+}
+
+void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) 
+{
+	m_result *_res = result->result_handle;
+	m_row _row;
+	
+	int curfield = 0;
+	char *raw = NULL;
+	unsigned long sizeattrib;
+	dbi_data_t *data;
+  
+	msqlDataSeek(_res, rowidx);
+	_row = msqlFetchRow(_res);
+	while ( curfield < result->numfields  ) {
+		raw = _row[curfield];
+		data = &row->field_values[curfield];
+    
+		row->field_sizes[curfield] = 0;
+    
+		switch (result->field_types[curfield]) {
+		case DBI_TYPE_INTEGER:
+			sizeattrib = _isolate_attrib(result->field_attribs[curfield], 
+						     DBI_INTEGER_SIZE1, DBI_INTEGER_SIZE8);
+			switch (sizeattrib) {
+			case DBI_INTEGER_SIZE1:
+				data->d_char = (char) atol(raw); break;
+			case DBI_INTEGER_SIZE2:
+				data->d_short = (short) atol(raw); break;
+			case DBI_INTEGER_SIZE3:
+			case DBI_INTEGER_SIZE4:
+				data->d_long = (long) atol(raw); break;
+			case DBI_INTEGER_SIZE8:
+				data->d_longlong = (long long) atoll(raw); break;
+			default:
+				break;
+			}
+			break;
+		case DBI_TYPE_DECIMAL:
+			sizeattrib = _isolate_attrib(result->field_attribs[curfield], 
+						     DBI_DECIMAL_SIZE4, DBI_DECIMAL_SIZE8);
+			switch (sizeattrib) {
+			case DBI_DECIMAL_SIZE4:
+				data->d_float = (float) strtod(raw, NULL); break;
+			case DBI_DECIMAL_SIZE8:
+				data->d_double = (double) strtod(raw, NULL); break;
+			default:
+				break;
+			}
+			break;
+		case DBI_TYPE_STRING:
+			data->d_string = strdup(raw);
+			row->field_sizes[curfield] = (unsigned long long) strlen( raw );
+			break;
+			
+		default:	  
+			data->d_string = strdup(raw);
+			row->field_sizes[curfield] = (unsigned long long) strlen( raw );
+			break;
+		}
+		curfield++;
+	}
+}

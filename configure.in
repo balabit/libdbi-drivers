@@ -87,6 +87,7 @@ dnl ==============================
 AC_CHECK_MYSQL
 AC_CHECK_PGSQL
 AC_CHECK_SQLITE
+AC_CHECK_MSQL
 
 dnl ==============================
 dnl Check for functions
@@ -126,6 +127,7 @@ AC_OUTPUT([
 	drivers/mysql/Makefile
 	drivers/pgsql/Makefile
 	drivers/sqlite/Makefile
+	drivers/msql/Makefile
 	tests/Makefile
 	])
 dnl doc/Makefile

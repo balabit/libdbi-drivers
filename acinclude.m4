@@ -200,3 +200,62 @@ else
 	AC_MSG_RESULT(no)
 fi
 ])
+
+## mSQL
+
+AC_DEFUN(AC_CHECK_MSQL,
+[
+ac_msql="NO"
+ac_msql_incdir="NO"
+ac_msql_libdir="NO"
+
+# exported variables
+MSQL_LIBS=""
+MSQL_LDFLAGS=""
+MSQL_INCLUDE=""
+
+AC_MSG_CHECKING(for MiniSQL (mSQL) support)
+
+AC_ARG_WITH(msql,
+	[  --with-msql		  Include mSQL support.],
+	[  ac_msql="YES" ])
+AC_ARG_WITH(msql-dir,
+	[  --with-msql-dir	  Specifies the mSQL root directory.],
+	[  ac_msql_incdir="$withval"/include
+	   ac_msql_libdir="$withval"/lib ])
+AC_ARG_WITH(msql-incdir,
+	[  --with-msql-incdir	  Specifies where the mSQL include files are.],
+	[  ac_msql_incdir="$withval" ])
+AC_ARG_WITH(msql-libdir,
+	[  --with-msql-libdir	  Specifies where the mSQL libraries are.],
+	[  ac_msql_libdir="$withval" ])
+
+if test "$ac_msql" = "YES"; then
+	if test "$ac_msql_incdir" = "NO" || test "$ac_msql_libs" = "NO"; then
+		msql_incdirs="/usr/local/msql3/include /usr/msql3/include /opt/msql3/include/ /usr/include /usr/local/include"
+		AC_FIND_FILE(msql.h, $msql_incdirs, ac_msql_incdir)
+		msql_libdirs="/usr/lib /usr/local/lib /usr/lib/msql3 /usr/local/lib/msql /usr/local/msql3/lib /opt/msql3/lib"
+		AC_FIND_FILE(libmsql.a, $msql_libdirs, ac_msql_libdir)
+		if test "$ac_msql_incdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid mSQL directory - include files not found.])
+		fi
+		if test "$ac_msql_libdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid mSQL directory - libraries not found.])
+		fi
+	fi
+	AC_MSG_RESULT([yes: libs in $ac_msql_libdir, headers in $ac_msql_incdir])
+	AM_CONDITIONAL(HAVE_MSQL, true)
+	
+	MSQL_LIBS=-lmsql
+	MSQL_INCLUDE=-I$ac_msql_incdir
+	MSQL_LDFLAGS=-L$ac_msql_libdir
+	
+	AC_SUBST(MSQL_LIBS)
+	AC_SUBST(MSQL_INCLUDE)
+	AC_SUBST(MSQL_LDFLAGS)
+else
+	AC_MSG_RESULT(no)
+fi
+])

@@ -31,6 +31,14 @@
 
 #define _GNU_SOURCE /* we need asprintf */
 
+#ifndef HAVE_ATOLL
+long long atoll(const char *str);
+#endif
+
+#ifndef HAVE_STRTOLL
+long long strtoll(const char *nptr, char **endptr, int base);
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -110,7 +110,7 @@ AC_CHECK_HEADERS(string.h strings.h)
 AC_OUTPUT([
 	libdbi.spec
 	Makefile
-dnl	doc/Makefile
+	doc/Makefile
 	drivers/Makefile
 	drivers/sqlite/Makefile
 	tests/Makefile

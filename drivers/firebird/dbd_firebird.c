@@ -93,16 +93,17 @@ int dbd_initialize(dbi_driver_t *driver)
 int dbd_connect(dbi_conn_t *conn) 
 {
 	char dpb_buffer[256], *dpb; 
+	char dbase[256];
 	short dpb_length; 
 
         isc_db_handle db = NULL; /* database handle */
         isc_tr_handle trans = NULL; /* transaction handle */
 	ibase_conn_t *iconn = (ibase_conn_t * ) malloc(sizeof(ibase_conn_t));
 
-	const char *dbase =  dbi_conn_get_option(conn, "dbname");
+	const char *dbname =  dbi_conn_get_option(conn, "dbname");
+	const char *host =  dbi_conn_get_option(conn, "host");
 	const char *username = dbi_conn_get_option(conn, "username");
 	const char *password = dbi_conn_get_option(conn, "password");
-
 
 	dpb = dpb_buffer;
 	*dpb++ = isc_dpb_version1;
@@ -110,13 +111,17 @@ int dbd_connect(dbi_conn_t *conn)
 	*dpb++ = 1;
 	*dpb++ = 90;
 	dpb_length = dpb - dpb_buffer;
-	
+	dpb = dpb_buffer;
+
 	isc_expand_dpb(&dpb, &dpb_length,
 		       isc_dpb_user_name, username,
 		       isc_dpb_password, password,
 		       NULL);
 
-	if ( isc_attach_database(iconn->status, 0, (char*)dbase, &db, dpb_length, dpb_buffer) ||
+	snprintf(dbase, 256, "%s:%s", ( (host == NULL || *host == '\0') 
+				        ? "localhost" : host) , dbname);
+
+	if ( isc_attach_database(iconn->status, strlen(dbase), dbase, &db, dpb_length, dpb_buffer) ||
 	     isc_start_transaction(iconn->status, &trans, 1, &db, 0, NULL)) {
 		free(iconn);
 		iconn = NULL;

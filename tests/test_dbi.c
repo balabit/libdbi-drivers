@@ -224,16 +224,16 @@ int main(int argc, char **argv) {
 	printf("\nTest 4: Create table: \n");
 	
 	if (!strcmp(drivername, "mysql")) {
-	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME)");
+	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME, the_date DATE, the_time TIME)");
 	}
 	else if (!strcmp(drivername, "pgsql")) {
-	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime TIMESTAMP)");
+	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime TIMESTAMP, the_date DATE, the_time TIME)");
 	} 
 	else if (!strcmp(drivername, "msql")) {
 	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char INT8, the_uchar UINT8, the_short INT16, the_ushort UINT16, the_long INT, the_ulong UINT, the_longlong INT64, the_ulonglong UINT64, the_float REAL, the_string CHAR(255), the_date DATE, the_time TIME)");		
 	}
 	else {
-	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME)");
+	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME, the_date DATE, the_time TIME)");
 	}
 	if ((result = dbi_conn_query(conn, query)) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -269,7 +269,7 @@ int main(int argc, char **argv) {
 	if(!strcmp(drivername, "msql")) {
 		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32767, 32767, -2147483647, 2147483647, -9223372036854775807,9223372036854775807, 3.402823466E+38, 'this is a test', '11-jul-1977', '23:59:59')");
 	} else {
-		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, 'this is a test', '2001-12-31 23:59:59')");
+		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, 'this is a test', '2001-12-31 23:59:59', '2001-12-31', '23:59:59')");
 	}
 	if ((result = dbi_conn_query(conn, query)) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -306,9 +306,26 @@ int main(int argc, char **argv) {
 		const char* the_string;
 /* 		const unsigned char* the_binary; */
 		time_t the_datetime;
+		time_t the_date_dt;
+		time_t the_time_dt;
 		struct tm* ptr_tm;
+		struct tm* ptr_tm_date;
+		struct tm* ptr_tm_time;
 		const char *the_date;
 		const char *the_time;
+		int year_dt;
+		int mon_dt;
+		int day_dt;
+		int hour_dt;
+		int min_dt;
+		int sec_dt;
+		int year;
+		int mon;
+		int day;
+		int hour;
+		int min;
+		int sec;
+
 		dbi_error_flag errflag;
 
 		the_char = dbi_result_get_char(result, "the_char");
@@ -409,9 +426,37 @@ int main(int argc, char **argv) {
 		}
 		else {
 
+		the_date_dt = dbi_result_get_datetime(result, "the_date");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_date errflag=%d\n", errflag);
+		}
+			
+		the_time_dt = dbi_result_get_datetime(result, "the_time");
+		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+		if (errflag) {
+		  printf("the_time errflag=%d\n", errflag);
+		}
+			
 		ptr_tm = localtime(&the_datetime);
+		year_dt = ptr_tm->tm_year+1900;
+		mon_dt = ptr_tm->tm_mon+1;
+		day_dt = ptr_tm->tm_mday;
+		hour_dt = ptr_tm->tm_hour;
+		min_dt = ptr_tm->tm_min;
+		sec_dt = ptr_tm->tm_sec;
 
-		printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_string, ptr_tm->tm_year+1900, ptr_tm->tm_mon+1, ptr_tm->tm_mday, ptr_tm->tm_hour, ptr_tm->tm_min, ptr_tm->tm_sec);
+		ptr_tm_date = localtime(&the_date_dt);
+		year = ptr_tm_date->tm_year+1900;
+		mon = ptr_tm_date->tm_mon+1;
+		day = ptr_tm_date->tm_mday;
+
+		ptr_tm_time = localtime(&the_time_dt);
+		hour = ptr_tm_time->tm_hour;
+		min = ptr_tm_time->tm_min;
+		sec = ptr_tm_time->tm_sec;
+
+		printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
 
 		}
 	}

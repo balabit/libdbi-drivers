@@ -7,7 +7,7 @@ check_PROGRAMS = test_dbi
 test_dbi_SOURCES = test_dbi.c
 test_dbi_LDADD = @LIBADD_DL@
 
-LIBS = -L@libdir@ -lm -ldbi
+LIBS = -L@libdir@ -lm -ldbi -ldl
 INCLUDES = -I@includedir@
 CFLAGS = -DDBI_DRIVER_DIR=\"@driverdir@\"
 

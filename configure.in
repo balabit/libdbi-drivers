@@ -25,7 +25,7 @@ dnl ====================================
 
 AC_PROG_CC
 AC_LIBTOOL_DLOPEN
-AC_SUBST(LIBADD_DL)
+dnl AC_SUBST(LIBADD_DL)
 AC_PROG_LIBTOOL
 
 dnl ====================================
@@ -85,8 +85,27 @@ dnl ==============================
 dnl Check for libraries
 dnl ==============================
 
+dnl start test
 dnl functions to load dynamic libraries
-AC_SEARCH_LIBS(dlopen, dl,,)
+use_ltdl=no
+AC_ARG_WITH(ltdl,
+	[ --with-ltdl	          Use libtool's libltdl to load runtime modules (no)],
+	[ use_ltdl=$withval ])
+	
+if test "x$use_ltdl" = xyes; then
+AC_CHECK_HEADERS([ltdl.h], [AC_CHECK_LIB([ltdl],[lt_dlopen],[LIBADD_DL=-lltdl])])
+else
+AC_CHECK_HEADERS([mach-o/dyld.h],[AC_CHECK_FUNCS([NSLinkModule], [
+       LIBADD_DL=""
+       dlsym_prefix=_
+       ])],
+[
+AC_CHECK_HEADERS([dlfcn.h])
+AC_CHECK_FUNCS([dlopen],[LIBADD_DL=],
+		[AC_CHECK_LIB([dl],[dlopen],[LIBADD_DL=-ldl],[])])])
+fi
+AC_SUBST(LIBADD_DL)
+dnl end test
 
 dnl framework and database engine client libraries
 AC_CHECK_DBI
@@ -135,3 +154,5 @@ AC_OUTPUT([
 	tests/Makefile
 	])
 dnl doc/Makefile
+
+echo "If make check fails with a linker error, reconfigure with --with-ltdl"

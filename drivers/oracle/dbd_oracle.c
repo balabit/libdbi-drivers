@@ -70,6 +70,8 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; 
 static const char *reserved_words[] = ORACLE_RESERVED_WORDS;
 
+static const char oracle_encoding[] = "LATIN1";
+
 void _translate_oracle_type(int fieldtype, ub1 scale, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
@@ -176,6 +178,11 @@ int dbd_get_socket(dbi_conn_t *conn)
 	return 0; /* Oracle can't do that.. */
 }
 
+
+const char *dbd_get_encoding(dbi_conn_t *conn){
+  /* ToDo: Oracle certainly can do better than this */
+  return oracle_encoding;
+}
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) 
 {

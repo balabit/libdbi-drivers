@@ -62,6 +62,16 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = MYSQL_RESERVED_WORDS;
 
+/* encoding strings */
+static const char mysql_encoding_koi8_ru[] = "KOI8";
+static const char mysql_encoding_latin1[] = "LATIN1";
+static const char mysql_encoding_latin2[] = "LATIN2";
+static const char mysql_encoding_latin5[] = "LATIN5";
+static const char mysql_encoding_cp1251[] = "WIN";
+static const char mysql_encoding_hebrew[] = "ISO-8859-8";
+static const char mysql_encoding_euc_kr[] = "EUC_KR";
+static const char mysql_encoding_greek[] = "ISO-8859-7";
+
 void _translate_mysql_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
@@ -151,6 +161,47 @@ int dbd_get_socket(dbi_conn_t *conn){
 	if (!mycon) return -1;
 
 	return (int)mycon->net.fd;
+}
+
+const char *dbd_get_encoding(dbi_conn_t *conn){
+	MYSQL *mycon = (MYSQL*)conn->connection;
+	const char* my_enc;
+
+	if (!mycon) return NULL;
+
+	my_enc = mysql_character_set_name(mycon);
+
+	if (!my_enc) {
+	  return NULL;
+	}
+	else if (!strcmp(my_enc, "koi8_ru")) {
+	  return mysql_encoding_koi8_ru;
+	}
+	else if (!strcmp(my_enc, "latin1")) {
+	  return mysql_encoding_latin1;
+	}
+	else if (!strcmp(my_enc, "latin2")) {
+	  return mysql_encoding_latin2;
+	}
+	else if (!strcmp(my_enc, "latin5")) {
+	  return mysql_encoding_latin5;
+	}
+	else if (!strcmp(my_enc, "cp1251")) {
+	  return mysql_encoding_cp1251;
+	}
+	else if (!strcmp(my_enc, "hebrew")) {
+	  return mysql_encoding_hebrew;
+	}
+	else if (!strcmp(my_enc, "euc_kr")) {
+	  return mysql_encoding_euc_kr;
+	}
+	else if (!strcmp(my_enc, "greek")) {
+	  return mysql_encoding_greek;
+	}
+	else {
+	  /* don't know how to translate */
+	  return my_enc;
+	}
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {

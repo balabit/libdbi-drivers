@@ -61,10 +61,17 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = PGSQL_RESERVED_WORDS;
 
+/* forward declarations of internal functions */
 void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 
+/* this function is available through the PostgreSQL client library, but it
+   is not declared in any of their headers. I hope this won't break anything */
+char *pg_encoding_to_char(int encoding_id);
+
+
+/* real code starts here */
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, const char ***_reserved_words) {
 	/* this is the first function called after the driver module is loaded into memory */
 	*_driver_info = &driver_info;
@@ -175,6 +182,21 @@ int dbd_get_socket(dbi_conn_t *conn)
 	if(!pgconn) return -1;
 
 	return PQsocket(pgconn);
+}
+
+const char *dbd_get_encoding(dbi_conn_t *conn){
+
+	PGconn *pgconn = (PGconn*) conn->connection;
+
+	if(!pgconn) return NULL;
+
+	/* this is somewhat murky as the pg_encoding_to_char()
+	 function is not declared properly by the PostgreSQL client
+	 library headers.  This may indicate that it is not supposed
+	 to be exported or that it may disappear without a trace
+	 eventually. If it breaks, use a query "SHOW CLIENT_ENCODING"
+	 instead */
+        return pg_encoding_to_char(PQclientEncoding(pgconn));
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {

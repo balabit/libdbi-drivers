@@ -64,6 +64,8 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; 
 static const char *reserved_words[] = MSQL_RESERVED_WORDS;
 
+static const char msql_encoding[] = "LATIN1";
+
 void _translate_msql_type(int fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
@@ -142,6 +144,11 @@ int dbd_get_socket(dbi_conn_t *conn)
 	return (int)conn->connection;
 }
 
+
+const char *dbd_get_encoding(dbi_conn_t *conn){
+  /* ToDo: can mSQL do better than this? */
+  return msql_encoding;
+}
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) 
 {

@@ -69,6 +69,11 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = SQLITE_RESERVED_WORDS;
 
+/* the encoding strings as PostgreSQL would return them */
+static const char sqlite_encoding_UTF8[] = "UNICODE";
+/* the following is an assumption that is most likely correct */
+static const char sqlite_encoding_ISO8859[] = "LATIN1";
+
 /* forward declarations */
 int _real_dbd_connect(dbi_conn_t *conn, const char* database);
 void _translate_sqlite_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
@@ -238,6 +243,18 @@ int dbd_goto_row(dbi_result_t *result, unsigned long long row) {
 int dbd_get_socket(dbi_conn_t *conn){
   /* sqlite does not use sockets, so we'll always return 0 */
   return (int)0;
+}
+
+const char *dbd_get_encoding(dbi_conn_t *conn){
+  /* encoding is a compile-time option with the sqlite
+     library. Instead of using the sqlite-provided string, we use the
+     PostgreSQL names */
+  if (!strcmp(sqlite_encoding, "UTF-8")) {
+    return sqlite_encoding_UTF8;
+  }
+  else {
+    return sqlite_encoding_ISO8859;
+  }
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
@@ -1130,10 +1147,10 @@ static unsigned long sqlite_escape_string(char *to, const char *from, unsigned l
 	*to++= '\''; /* double single quote */
 	*to++= '\'';
 	break;
-      case '"':				/* Better safe than sorry */
-	*to++= '"'; /* double double quote */
-	*to++= '"';
-	break;
+/*       case '"':				/\* Better safe than sorry *\/ */
+/* 	*to++= '"'; /\* double double quote *\/ */
+/* 	*to++= '"'; */
+/* 	break; */
       case '\032':			/* This gives problems on Win32 */
 	*to++= '\\';
 	*to++= 'Z';

@@ -24,4 +24,4 @@ liboracle_la_LDFLAGS = $(oracle_ldflags) @ORACLE_LDFLAGS@ @ORACLE_LIBS@
 liboracle_la_SOURCES = $(oracle_sources)
 liboracle_la_DEPENDENCIES = dbd_oracle.h
 
-EXTRA_DIST = dbd_oracle.c dbd_oracle.h 
+EXTRA_DIST = dbd_oracle.c dbd_oracle.h oracle_charsets.h

@@ -8,35 +8,40 @@ http://libdbi-drivers.sourceforge.net
 INTRODUCTION:
 -------------
 
-libdbi implements a database-independent abstraction layer in C, similar to the
-DBI/DBD layer in Perl. Writing one generic set of code, programmers can
-leverage the power of multiple databases and multiple simultaneous database
-connections by using this framework.
+libdbi (http://libdbi.sourceforge.net) implements a
+database-independent abstraction layer in C, similar to the DBI/DBD
+layer in Perl. Writing one generic set of code, programmers can
+leverage the power of multiple databases and multiple simultaneous
+database connections by using this framework.
 
-libdbi-drivers supplies the drivers that the libdbi framework utilizes
-to talk to the supported database servers.
+libdbi-drivers (http://libdbi-drivers.sourceforge.net) supplies the
+drivers that the libdbi framework utilizes to talk to the supported
+database servers.
 
 
 
 INSTALLATION:
 -------------
 
-Perform the regular ./configure, make, make install. See INSTALL for
-the generic details of each step. It is important to understand that
-you have to request the driver(s) that you want to build on the
-configure command line. E.g. to build both the SQLite and the
-PostgreSQL drivers, use "./configure --with-sqlite --with-pgsql". See
-./configure --help for more libdbi-drivers configuration options.
+Make sure you have both the libdbi framework installed and the
+development libraries and headers of the database engine(s) that you
+want to build the driver(s) for. Perform the regular ./configure,
+make, make install. See INSTALL for the generic details of each
+step. It is important to understand that you have to request the
+driver(s) that you want to build on the configure command
+line. E.g. to build both the SQLite and the PostgreSQL drivers, use
+"./configure --with-sqlite --with-pgsql". See ./configure --help for
+more libdbi-drivers configuration options.
 
 If you are building the Win32 port, see README.win32.
 
 AVAILABLE DRIVERS:
 ------------------
 
-* SQLite
+* mSQL
 * MySQL
 * PostgreSQL
-* mSQL
+* SQLite
 
 
 SUPPORTED PLATFORMS:
@@ -46,11 +51,12 @@ libdbi-drivers has been written with cross-platform availability in
 mind. To date, chances are it is going to run with:
 
 Linux: Debian, RedHat, Slackware, Gentoo
-Windows: 98, NT4, 2000 -- see README.win32
+Windows: 98, NT4, 2000, XP -- see README.win32
 FreeBSD: 4.3 through 4.7
 SunOS: 2.8
 Solaris: 7
 AIX: 4.2, 4.3 and 5.1
+OSX: 10.2
 
 If you are using libdbi on a platform not listed here, please notify the
 mailing list! (see below)
@@ -66,9 +72,9 @@ COPYING or visit http://www.gnu.org for more details.
 DOCUMENTATION:
 --------------
 
-README.drivers covers most of the basic questions. doc/manual.pdf has a
-somewhat more elaborate description of how to use the sqlite driver.
-
+All driver subdirectories contain README, AUTHORS, and CHANGELOG files
+with information about the particular driver. In addition, each driver
+provides a short manual formatted as PDF and HTML.
 
 
 MAILING LISTS:
@@ -82,5 +88,6 @@ CONTACT INFO:
 
 http://libdbi-drivers.sourceforge.net
 Markus Hoenicka <mhoenicka@users.sourceforge.net>
+David Parker <david@neongoat.com>
 $Id$
 

@@ -1,4 +1,10 @@
 # this makefile is for building Win32 DLLs with cygwin
+# By default, the "all" and "install" targets assume that you have all
+# client libraries around which may not be the case. In order to build
+# a particular driver, run make like this:
+# make libXYZ-dll
+# make install-libXYZ
+# where XYZ is one of msql, mysql, pgsql, or sqlite
 
 SHELL = /bin/sh
 
@@ -45,8 +51,7 @@ LIBMYSQL_DLL_EXP_LIB = libmysql.dll.a
 LIBPGSQL_DLL_EXP_LIB = libpgsql.dll.a
 LIBSQLITE_DLL_EXP_LIB = libsqlite.dll.a
 
-#all: libmysql-dll libpgsql-dll libsqlite-dll
-all: libmsql-dll libmysql-dll libpgsql-dll
+all: libmysql-dll libpgsql-dll libsqlite-dll libmsql-dll
 
 libmsql-dll: $(top_srcdir)/drivers/msql/dbd_msql.o 
 	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/msql/.libs/$(LIBMSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/msql/.libs/$(LIBMSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(LDFLAGS) $(top_srcdir)/drivers/msql/*.o $(MSQL_LIBS)
@@ -60,8 +65,7 @@ libpgsql-dll: $(top_srcdir)/drivers/pgsql/dbd_pgsql.o
 libsqlite-dll: $(top_srcdir)/drivers/sqlite/dbd_sqlite.o 
 	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) -o $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME)  $(LDFLAGS) $(top_srcdir)/drivers/sqlite/*.o $(SQLITE_LIBS)
 
-#install: install-libmysql install-libpgsql install-libsqlite
-install: install-libmsql install-libmysql install-libpgsql
+install: install-libmysql install-libpgsql install-libsqlite install-libmsql
 
 install-libmsql:
 	cp $(top_srcdir)/drivers/msql/.libs/$(LIBMSQL_DLL_NAME) $(driverdir) && \

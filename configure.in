@@ -84,6 +84,7 @@ dnl ==============================
 dnl Check for libraries
 dnl ==============================
 
+AC_CHECK_DBI
 AC_CHECK_MYSQL
 AC_CHECK_PGSQL
 AC_CHECK_SQLITE

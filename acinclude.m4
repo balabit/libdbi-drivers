@@ -237,6 +237,7 @@ fi
 
 AC_DEFUN(AC_CHECK_MSQL,
 [
+AM_CONDITIONAL(HAVE_MSQL, false)
 ac_msql="NO"
 ac_msql_incdir="NO"
 ac_msql_libdir="NO"

@@ -1,7 +1,7 @@
 #	$Id$	
 
 
-- Implement Integers/Float types.
+- Investigate further about Integers/Float types.
   
   Oracle stores all numeric types as SQLT_NUM (number) internaly.
   The only diffence with numeric columns is the set of contraints that 

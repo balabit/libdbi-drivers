@@ -24,14 +24,18 @@
  */
 
 /* 
-   This driver is still in an unstable state don't use it for anything besides testing.
-
-   There are ALOT of error checkings missing and not all data types are implemented.
-   But hey! It's a start.
-
-   Christian M. Stamgren <Christian@stamgren.com>
-
-*/
+ * This driver is still in an unstable state don't use it for anything besides testing.
+ * 
+ * There are ALOT of error checkings missing and not all data types are implemented.
+ * some solutions might be a bit of a hack ...  Oracle doesn't really fit into libdbi's suite
+ * at some times.
+ * But hey! It's a start.
+ *
+ * The driver really needs some cleanups here and there, but lets get stuff working first.
+ *
+ * Christian M. Stamgren <Christian@stamgren.com>
+ *
+ */
 
 
 #ifdef  HAVE_CONFIG_H
@@ -66,7 +70,7 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; 
 static const char *reserved_words[] = ORACLE_RESERVED_WORDS;
 
-void _translate_oracle_type(int fieldtype, unsigned short *type, unsigned int *attribs);
+void _translate_oracle_type(int fieldtype, ub1 scale, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 void checkerr(OCIError * errhp, sword status);
@@ -95,9 +99,7 @@ int dbd_connect(dbi_conn_t *conn)
 	const char *password =  dbi_conn_get_option(conn, "password");
 	const char *sid      =  dbi_conn_get_option(conn, "dbname");
   
-	if(! sid )
-		sid = getenv("ORACLE_SID");
-
+	if(! sid ) sid = getenv("ORACLE_SID");
 
 	if(OCIEnvCreate ((OCIEnv **) &(Oconn->env), OCI_DEFAULT, (dvoid *)0, 0, 0, 0, (size_t)0, (dvoid **)0)) {
 		_dbd_internal_error_handler(conn, "Connect. Unable to initialize enviroment", 0);
@@ -163,8 +165,8 @@ int dbd_free_query(dbi_result_t *result)
 }
 
 
-int dbd_goto_row(dbi_result_t *result, unsigned long long row) {
-	/* do nothing OCIStmtFetch2() will fix this by it self */
+int dbd_goto_row(dbi_result_t *result, unsigned long long row) 
+{	
 	return 1;
 }
 
@@ -186,7 +188,10 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 	dbi_result_t *res;
 	char *sql_cmd;
 	
-	/* We just ignore the db param, becouse of Oracle can't read from diffrent databases at runtime */
+	/*
+	 * We just ignore the db param, 
+	 * Oracle can't read from diffrent databases at runtime.
+	 */
 	if (pattern == NULL) {
 		asprintf(&sql_cmd, "SELECT table_name FROM user_tables"); 
 		res = dbd_query(conn, sql_cmd);
@@ -225,8 +230,9 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 	dbi_result_t *result;
 	ub4 numrows =  0, affectedrows = 0;
 	Oraconn *Oconn = conn->connection;
-	sword status,notused;
+	sword status;
 	ub4 cache_rows = 0;
+	char *notused;
 
 	OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &stmt,
 			OCI_HTYPE_STMT, (size_t) 0, (dvoid **) 0);
@@ -238,36 +244,35 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 	}
 	
 
-	if ( OCIAttrGet(stmt, OCI_HTYPE_STMT, (dvoid *) &stmttype,
-			(ub4 *) 0, (ub4) OCI_ATTR_STMT_TYPE, Oconn->err) != OCI_SUCCESS) {
-	}
+	OCIAttrGet(stmt, OCI_HTYPE_STMT, (dvoid *) &stmttype,
+		   (ub4 *) 0, (ub4) OCI_ATTR_STMT_TYPE, Oconn->err);
 	
 	OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
 		       (ub4) (stmttype == OCI_STMT_SELECT ? 0 : 1), 
 		       (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
 		       OCI_STMT_SCROLLABLE_READONLY);
 
-
-	
        
 	if( stmttype == OCI_STMT_SELECT) { 
-                /* get the number of columns */
+
 		OCIAttrGet (stmt, OCI_HTYPE_STMT, (dvoid *) &numfields, 
 			    (ub4 *) 0, (ub4) OCI_ATTR_PARAM_COUNT, Oconn->err); 
 
 		
 		/* 
-		   To find out how many rows there is in a result set we need to call 
-		   OCIStmtFetch2() with OCI_FETCH_LAST and then use OCIAttrGet()
-		   with OCI_ATTR_CURRENT_POSITION, This is really not that great 
-		   becouse it might be very very very slow..... But It's the only way i know
-		   It would be really great if libdbi didn't have to know how large a result set is
-		   at this early point.
-		*/
+		 * To find out how many rows there is in a result set we need to call 
+		 * OCIStmtFetch2() with OCI_FETCH_LAST and then use OCIAttrGet()
+		 * with OCI_ATTR_CURRENT_POSITION, This is really not that great 
+		 * becouse it might be very very very slow..... But It's the only way i know
+		 * It would be really great if libdbi didn't have to know how large a result set is
+		 * at this early point.
+		 */
 
-		/* dummy define .. We need have atleast one define before fetching. Duh!!! */
+		/* dummy define .. 
+		 * We need to have atleast one define before fetching. Duh!!! 
+		 */
 		OCIDefineByPos(stmt, &defnp, Oconn->err, 1, (dvoid *) &notused,
-			       (sword) sizeof(sword), SQLT_INT, (dvoid *) 0, (ub2 *)0,
+			       (sword) sizeof(sword), SQLT_CHR, (dvoid *) 0, (ub2 *)0,
 			       (ub2 *)0, OCI_DEFAULT); 
 
 		
@@ -277,7 +282,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 		status = OCIAttrGet (stmt, OCI_HTYPE_STMT, (dvoid *) &numrows, 
 				     (ub4 *) 0, (ub4) OCI_ATTR_CURRENT_POSITION, Oconn->err); 
 		checkerr(Oconn->err, status);
-
+		
 		/* cache should be about 20% of all rows. */
 		if(dbi_conn_get_option_numeric(conn, "oracle_prefetch_rows")) {
 			cache_rows = (ub4)numrows/5;
@@ -285,8 +290,8 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 				   &cache_rows, sizeof(cache_rows), OCI_ATTR_PREFETCH_ROWS,
 				   Oconn->err);
 		}
-		
-		/* howto handle affected rows? I don't know .... */
+
+		/* howto handle affected rows? */
 		
 	}
 
@@ -306,7 +311,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 
 char *dbd_select_db(dbi_conn_t *conn, const char *db) 
 {
-	return NULL; /* Oracle can not do that .... */
+	return NULL; /* Oracle can't do that .... */
 }
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) 
@@ -405,22 +410,30 @@ int dbd_ping(dbi_conn_t *conn)
 
 /* CORE ORACLE DATA FETCHING STUFF */
 
-
-
-void _translate_oracle_type(int fieldtype, unsigned short *type, unsigned int *attribs) 
+void _translate_oracle_type(int fieldtype, ub1 scale, unsigned short *type, unsigned int *attribs) 
 {
 	unsigned int _type = 0;
 	unsigned int _attribs = 0;
-	
-	//(void) fprintf(stderr, "Got type nr %d", fieldtype);
 
 	switch (fieldtype) {
 
 	case SQLT_INT:
-	case SQLT_NUM:
 	case SQLT_LNG:
 		_type = DBI_TYPE_INTEGER;
 		_attribs |= DBI_INTEGER_SIZE8;
+		break;
+	case SQLT_NUM:
+		/*
+		 * We use size8 becouse we don't know if it
+		 * can be smaller :( 
+		 */
+		if(scale > 0) {
+			_type = DBI_TYPE_DECIMAL;
+			_attribs |= DBI_DECIMAL_SIZE8;
+		} else {
+			_type = DBI_TYPE_INTEGER;
+			_attribs |= DBI_INTEGER_SIZE8;
+		}
 		break;
 		
 	case SQLT_BIN:
@@ -430,9 +443,7 @@ void _translate_oracle_type(int fieldtype, unsigned short *type, unsigned int *a
 	  
 	case SQLT_FLT:
 		_type = DBI_TYPE_DECIMAL;
-		break;
-	  
-
+		_attribs |= DBI_DECIMAL_SIZE8;
 		
 	case SQLT_AFC:
 	case SQLT_STR:
@@ -459,14 +470,16 @@ void _get_field_info(dbi_result_t *result)
 	OCIParam *param;
 	ub4 otype;
 	text *col_name;
+	sb1  scale,precision;
 	ub4  col_name_len;
-	
+
 	Oraconn *Oconn = (Oraconn *)result->conn->connection;
 	
 	
 	
 	while (idx < result->numfields) {
-		
+		precision = scale = 0;
+
 		OCIParamGet((dvoid *)result->result_handle, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
 			    (ub4) idx+1);
 		
@@ -478,13 +491,24 @@ void _get_field_info(dbi_result_t *result)
 			   (dvoid**) &col_name,(ub4 *) &col_name_len, (ub4) OCI_ATTR_NAME,
 			   (OCIError *) Oconn->err );
 	
-	  
-		_translate_oracle_type(otype, &fieldtype, &fieldattribs);
+		if(otype == 2) { /* we got SQLT_NUM */
+			/*
+			  
+			OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
+			(dvoid**) &precision,(ub4 *) 0, (ub4) OCI_ATTR_PRECISION,
+			(OCIError *) Oconn->err );
+			*/
+
+			OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
+				   (dvoid**) &scale,(ub4 *) 0, (ub4) OCI_ATTR_SCALE,
+				   (OCIError *) Oconn->err );
+		}
+
+		_translate_oracle_type(otype, scale, &fieldtype, &fieldattribs);
 		_dbd_result_add_field(result, idx, (char *)col_name, fieldtype, fieldattribs);
 		idx++;
 	}
 }
-
 
 
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) 
@@ -494,27 +518,52 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	OCIParam *param;
 	Oraconn *Oconn = result->conn->connection; 
 	int curfield = 0, length = 0;
-	unsigned long sizeattrib;
+	unsigned long sizeattrib,slen;
 	dbi_data_t *data;
+	char *ptr, *cols[result->numfields];
 	dword status;
-	ub1 nullable;
 
-	while (curfield < result->numfields) {
+	/* 
+	 * Prefetch all cols as char *'s 
+	 * This might not be all that good  ... lets revisit
+	 * this when some Oracle guru starts sending in patches.
+	 */
 		
-		data = &row->field_values[curfield];
-		row->field_sizes[curfield] = 0;
-        
+	while(curfield < result->numfields) {
+		length = 0;
 		OCIParamGet(stmt, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
 			    (ub4) curfield+1);
-		
+	
 		OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
 			   (dvoid*) &length,(ub4 *) 0, (ub4) OCI_ATTR_DATA_SIZE,
 			   (OCIError *) Oconn->err  );
 
-		OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
-			   (dvoid*) &nullable,(ub4 *) 0, (ub4) OCI_ATTR_IS_NULL,
-			   (OCIError *) Oconn->err  );
+		cols[curfield] = (char *)malloc(length+1);
+		
+		OCIDefineByPos(stmt, &defnp, Oconn->err, curfield+1, cols[curfield],
+			       (sword) length, SQLT_CHR, (dvoid *) 0, (ub2 *)0, 
+			       (ub2 *)0, OCI_DEFAULT);
 
+		switch (result->field_types[curfield]) {
+		case DBI_TYPE_BINARY:
+		case DBI_TYPE_STRING:
+			row->field_sizes[curfield] = length;
+			break;
+		default:
+			row->field_sizes[curfield] = 0;
+			break;
+		}
+		curfield++;
+
+	}
+
+	status = OCIStmtFetch2(stmt, Oconn->err,
+			       (ub4)1, OCI_FETCH_ABSOLUTE, (sb4)rowidx+1, OCI_DEFAULT);
+
+	curfield = 0;
+	while (curfield < result->numfields) {
+
+		data = &row->field_values[curfield];
 
 		switch (result->field_types[curfield]) {
 		case DBI_TYPE_INTEGER:
@@ -525,73 +574,57 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			case DBI_INTEGER_SIZE3:
 			case DBI_INTEGER_SIZE4:
 			case DBI_INTEGER_SIZE8:
-				//(void) fprintf(stderr, "Got a integer\n");
-				
-				break;
 			default:
+				data->d_longlong = (long long) atoll(cols[curfield]);  
 				break;
 			}
+
+			free(cols[curfield]);
 			break;
 		case DBI_TYPE_DECIMAL:
 			sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DECIMAL_SIZE4, DBI_DECIMAL_SIZE8);
 			switch (sizeattrib) {
 			case DBI_DECIMAL_SIZE4:
 			case DBI_DECIMAL_SIZE8:
-				
-				break;
-			default:
+			default:				
+				data->d_double = (double) strtod(cols[curfield], NULL);
 				break;
 			}
+
+			free(cols[curfield]);
+			break;
+
+		case DBI_TYPE_STRING:
+			
+			slen = row->field_sizes[curfield];
+			
+			data->d_string = malloc(row->field_sizes[curfield]+1);
+			memcpy(data->d_string, cols[curfield],row->field_sizes[curfield]);
+			data->d_string[slen] = '\0';
+			if (dbi_conn_get_option_numeric(result->conn, "oracle_chop_blanks") == 1) {
+				ptr = data->d_string;
+
+				if(ptr != NULL && *ptr != '\0') 
+					while(slen && ptr[slen - 1] == ' ')
+						--slen;
+				
+				ptr[slen] = '\0'; /* Chop blanks */
+				row->field_sizes[curfield] = slen; /* alter field length */
+			}
+			free(cols[curfield]);
 			break;
 		case DBI_TYPE_BINARY:
-		case DBI_TYPE_STRING:
-			//(void) fprintf(stderr, "we have a string\n");
-
-			data->d_string = (char *)calloc(1, length +1);
-			row->field_sizes[curfield] = length;
-			
-			OCIDefineByPos(stmt, &defnp, Oconn->err, curfield+1, data->d_string,
-				       (sword) length, SQLT_CHR, (dvoid *) 0, (ub2 *)0, 
-				       (ub2 *)0, OCI_DEFAULT);
+			data->d_string = malloc(row->field_sizes[curfield]);
+			memcpy(data->d_string, cols[curfield],row->field_sizes[curfield]);
+			free(cols[curfield]);
 			break;
 
 		case DBI_TYPE_DATETIME:
-			/* don't know yet, string? */
-			break;
-      
-		default:
-			printf("Unsupported type, please implement me..");
+
 			break;
 		}
     
 		curfield++;
-		//(void) fprintf(stderr, "\nOn culumn: %d\n", curfield);
-	}
-
-	
-	status = OCIStmtFetch2(stmt, Oconn->err,
-			       (ub4)1, OCI_FETCH_ABSOLUTE, (sb4)rowidx+1, OCI_DEFAULT);
-	checkerr(Oconn->err, status);
-
-
-	if (dbi_conn_get_option_numeric(result->conn, "oracle_chop_blanks")) {
-
-		unsigned short column = result->numfields;
-		char *ptr;
-		int slen;
-		
-		while(column--) {
-			slen = row->field_sizes[column];
-			ptr = row->field_values[column].d_string;
-
-			if(ptr  && *ptr != '\0') { /* the column is a string type. */
-				while(slen && ptr[slen - 1] == ' ')
-					--slen;
-				
-				ptr[slen] = '\0'; /* Chop blanks */
-				row->field_sizes[column] = slen; /* alter field length */
-			}
-		}
 	}
 }
 

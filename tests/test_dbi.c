@@ -9,11 +9,15 @@ int main(int argc, char **argv) {
 	char driverdir[256];
 	char drivername[64];
 	char dbname[64];
+	char initial_dbname[64];
 	char dbdir[256];
+	char username[64];
+	char password[64];
+	char hostname[256];
 	const char *errmsg;
 	int numdrivers;
 
-	printf("\nlibdbi test program: $Id$\nLibrary version: %s\n\n", dbi_version());
+	printf("\nlibdbi-drivers test program: $Id$\nLibrary version: %s\n\n", dbi_version());
 	
 	printf("libdbi driver directory? [%s] ", DBI_DRIVER_DIR);
 	fgets(driverdir, 256, stdin);
@@ -34,7 +38,7 @@ int main(int argc, char **argv) {
 	}
 	
 	driver = NULL;
-	printf("Available drivers (%d) (this test works only with sqlite, so choose wisely): ", numdrivers);
+	printf("Available drivers (%d): ", numdrivers);
 	while ((driver = dbi_driver_list(driver)) != NULL) {
 		printf("%s ", dbi_driver_get_name(driver));
 	}
@@ -47,20 +51,66 @@ int main(int argc, char **argv) {
 	}
 	drivername[strlen(drivername)-1] = '\0';
 
+	if (!strcmp(drivername, "mysql") || !strcmp(drivername, "pgsql")
+	    || !strcmp(drivername, "msql")) {
+	  printf("\ndatabase administrator name? ");
+	  fgets(username, 64, stdin);
+	  if (*username == '\n') {
+	    *username = '\0';
+	  }
+	  else {
+	    username[strlen(username)-1] = '\0';
+	  }
+
+	  printf("\ndatabase administrator password? ");
+	  fgets(password, 64, stdin);
+	  if (*password == '\n') {
+	    *password = '\0';
+	  }
+	  else {
+	    password[strlen(password)-1] = '\0';
+	  }
+
+	  printf("\ndatabase hostname? [(blank for local socket if possible)] ");
+	  fgets(hostname, 256, stdin);
+	  if (*hostname == '\n') {
+	    if (!strcmp(drivername, "pgsql")) {
+	      *hostname = '\0';
+	    }
+	    else {
+	      strcpy(hostname, "localhost");
+	    }
+	  }
+	  else {
+	    hostname[strlen(hostname)-1] = '\0';
+	    if (!strcmp(drivername, "pgsql")) {
+	      if (!strcmp(hostname, "localhost")) {
+		*hostname = '\0';
+	      }
+	    }
+	  }
+	}
+	else { /* sqlite */
+	  printf("database directory? [.] ");
+	  fgets(dbdir, 256, stdin);
+	  if (dbdir[0] == '\n') {
+	    dbdir[0] = '.';
+	    dbdir[1] = '\0';
+	  }
+	  else {
+	    dbdir[strlen(dbdir)-1] = '\0';
+	  }
+	}
+
 	printf("database name? [libdbitest] ");
 	fgets(dbname, 64, stdin);
-	if (dbname[0] == '\n') strncpy(dbname, "libdbitest", 63), dbname[63] = '\0';
-	else dbname[strlen(dbname)-1] = '\0';
-	
-	printf("database directory? [.] ");
-	fgets(dbdir, 256, stdin);
-	if (dbdir[0] == '\n') {
-	  dbdir[0] = '.';
-	  dbdir[1] = '\0';
+	if (dbname[0] == '\n') {
+	  strcpy(dbname, "libdbitest");
 	}
 	else {
-	  dbdir[strlen(dbdir)-1] = '\0';
+	  dbname[strlen(dbname)-1] = '\0';
 	}
+	
 	
 	if ((conn = dbi_conn_new(drivername)) == NULL) {
 		printf("Can't instantiate '%s' driver into a dbi_conn!\n", drivername);
@@ -79,8 +129,31 @@ int main(int argc, char **argv) {
 		   "\tVersion:    %s\n"
 		   "\tCompiled:   %s\n", dbi_driver_get_name(driver), dbi_driver_get_filename(driver), dbi_driver_get_description(driver), dbi_driver_get_maintainer(driver), dbi_driver_get_url(driver), dbi_driver_get_version(driver), dbi_driver_get_date_compiled(driver));
 
-	dbi_conn_set_option(conn, "dbname", dbname);
-	dbi_conn_set_option(conn, "sqlite_dbdir", dbdir);
+	if (!strcmp(drivername, "mysql") || !strcmp(drivername, "pgsql")
+	    || !strcmp(drivername, "msql")) {
+	  dbi_conn_set_option(conn, "host", hostname);
+	  dbi_conn_set_option(conn, "username", username);
+	  dbi_conn_set_option(conn, "password", password);
+	}
+	else { /* sqlite */
+	  dbi_conn_set_option(conn, "sqlite_dbdir", dbdir);
+	}
+
+	if (!strcmp(drivername, "mysql")) {
+	  strcpy(initial_dbname, "mysql");
+	}
+	else if (!strcmp(drivername, "pgsql")) {
+	  strcpy(initial_dbname, "template1");
+	}
+	else if (!strcmp(drivername, "sqlite")) {
+	  strcpy(initial_dbname, dbname);
+	}
+	else { /* msql */
+	  strcpy(initial_dbname, dbname);
+	}
+	  
+	dbi_conn_set_option(conn, "dbname", initial_dbname);
+
 
 	if (dbi_conn_connect(conn) < 0) {
 		dbi_conn_error(conn, &errmsg);
@@ -89,25 +162,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	printf("\nSuccessfully connected!\nTest 1: List tables: \n");
-	
-	if ((result = dbi_conn_get_table_list(conn, dbname, NULL)) == NULL) {
-		dbi_conn_error(conn, &errmsg);
-		printf("AAH! Can't get table list! Error message: %s\n", errmsg);
-		dbi_conn_close(conn);
-		dbi_shutdown();
-		return 1;
-	}
-	printf("got result, try to access rows\n");
-	while (dbi_result_next_row(result)) {
-		const char *tablename = NULL;
-		tablename = dbi_result_get_string_idx(result, 1);
-		printf("%s ", tablename);
-	}
-
-	dbi_result_free(result);
-
-	printf("\nTest 2: List databases: \n");
+	printf("\nSuccessfully connected!\nTest 1: List databases: \n");
 
 	if ((result = dbi_conn_get_db_list(conn, NULL)) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -125,7 +180,37 @@ int main(int argc, char **argv) {
 
 	dbi_result_free(result);
 
-	printf("\nTest 3: Create table: \n");
+	printf("\nTest 2: Create database %s: \n", dbname);
+
+	if (!strcmp(drivername, "sqlite")) {
+	  printf("This is a no-op with the sqlite driver\n");
+	}
+	else {
+	  if ((result = dbi_conn_queryf(conn, "CREATE DATABASE %s", dbname)) == NULL) {
+	  printf("database not created\n");
+	  fflush(stdout);
+	    dbi_conn_error(conn, &errmsg);
+	    printf("Darn! Can't create database! Error message: %s\n", errmsg);
+	    dbi_conn_close(conn);
+	    dbi_shutdown();
+	    return 1;
+	  }
+	  printf("database created ok\n");
+	  fflush(stdout);
+	  dbi_result_free(result);
+	}
+
+	printf("\nTest 3: Select database: \n");
+
+	if (dbi_conn_select_db(conn, dbname)) {
+	    dbi_conn_error(conn, &errmsg);
+	    printf("Uh-oh! Can't select database! Error message: %s\n", errmsg);
+	    dbi_conn_close(conn);
+	    dbi_shutdown();
+	    return 1;
+	}
+
+	printf("\nTest 4: Create table: \n");
 
 	if ((result = dbi_conn_query(conn, "CREATE TABLE test_address (street VARCHAR(64), number INTEGER, state CHAR(2), city VARCHAR(64), zip INTEGER)")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -137,7 +222,25 @@ int main(int argc, char **argv) {
 
 	dbi_result_free(result);
 
-	printf("\nTest 4: Insert row: \n");
+	printf("\nTest 5: List tables: \n");
+	
+	if ((result = dbi_conn_get_table_list(conn, dbname, NULL)) == NULL) {
+		dbi_conn_error(conn, &errmsg);
+		printf("Oops! Can't get table list! Error message: %s\n", errmsg);
+		dbi_conn_close(conn);
+		dbi_shutdown();
+		return 1;
+	}
+	printf("got result, try to access rows\n");
+	while (dbi_result_next_row(result)) {
+		const char *tablename = NULL;
+		tablename = dbi_result_get_string_idx(result, 1);
+		printf("%s ", tablename);
+	}
+
+	dbi_result_free(result);
+
+	printf("\nTest 6: Insert row: \n");
 
 	if ((result = dbi_conn_query(conn, "INSERT INTO test_address VALUES ('Spellman','5946','TX','Houston','77096')")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -149,7 +252,7 @@ int main(int argc, char **argv) {
 
 	dbi_result_free(result);
 
-	printf("\nTest 5: Retrieve data: \n");
+	printf("\nTest 7: Retrieve data: \n");
 
 	if ((result = dbi_conn_query(conn, "SELECT * from test_address")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -175,7 +278,7 @@ int main(int argc, char **argv) {
 
 	dbi_result_free(result);
 
-	printf("\nTest 6: Drop table: \n");
+	printf("\nTest 8: Drop table: \n");
 
 	if ((result = dbi_conn_query(conn, "DROP TABLE test_address")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -186,6 +289,43 @@ int main(int argc, char **argv) {
 	}
 
 	dbi_result_free(result);
+
+	printf("\nTest 9: Drop database: \n");
+
+	if (!strcmp(drivername, "sqlite")) {
+	  char dbpath[256];
+
+	  strcpy(dbpath, dbdir);
+	  if (dbpath[strlen(dbpath)-1] != '/') {
+	    strcat(dbpath, "/");
+	  }
+	  strcat(dbpath, dbname);
+	  if (unlink(dbpath)) {
+	    printf("AAH! Can't delete database file!\n");
+	    dbi_conn_close(conn);
+	    dbi_shutdown();
+	    return 1;
+	  }
+	}
+	else {
+	  if (dbi_conn_select_db(conn, initial_dbname)) {
+	    dbi_conn_error(conn, &errmsg);
+	    printf("Uh-oh! Can't select database! Error message: %s\n", errmsg);
+	    dbi_conn_close(conn);
+	    dbi_shutdown();
+	    return 1;
+	  }
+
+	  if ((result = dbi_conn_queryf(conn, "DROP DATABASE %s", dbname)) == NULL) {
+	    dbi_conn_error(conn, &errmsg);
+	    printf("AAH! Can't drop database! Error message: %s\n", errmsg);
+	    dbi_conn_close(conn);
+	    dbi_shutdown();
+	    return 1;
+	  }
+
+	  dbi_result_free(result);
+	}
 
 	printf("\n\n");
 	printf("SUCCESS! All done, disconnecting and shutting down libdbi. Have a nice day.\n\n");

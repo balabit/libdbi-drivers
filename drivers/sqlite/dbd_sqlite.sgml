@@ -24,10 +24,10 @@
   </bookinfo>
   <preface>
     <title>Preface</title>
-    <para><ulink url="http://libdbi.sourceforge.net">libdbi</ulink> is a database abstraction layer written in C. It implements a framework that can utilize separate driver libraries for specific database servers. The <ulink url="http://libdbi-drivers.sourceforge.net">libdbi-drivers</ulink> project provides 3-rd party drivers for database servers not supported by the libdbi project itself.</para>
+    <para><ulink url="http://libdbi.sourceforge.net">libdbi</ulink> is a database abstraction layer written in C. It implements a framework that can utilize separate driver libraries for specific database servers. The <ulink url="http://libdbi-drivers.sourceforge.net">libdbi-drivers</ulink> project provides the drivers necessary to talk to the supported database servers.</para>
     <para>This manual provides information about the sqlite driver. The manual is intended for programmers who write applications linked against libdbi and who want their applications to work with the sqlite driver.</para>
     <para>Questions and comments about the sqlite driver should be sent to the <ulink url="mailto:libdbi-drivers-devel@lists.sourceforge.net">libdbi-drivers-devel</ulink> mailing list. Visit the <ulink url="http://lists.sourceforge.net/lists/listinfo/libdbi-drivers-devel">libdbi-drivers-devel list page</ulink> to subscribe and for further information. Questions and comments about the libdbi library should be sent to the appropriate libdbi mailing list.</para>
-    <para>The libdbi-drivers project and the sqlite driver are maintained by <ulink url="mailto:mhoenicka@users.sourceforge.net">Markus Hoenicka</ulink>.</para>
+    <para>The sqlite driver is maintained by <ulink url="mailto:mhoenicka@users.sourceforge.net">Markus Hoenicka</ulink>.</para>
   </preface>
   <chapter>
     <title>Introduction</title>
@@ -60,7 +60,7 @@
 	<varlistentry>
 	  <term>sqlite</term>
 	  <listitem>
-	    <para>This library implements the embeddable database engine. Find the most recent release at <ulink url="http://www.sqlite.org">www.sqlite.org</ulink>. The current version of the sqlite driver was tested with SQLite version 2.7.6.</para>
+	    <para>This library implements the embeddable database engine. Find the most recent release at <ulink url="http://www.sqlite.org">www.sqlite.org</ulink>. The current version of the sqlite driver was tested with SQLite version 2.7.6. and should work ok with later releases.</para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
@@ -68,8 +68,8 @@
     <sect1>
       <title>Build and install the sqlite driver</title>
       <para>First you have to unpack the libdbi-drivers archive in a suitable directory. Unpacking will create a new subdirectory <filename class="directory">libdbi-drivers-X.Y</filename> where "X.Y" denotes the version:</para>
-      <screen><prompt>$ </prompt><userinput>tar -xzf libdbi-drivers-0.2.tar.gz</userinput></screen>
-      <para>The libdbi-drivers project currently consists of a single driver, but the build system is set up to accept additional drivers at a later time. Therefore you <emphasis>must</emphasis> tell configure explicitly that you want to build the sqlite driver:</para>
+      <screen><prompt>$ </prompt><userinput>tar -xzf libdbi-drivers-0.3.tar.gz</userinput></screen>
+      <para>The libdbi-drivers project consists of several drivers that use a common build system. Therefore you <emphasis>must</emphasis> tell configure explicitly that you want to build the sqlite driver (you can list as many drivers as you want to build):</para>
       <screen><prompt>$ </prompt><userinput>cd libdbi-drivers</userinput></screen>
       <screen><prompt>$ </prompt><userinput>./configure --with-sqlite</userinput></screen>
       <para>Run <command>./configure --help</command> to find out about additional options.</para>
@@ -82,7 +82,7 @@
       <screen><prompt>$ </prompt><userinput>make install</userinput></screen>
       <para>To test the operation of the newly installed driver, use the command:</para>
       <screen><prompt>$ </prompt><userinput>make check</userinput></screen>
-      <para>This command creates and runs a variant of the test program supplied with libdbi. The test will work only with the sqlite driver, so even if other drivers are installed on your system, you have to select the sqlite driver when asked. The program will also ask for a database name. This can be any name that is a valid filename on your system. Finally it will ask for a data directory. This is the directory that is used to create the test database. Needless to say that you need write access to that directory. If you accept the default ".", the database will be created in the <filename class="directory">tests</filename> subdirectory.</para>
+      <para>This command creates and runs a test program that performs a few basic input and output tests. The program will ask for a database name. This can be any name that is a valid filename on your system. It will also ask for a data directory. This is the directory that is used to create the test database. Needless to say that you need write access to that directory. If you accept the default ".", the database will be created in the <filename class="directory">tests</filename> subdirectory.</para>
       <note>
 	<para>If for some reason you need to re-create the autoconf/automake-related files, try running <command moreinfo="none">./autogen.sh</command>. I've found out that the current stable autoconf/automake/libtool versions (as found in FreeBSD 4.7 and Debian 3.0) do not cooperate well, so I found it necessary to run the older autoconf 2.13. If necessary, edit <filename moreinfo="none">autogen.sh</filename> so that it will catch the older autoconf version on your system.</para>
       </note>
@@ -90,7 +90,7 @@
   </chapter>
   <chapter>
     <title>Driver options</title>
-    <para>Your application has to initialize libdbi drivers by setting some driver options with the <function>dbi_conn_set_option()</function> and the <function>dbi_conn_set_option_numeric()</function> library functions. In contrast to the drivers shipped with libdbi, the sqlite driver supports only the following options (the other common options are meaningless due to the embedded nature of the database engine):</para>
+    <para>Your application has to initialize libdbi drivers by setting some driver options with the <function>dbi_conn_set_option()</function> and the <function>dbi_conn_set_option_numeric()</function> library functions. In contrast to most other drivers, the sqlite driver supports only the following options (the other common options are meaningless due to the embedded nature of the database engine):</para>
     <variablelist>
       <varlistentry>
 	<term>dbname</term>
@@ -119,8 +119,8 @@
       <para>One noticeable difference between SQLite and other SQL database engines is that the former is typeless. All data are stored as strings, and you can insert any type of data into any field. While the SQLite author has good reasons for this feature, it is an obstacle to using the strongly typed retrieval functions of libdbi. The only way out is to declare the field types in a <command>CREATE TABLE</command> statement just as you would with PostgreSQL (SQLite is somewhat modelled after PostgreSQL so I chose to support most of the PostgreSQL data types). As an example, the following statement is perfectly fine with SQLite, but not with the sqlite driver:</para>
       <screen><userinput>CREATE TABLE foo (a,b,c)</userinput></screen>
       <para>However, the following statement is fine with SQLite, the sqlite driver, and just about any other SQL database server:</para>
-      <screen><userinput>CREATE TABLE foo (a INTEGER,b TEXT, c VARCHAR(64))</userinput></screen>
-      <para>Another difference is the lack of access control on the database engine level. Most SQL database servers implement some mechanisms to restrict who is allowed to fiddle with the databases and who is not. As SQLite uses regular files to store its databases, all available access control is on the filesystem level. Of course there is no SQL interface to this kind of access control, but <command>chmod</command> and <command>chown</command> are your friends.</para>
+      <screen><userinput>CREATE TABLE foo (a INTEGER,b TEXT,c VARCHAR(64))</userinput></screen>
+      <para>Another difference is the lack of access control on the database engine level. Most SQL database servers implement some mechanisms to restrict who is allowed to fiddle with the databases and who is not. As SQLite uses regular files to store its databases, all available access control is on the filesystem level. There is no SQL interface to this kind of access control, but <command>chmod</command> and <command>chown</command> are your friends.</para>
       <para>SQLite appears to implement row and column counters as C long int values. This limits the maximum number of rows somewhat compared to other SQL database engines.</para>
     </sect1>
     <sect1>

@@ -248,7 +248,7 @@ int dbd_get_socket(dbi_conn_t *conn){
 const char *dbd_get_encoding(dbi_conn_t *conn){
   /* encoding is a compile-time option with the sqlite
      library. Instead of using the sqlite-provided string, we use the
-     PostgreSQL names */
+     iana.org names */
   if (!strcmp(sqlite_encoding, "UTF-8")) {
     return sqlite_encoding_UTF8;
   }

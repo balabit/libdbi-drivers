@@ -1,0 +1,18 @@
+FIREBIRD/INTERBASE DRIVER:
+------------------
+
+This driver allows libdbi-enabled applications to use Firebird or Interbase  as a database
+backend. 
+
+See the included driver documentation for installation instructions, usage,
+and information about driver-specific peculiarities.
+
+
+CONTACT INFO:
+-------------
+
+libdbi-drivers-devel@lists.sourceforge.net
+http://libdbi-drivers.sourceforge.net
+Christian Stamgren <christian@stamgren.com>
+
+

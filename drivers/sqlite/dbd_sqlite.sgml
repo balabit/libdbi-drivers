@@ -13,6 +13,10 @@
     </author>
     <revhistory>
       <revision>
+	<revnumber>0.3</revnumber>
+	<date>2003-4-12</date>
+      </revision>
+      <revision>
 	<revnumber>0.2</revnumber>
 	<date>2003-2-4</date>
       </revision>

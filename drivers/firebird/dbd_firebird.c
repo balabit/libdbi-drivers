@@ -74,6 +74,7 @@ static const char *reserved_words[] = FIREBIRD_RESERVED_WORDS;
 void _translate_firebird_type(int field_type,  unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
+static unsigned long long return_generator_value(dbi_conn_t *conn, const char *sequence, int type);
 
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, 
 			 const char ***_reserved_words) 
@@ -369,16 +370,15 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
 	return 1;
 }
 
+
 unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) 
 {  
-	unsigned long long retval = 0;
-	return retval;
+	return return_generator_value(conn, sequence, 0); //0 is currval
 }
 
 unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) 
-{	
-	unsigned long long retval = 0;
-	return retval;
+{		
+	return return_generator_value(conn, sequence, 1); //1 is nextval
 }
 
 
@@ -462,11 +462,13 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 {
 	int curfield = 0;
 	XSQLVAR var;
-	long fetch_stat = 0;
-	char blob_s[20], date_s[25];
-	vary_t *vary = NULL;
-	struct tm   times;
+	long fetch_stat = 0, blob_stat = 0;
 	ISC_QUAD bid;
+	isc_blob_handle blob_handle = NULL; /* Blob handle. */ 
+	char blob_segment[80];
+	unsigned short actual_seg_len;		
+	struct tm times;
+	char date_s[25];
 	unsigned long sizeattrib;
 	dbi_data_t *data = NULL;
 	ibase_stmt_t *istmt = result->result_handle;
@@ -484,6 +486,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				data->d_string = strdup(var.sqldata);
 				row->field_sizes[curfield] = (unsigned long long) var.sqllen;
 			} else {
+				vary_t *vary = NULL;
 				vary = (vary_t *) var.sqldata;
 				vary->vary_string[vary->vary_length] = '\0';
 				data->d_string = strdup(vary->vary_string);
@@ -554,9 +557,22 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			break;
 		
 		case DBI_TYPE_BINARY:
-			/** Binary doesnt work yet */
 			bid = *(ISC_QUAD *) var.sqldata;
-			sprintf(blob_s, "%08x:%08x", bid.isc_quad_high, bid.isc_quad_low);
+			
+			isc_open_blob2( iconn->status, &(iconn->db), &(iconn->trans), &blob_handle, &bid, 0, NULL );
+			blob_stat = isc_get_segment( iconn->status, &blob_handle,  &actual_seg_len,  
+						     sizeof(blob_segment), blob_segment  );
+
+			while (blob_stat == 0 || iconn->status[1] == isc_segment) {
+
+				
+				//realloc and memcpy .. 
+				printf("%*.*s", actual_seg_len, actual_seg_len, blob_segment); 
+				blob_stat = isc_get_segment(iconn->status, &blob_handle, &actual_seg_len, 
+							    sizeof(blob_segment), blob_segment); 
+				printf("\n"); 
+			}; 
+			isc_close_blob(iconn->status, &blob_handle);
 			break;
 				
 		default:
@@ -574,3 +590,23 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		result->numrows_matched++;
 	}
 }
+
+static unsigned long long return_generator_value(dbi_conn_t *conn, const char *sequence, int type)
+{
+	unsigned long long retval = 0;
+	char *sql_cmd = NULL;
+	dbi_result_t *result;
+	ibase_stmt_t *istmt = NULL;
+	ibase_conn_t *iconn = conn->connection;
+
+	asprintf(&sql_cmd, "SELECT GEN_ID( %s ,%d ) FROM RDB$DATABASE",sequence, type );	
+	result = dbd_query(conn, sql_cmd);
+
+	istmt = result->result_handle;
+	if(! isc_dsql_fetch(iconn->status, &(istmt->stmt), SQL_DIALECT_V6, istmt->osqlda) ) {
+		retval = (long)istmt->osqlda->sqlvar[0].sqllen;
+		dbi_result_free(result);
+	}
+	free(sql_cmd);
+	return retval;
+} 

@@ -22,19 +22,19 @@
 #define PG_TYPE_INT4			23
 #define PG_TYPE_REGPROC			24
 #define PG_TYPE_TEXT			25
-#define PG_TYPE_OID				26
-#define PG_TYPE_TID				27
-#define PG_TYPE_XID				28
-#define PG_TYPE_CID				29
+#define PG_TYPE_OID			26
+#define PG_TYPE_TID			27
+#define PG_TYPE_XID			28
+#define PG_TYPE_CID			29
 #define PG_TYPE_OIDVECTOR		30
-#define PG_TYPE_SET				32
+#define PG_TYPE_SET			32
 #define PG_TYPE_CHAR2			409
 #define PG_TYPE_CHAR4			410
 #define PG_TYPE_CHAR8			411
 #define PG_TYPE_POINT			600
 #define PG_TYPE_LSEG			601
 #define PG_TYPE_PATH			602
-#define PG_TYPE_BOX				603
+#define PG_TYPE_BOX			603
 #define PG_TYPE_POLYGON			604
 #define PG_TYPE_FILENAME		605
 #define PG_TYPE_FLOAT4			700
@@ -51,8 +51,8 @@
 #define PG_TYPE_VARCHAR			1043
 #define PG_TYPE_DATE			1082
 #define PG_TYPE_TIME			1083
-#define PG_TYPE_DATETIME		1184
-#define PG_TYPE_TIMESTAMP		1296
+#define PG_TYPE_DATETIME		1114  /* 1184 ?? */
+#define PG_TYPE_TIMESTAMP		1184  /* 1296 ?? */
 #define PG_TYPE_NUMERIC			1700
 
 /* list from http://www.postgresql.org/idocs/index.php?sql-keywords-appendix.html */

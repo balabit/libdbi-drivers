@@ -53,7 +53,9 @@ distclean: clean
 
 # manually install the docs
 install-data-local: 
+if HAVE_SQLITE
 	$(top_srcdir)/mkinstalldirs $(DESTDIR)$(doc_dir) $(DESTDIR)$(doc_dir)/$(html_subdir)
 	@for f in $(noinst_DATA); do \
 		$(INSTALL_DATA) $(srcdir)/$$f $(DESTDIR)$(doc_dir)/$$f; \
 	done
+endif

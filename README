@@ -39,6 +39,7 @@ If you are building the OSX port, see README.osx.
 AVAILABLE DRIVERS:
 ------------------
 
+* Firebird/Interbase
 * mSQL
 * MySQL
 * Oracle

@@ -462,7 +462,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	char *raw = NULL;
 	unsigned long *strsizes = NULL;
 	unsigned long sizeattrib;
-	dbi_data_t *data;
+	dbi_data_t *data;	
 
 	_row = mysql_fetch_row(_res);
 	strsizes = mysql_fetch_lengths(_res);

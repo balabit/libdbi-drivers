@@ -353,3 +353,65 @@ else
 	AC_MSG_RESULT(no)
 fi
 ])
+
+
+
+
+## Firebird
+AC_DEFUN(AC_CHECK_FIREBIRD_INTERBASE,
+[
+AM_CONDITIONAL(HAVE_FIREBIRD_INTERBASE, false)
+ac_firebird="NO"
+ac_firebird_incdir="NO"
+ac_firebird_libdir="NO"
+
+# exported variables
+FIREBIRD_LIBS=""
+FIREBIRD_LDFLAGS=""
+FIREBIRD_INCLUDE=""
+
+AC_MSG_CHECKING(for Firebird/Interbase support)
+
+AC_ARG_WITH(firebird,
+	[  --with-firebird		  Include Firebird support.],
+	[  ac_firebird="YES" ])
+AC_ARG_WITH(firebird-dir,
+	[  --with-firebird-dir	  Specifies Firebird directory.],
+	[  ac_firebird_incdir="$withval"/include
+	   ac_firebird_libdir="$withval"/lib ])
+AC_ARG_WITH(oracle-incdir,
+	[  --with-firebird-incdir	  Specifies where the Firebird/Interbase include files are.],
+	[  ac_firebird_incdir="$withval" ])
+AC_ARG_WITH(firebird-libdir,
+	[  --with-firebird-libdir	  Specifies where the Firebird/Interbase libraries are.],
+	[  ac_firebird_libdir="$withval" ])
+
+if test "$ac_firebird" = "YES"; then
+	if test "$ac_firebird_incdir" = "NO" || test "$ac_firebird_libs" = "NO"; then
+		firebird_incdirs="/opt/firebird/include"
+		AC_FIND_FILE(ibase.h, $firebird_incdirs, ac_firebird_incdir)
+		firebird_libdirs="/opt/firebird/lib"
+		AC_FIND_FILE(libfbclient.so, $firebird_libdirs, ac_firebird_libdir)
+		if test "$ac_firebird_incdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid Firebird/Interbase directory - include files not found.])
+		fi
+		if test "$ac_firebird_libdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid Firebird/Interbase directory - libraries not found.])
+		fi
+	fi
+	AC_MSG_RESULT([yes: libs in $ac_firebird_libdir, headers in $ac_firebird_incdir])
+	AM_CONDITIONAL(HAVE_FIREBIRD_INTERBASE, true)
+	
+	FIREBIRD_LIBS=-lfbclient
+	FIREBIRD_INCLUDE="-I$ac_firebird_incdir"
+	FIREBIRD_LDFLAGS=-L$ac_firebird_libdir
+	
+	AC_SUBST(FIREBIRD_LIBS)
+	AC_SUBST(FIREBIRD_INCLUDE)
+	AC_SUBST(FIREBIRD_LDFLAGS)
+else
+	AC_MSG_RESULT(no)
+fi
+])

@@ -100,11 +100,11 @@
 	<term>dbname</term>
 	<listitem>
 	  <para>The name of the database you want to work with. As a SQLite database corresponds to one file in your filesystem, <varname>dbname</varname> can be any legal filename. If the database/file doesn't exist when you first try to access it, SQLite will create it on the fly.</para>
-	  <para>It is important to understand that the full path of the database is composed of <varname>sqlite-dbdir</varname> and <varname>dbname</varname>. Therefore <varname>dbname</varname> should not contain the full path of a file, but just the name.</para>
+	  <para>It is important to understand that the full path of the database is composed of <varname>sqlite_dbdir</varname> and <varname>dbname</varname>. Therefore <varname>dbname</varname> should not contain the full path of a file, but just the name.</para>
 	</listitem>
       </varlistentry>
       <varlistentry>
-	<term>sqlite-dbdir</term>
+	<term>sqlite_dbdir</term>
 	<listitem>
 	  <para>This is the directory that contains all sqlite databases. Use the full path please.</para>
 	  <note>

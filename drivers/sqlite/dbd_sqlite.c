@@ -252,16 +252,51 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
   while ((entry = readdir(dp)) != NULL) {
     stat(entry->d_name, &statbuf);
     if (S_ISREG(statbuf.st_mode)) {
-      /* ToDo: we could do a magic number check here to make sure we
+      /* we do a magic number check here to make sure we
 	 get only databases, not random files in the current directory.
-	 SQLite databases apparently start with the string:
-
+	 SQLite databases start with the string:
+	 
 	 ** This file contains an SQLite 2.1 database **
 
       */
-      if (pattern) {
-	if (wild_case_compare(entry->d_name, &entry->d_name[strlen(entry->d_name)-1], pattern, &pattern[strlen(pattern)-1], '\\')) {
-	  retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO databases VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
+      FILE* fp;
+
+      if ((fp = fopen(entry->d_name, "r")) != NULL) {
+	char magic_text[48] = "";
+
+	if (fread(magic_text, 1, 47, fp) < 47) {
+	  /* either we can't read at all, or the file is too small
+	     for a sqlite database anyway */
+	  fclose(fp);
+	  continue;
+	}
+
+	/* terminate magic text */
+	magic_text[47] = '\0';
+
+	if (strcmp(magic_text, "** This file contains an SQLite 2.1 database **")) {
+	  /* this file is not meant for us */
+	  fclose(fp);
+	  continue;
+	}
+
+	/* close file again, we're done reading */
+	fclose(fp);
+
+	/* match filename to a pattern, or use all found files */
+	if (pattern) {
+	  if (wild_case_compare(entry->d_name, &entry->d_name[strlen(entry->d_name)-1], pattern, &pattern[strlen(pattern)-1], '\\')) {
+	    retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO databases VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
+	    if (sq_errmsg) {
+	      _dbd_internal_error_handler(conn, sq_errmsg, retval);
+	      free(sq_errmsg);
+	      break;
+	    }
+	  }
+	}
+	else {
+	  retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO databases  VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
+	  
 	  if (sq_errmsg) {
 	    _dbd_internal_error_handler(conn, sq_errmsg, retval);
 	    free(sq_errmsg);
@@ -269,15 +304,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
 	  }
 	}
       }
-      else {
-	retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO databases  VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
-
-	if (sq_errmsg) {
-	  _dbd_internal_error_handler(conn, sq_errmsg, retval);
-	  free(sq_errmsg);
-	  break;
-	}
-      }
+      /* else: we can't read it, so forget about it */
     }
   }
   closedir(dp);
@@ -372,7 +399,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
   int numcols;
   char** result_table;
   char* errmsg;
-  unsigned int idx = 0;
+  unsigned short idx = 0;
   unsigned short fieldtype;
   unsigned int fieldattribs;
   dbi_error_flag errflag = 0;
@@ -389,19 +416,29 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
     return NULL;
   }
 	
-  result = _dbd_result_create(conn, (void *)result_table, numrows, sqlite_changes((sqlite*)conn->connection));
-
-  _dbd_result_set_numfields(result, numcols);
+  result = _dbd_result_create(conn, (void *)result_table, (unsigned long long)numrows, (unsigned long long)sqlite_changes((sqlite*)conn->connection));
+/*   printf("numrows:%d, numcols:%d<<\n", numrows, numcols); */
+  _dbd_result_set_numfields(result, (unsigned short)numcols);
 
   /* assign types to result */
-  while (idx < numcols) {
+  while (idx < (unsigned short)numcols) {
     int type;
-
+    char *item;
+    
     type = find_result_field_types(result_table[idx], conn, statement);
-/*     printf("type: %d<<\n", type); */
+/*      printf("type: %d<<\n", type);  */
     _translate_sqlite_type(type, &fieldtype, &fieldattribs);
 
-    _dbd_result_add_field(result, idx, result_table[idx], fieldtype, fieldattribs);
+    /* we need the field name without the table name here */
+    item = strchr(result_table[idx], (int)'.');
+    if (!item) {
+      item = result_table[idx];
+    }
+    else {
+      item++;
+    }
+
+    _dbd_result_add_field(result, idx, item, fieldtype, fieldattribs);
     idx++;
   }
   
@@ -439,6 +476,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   char* table;
   char curr_table[128] = "";
   char curr_field_name[128];
+  char curr_field_name_up[128];
   char **table_result_table;
   char *curr_type;
   char* errmsg;
@@ -515,24 +553,33 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
      of field names. There is some overlap, i.e. some function work
      both on strings and numbers. These cases would have to be
      analyzed by checking the arguments */
-  if (strstr(curr_field_name, "abs(")
-      || strstr(curr_field_name, "last_insert_rowid(")
-      || strstr(curr_field_name, "length(")
-      || strstr(curr_field_name, "max(")
-      || strstr(curr_field_name, "min(")
-      || strstr(curr_field_name, "random(*)")
-      || strstr(curr_field_name, "round(")
-      || strstr(curr_field_name, "avg(")
-      || strstr(curr_field_name, "count(")
-      || strstr(curr_field_name, "sum(")) {
+  strcpy(curr_field_name_up, curr_field_name);
+
+  /* uppercase string, reuse item */
+  item = curr_field_name_up;
+  while (*item) {
+    *item = (char)toupper((int)*item);
+    item++;
+  }
+
+  if (strstr(curr_field_name, "ABS(")
+      || strstr(curr_field_name, "LAST_INSERT_ROWID(")
+      || strstr(curr_field_name, "LENGTH(")
+      || strstr(curr_field_name, "MAX(")
+      || strstr(curr_field_name, "MIN(")
+      || strstr(curr_field_name, "RANDOM(*)")
+      || strstr(curr_field_name, "ROUND(")
+      || strstr(curr_field_name, "AVG(")
+      || strstr(curr_field_name, "COUNT(")
+      || strstr(curr_field_name, "SUM(")) {
     return FIELD_TYPE_LONG;
   }
-  else if (strstr(curr_field_name, "coalesce(")
-	   || strstr(curr_field_name, "glob(")
-	   || strstr(curr_field_name, "like(")
-	   || strstr(curr_field_name, "lower(")
-	   || strstr(curr_field_name, "substr(")
-	   || strstr(curr_field_name, "upper(")) {
+  else if (strstr(curr_field_name, "COALESCE(")
+	   || strstr(curr_field_name, "GLOB(")
+	   || strstr(curr_field_name, "LIKE(")
+	   || strstr(curr_field_name, "LOWER(")
+	   || strstr(curr_field_name, "SUBSTR(")
+	   || strstr(curr_field_name, "UPPER(")) {
     return FIELD_TYPE_STRING;
   }
       
@@ -848,12 +895,12 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
     /* this will be set to the string size later on if the field is indeed a string */
 
     /* sqlite is typeless, and all information is stored as \0-terminated
-       strings. Thus strlen is safe to use */
-    strsize = strlen(raw);
-    if ((raw == NULL) || (strsize == 0)) {
+       strings. Thus strlen is safe to use. UPDATE: Hehe, fooled myself here */
+/*     strsize = strlen(raw); */
+    if ((raw == NULL) || (strlen(raw) == 0)) {
       curfield++;
       continue;
-		}
+    }
     
     switch (result->field_types[curfield]) {
     case DBI_TYPE_INTEGER:

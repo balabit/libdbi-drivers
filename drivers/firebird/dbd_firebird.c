@@ -144,6 +144,7 @@ int dbd_disconnect(dbi_conn_t *conn)
 		free(iconn);
 		iconn = NULL;
 	}
+
 	return 0;
 }
 
@@ -422,7 +423,9 @@ int dbd_ping(dbi_conn_t *conn)
 	ibase_conn_t *iconn = conn->connection;
         
 	if (isc_database_info(iconn->status, &(iconn->db), 0, NULL, sizeof(buf), buf)) {
-		return 0;
+		free(iconn);
+		if (conn->current_db ) free(conn->current_db);
+		if(! dbd_connect(conn)) return 0;
 	}
 
 	return 1;

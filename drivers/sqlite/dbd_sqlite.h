@@ -28,6 +28,11 @@ enum enum_field_types { FIELD_TYPE_DECIMAL, FIELD_TYPE_TINY,
 			FIELD_TYPE_STRING=254
 };
 
+/* this is the maximum length of identifiers like table names and
+   column names. SQLite does not seem to have any limit like this, but
+   other systems use limits like 32 (PostgreSQL) and 64 (MySQL) */
+#define MAX_IDENT_LENGTH 128
+
 #define SQLITE_RESERVED_WORDS { \
 	"ACTION", \
 	"ADD", \

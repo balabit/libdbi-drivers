@@ -52,7 +52,7 @@ AC_ARG_WITH(mysql-libdir,
 if test "$ac_mysql" = "YES"; then
 	if test "$ac_mysql_incdir" = "NO" || test "$ac_mysql_libs" = "NO"; then
 		mysql_incdirs="/usr/include /usr/local/include /usr/include/mysql /usr/local/include/mysql /usr/local/mysql/include /usr/local/mysql/include/mysql /opt/mysql/include/mysql /sw/include/mysql"
-		AC_FIND_FILE(mysql.h, $mysql_incdirs, ac_mysql_incdir)
+		AC_FIND_FILE(mysql/mysql.h, $mysql_incdirs, ac_mysql_incdir)
 		mysql_libdirs="/usr/lib /usr/local/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib /usr/local/mysql/lib/mysql /opt/mysql/lib/mysql /sw/lib/mysql"
 		mysql_libs="libmysqlclient.so libmysqlclient.a"
 		AC_FIND_FILE($mysql_libs, $mysql_libdirs, ac_mysql_libdir)

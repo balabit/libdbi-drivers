@@ -118,7 +118,6 @@ int dbd_connect(dbi_conn_t *conn)
 
 	if (isc_attach_database(iconn->status, 0, (char*)dbase, &db, dpb_length, dpb_buffer)  || 
 	    isc_start_transaction(iconn->status, &trans, 1, &db, 0, NULL)) {
-		isc_print_status(iconn->status);
 		free(iconn);
 		iconn = NULL;
 		return 1;
@@ -222,7 +221,22 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 
 int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
 {
-	return 0;
+	const char *worker = orig;
+	register int i = 0, j = 0;
+	int length = strlen(orig);
+
+	for(i = 0; i < length; i++) {
+		
+		switch(worker[i]) {
+		case '\'': 
+			dest[j++] = '\'';
+			break;
+				
+		}
+		dest[j++] = worker[i];
+	}
+
+	return j;
 }
 
 
@@ -348,7 +362,26 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 
 char *dbd_select_db(dbi_conn_t *conn, const char *db) 
 {
-	return NULL; 
+	ibase_conn_t *iconn = conn->connection;
+
+	if (!db || !*db) {
+		return NULL;
+	}
+
+	if (iconn) {
+		isc_commit_transaction(iconn->status, &(iconn->trans));
+                isc_detach_database(iconn->status, &(iconn->db));
+		if(conn->current_db) free(conn->current_db);
+		free(iconn);
+		iconn = NULL;
+	}
+
+	dbi_conn_set_option(conn, "dbname", db);
+	if (dbd_connect(conn)) {
+		return NULL;
+	}
+
+	return (char *)db; 
 }
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) 

@@ -1,0 +1,41 @@
+
+libdbi-drivers - drivers for libdbi, the Database
+Independent Abstraction Layer for C
+
+Copyright (C) 2001-2003, Mark M. Tobenkin <mark at brentwoodradio.com>
+http://libdbi-drivers.sourceforge.net
+
+
+MYSQL DRIVER:
+--------------
+
+A driver providing connectivity to MySQL databases using libmysqlclient
+(http://www.mysql.org)
+
+NOTES:
+------
+
+To allow for row seeking, results are loaded into memory. This is very
+inefficient and may provide a bottleneck for large applications.
+
+DATETIME, TIMESTAMP, DATE and TIME will all be treated as the DBI type of
+DATETIME. This is currently a string, but will change in later releases.
+
+WARNING: The DECIMAL type is treated as a string, as it has arbitrary
+precision.
+
+Whether or not a trailing \0 value will be added to Binary string can be
+configured using:
+  dbi_set_option_numeric("mysql_include_trailing_null",1); //include
+  dbi_set_option_numeric("mysql_include_trailing_null",0); //don't include
+
+
+CONTACT INFO:
+-------------
+
+libdbi-drivers-devel@lists.sourceforge.net
+http://libdbi-drivers.sourceforge.net
+Mark M. Tobenkin <mmt@users.sourceforge.net>
+
+$Id$
+

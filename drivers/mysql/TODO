@@ -1,0 +1,9 @@
+$Id$
+
+- add mysql_insert_id functionality as a custom function
+- improve date handling code
+- test handling of binary strings (BLOB etc.)
+
+
+
+

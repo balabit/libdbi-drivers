@@ -389,15 +389,16 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
         ibase_conn_t *iconn = conn->connection;
         
 	TEXT errbuf[MAXLEN];
-        ISC_STATUS *vec;
+	long sqlcode;
 
 	if ( conn->connection == NULL) {
                 *errstr = strdup("Unable to connect to database.");
 		return 1;
 	}
 	
-        vec = iconn->status;
-	isc_interprete(errbuf, &vec);
+	 
+	sqlcode = isc_sqlcode(iconn->status); 
+	isc_sql_interprete(sqlcode, errbuf, sizeof(errbuf)); 
 	*errstr = strdup(errbuf);
 	  
 	return 1;
@@ -417,8 +418,14 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence)
 
 int dbd_ping(dbi_conn_t *conn) 
 {
-	unsigned long long retval = 0;
-	return retval;
+	char buf[100];
+	ibase_conn_t *iconn = conn->connection;
+        
+	if (isc_database_info(iconn->status, &(iconn->db), 0, NULL, sizeof(buf), buf)) {
+		return 0;
+	}
+
+	return 1;
 }
 
 /* CORE FIREBIRD DATA FETCHING STUFF */

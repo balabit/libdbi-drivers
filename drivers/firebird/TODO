@@ -1,5 +1,5 @@
 This is the firebird/Interbase drivers TODO list.
 
-* implement ping() support
 
+* inplement get_charset() function
 

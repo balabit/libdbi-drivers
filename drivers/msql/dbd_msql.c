@@ -209,7 +209,6 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	m_result *res;
 	
 	if ((rows = msqlQuery((int)conn->connection, (char *)statement)) < 0 ) {
-		_error_handler(conn, DBI_ERROR_DBD);
 		return NULL;
 	}
    

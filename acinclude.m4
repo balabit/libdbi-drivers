@@ -177,6 +177,7 @@ fi
 
 AC_DEFUN(AC_CHECK_SQLITE,
 [
+AM_CONDITIONAL(HAVE_SQLITE, false)
 ac_sqlite="NO"
 ac_sqlite_incdir="NO"
 ac_sqlite_libdir="NO"

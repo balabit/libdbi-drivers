@@ -22,4 +22,4 @@ libsqlite_la_LDFLAGS = $(sqlite_ldflags) @SQLITE_LDFLAGS@ @SQLITE_LIBS@
 libsqlite_la_SOURCES = $(sqlite_sources)
 libsqlite_la_DEPENDENCIES = dbd_sqlite.h
 
-EXTRA_DIST = dbd_sqlite.c dbd_sqlite.h
+EXTRA_DIST = dbd_sqlite.c dbd_sqlite.h AUTHORS TODO README

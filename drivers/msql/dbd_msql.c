@@ -172,8 +172,8 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
 {
 	unsigned int len;
-	strcpy(dest, "'");
 	const char *escaped = "\'\"\\";
+	strcpy(dest, "'");
 	len = _dbd_quote_chars(dest, orig, escaped);
 	
 	strcat(dest, "'");

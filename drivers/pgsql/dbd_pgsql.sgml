@@ -1,6 +1,6 @@
 <!DOCTYPE Book PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
 
-<!ENTITY freedoc-license SYSTEM "include/copying-fdl.sgml">
+<!ENTITY freedoc-license SYSTEM "../../doc/include/copying-fdl.sgml">
 <!ENTITY www 'http://libdbi-drivers.sourceforge.net'>
 <!ENTITY www-libdbi 'http://libdbi.sourceforge.net'>
 
@@ -15,7 +15,7 @@
 
 <!-- $Id$ -->
 
-<book id="dbd_&dbd-name;">
+<book id="dbd-&dbd-name;">
 
 <bookinfo>
 	<title>&proper-name; Driver Notes</title>

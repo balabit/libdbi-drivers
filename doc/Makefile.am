@@ -4,6 +4,28 @@ AUTOMAKE_OPTIONS = foreign
 
 docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
 
+# XXX dap: new common doc build system, first make string list of drivers,
+# this should eventually go in the root Makefile.am
+
+#ENABLED_DRIVERS=""
+#if HAVE_MSQL
+#	ENABLED_DRIVERS=$(ENABLED_DRIVERS) msql
+#endif
+#if HAVE_MYSQL
+#	ENABLED_DRIVERS=$(ENABLED_DRIVERS) mysql
+#endif
+#if HAVE_PGSQL
+#	ENABLED_DRIVERS=$(ENABLED_DRIVERS) pgsql
+#endif
+#if HAVE_SQLITE
+#	ENABLED_DRIVERS=$(ENABLED_DRIVERS) sqlite
+#endif
+#
+#
+#@for driver in $(ENABLED_DRIVERS); do \
+	
+
+
 doc_DATA = programmers-guide.pdf programmers-guide/* driver-guide.pdf driver-guide/*
 
 EXTRA_DIST = $(doc_DATA)

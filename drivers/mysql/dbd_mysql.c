@@ -65,8 +65,6 @@ static const char *reserved_words[] = MYSQL_RESERVED_WORDS;
 void _translate_mysql_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
-time_t _parse_datetime(const char *raw, unsigned long attribs);
-
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, const char ***_reserved_words) {
 	/* this is the first function called after the driver module is loaded into memory */
 	*_driver_info = &driver_info;
@@ -471,38 +469,4 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	}
 }
 
-time_t _parse_datetime(const char *raw, unsigned long attribs) {
-  struct tm unixtime;
-  char *unparsed;
-  char *cur;
-
-  unixtime.tm_sec = unixtime.tm_min = unixtime.tm_hour = 0;
-  unixtime.tm_mday = unixtime.tm_mon = unixtime.tm_year = 0;
-  unixtime.tm_isdst = -1;
-	
-  if (raw && (unparsed = strdup(raw)) != NULL) {
-    cur = unparsed;
-    if (strlen(raw) > 10 && attribs & DBI_DATETIME_DATE) {
-      cur[4] = '\0';
-      cur[7] = '\0';
-      cur[10] = '\0';
-      unixtime.tm_year = atoi(cur)-1900;
-      unixtime.tm_mon = atoi(cur+5);
-      unixtime.tm_mday = atoi(cur+8);
-      if (attribs & DBI_DATETIME_TIME) cur += 11;
-    }
-    
-    if (strlen(cur) > 5 && attribs & DBI_DATETIME_TIME) {
-      cur[2] = '\0';
-      cur[5] = '\0';
-      unixtime.tm_hour = atoi(cur);
-      unixtime.tm_min = atoi(cur+3);
-      unixtime.tm_sec = atoi(cur+6);
-    }
-
-    free(unparsed);
-  }
-
-  return mktime(&unixtime);
-}
 

@@ -1,6 +1,7 @@
 #!/bin/sh
 # autogen.sh - generates configure using the autotools
 # $Id$
+libtoolize -f -c
 aclocal
 automake --add-missing -f
 

@@ -19,6 +19,8 @@ int main(int argc, char **argv) {
 	char password[64];
 	char hostname[256];
 	char query[QUERY_LEN+1];
+	char string_to_quote[] = "Can \'we\' \"quote\" this properly?";
+	char *quoted_string = NULL;
 	const char *errmsg;
 	int numdrivers;
 
@@ -221,7 +223,11 @@ int main(int argc, char **argv) {
 		printf("\tOk.\n");
 	}
 	
-	printf("\nTest 4: Create table: \n");
+	printf("\nTest 4: Get encoding: \n");
+	
+	printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
+
+	printf("\nTest 5: Create table: \n");
 	
 	if (!strcmp(drivername, "mysql")) {
 	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME, the_date DATE, the_time TIME)");
@@ -246,7 +252,7 @@ int main(int argc, char **argv) {
 	}
 	dbi_result_free(result);
 	
-	printf("\nTest 5: List tables: \n");
+	printf("\nTest 6: List tables: \n");
 	
 	if ((result = dbi_conn_get_table_list(conn, dbname, NULL)) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -264,13 +270,20 @@ int main(int argc, char **argv) {
 	
 	dbi_result_free(result);
 	
-	printf("\nTest 6: Insert row: \n");
+	printf("\nTest 7: Insert row: \n");
+
+	dbi_driver_quote_string_copy(driver, string_to_quote, &quoted_string);
 
 	if(!strcmp(drivername, "msql")) {
-		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32767, 32767, -2147483647, 2147483647, -9223372036854775807,9223372036854775807, 3.402823466E+38, 'this is a test', '11-jul-1977', '23:59:59')");
+		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32767, 32767, -2147483647, 2147483647, -9223372036854775807,9223372036854775807, 3.402823466E+38, %s, '11-jul-1977', '23:59:59')", quoted_string);
 	} else {
-		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, 'this is a test', '2001-12-31 23:59:59', '2001-12-31', '23:59:59')");
+		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", quoted_string);
 	}
+
+	if (quoted_string) {
+	  free(quoted_string);
+	}
+
 	if ((result = dbi_conn_query(conn, query)) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't insert data! Error message: %s\n", errmsg);
@@ -282,7 +295,7 @@ int main(int argc, char **argv) {
 	}
 	dbi_result_free(result);
 
-	printf("\nTest 7: Retrieve data: \n");
+	printf("\nTest 8: Retrieve data: \n");
 	
 	if ((result = dbi_conn_query(conn, "SELECT * from test_datatypes")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -421,7 +434,7 @@ int main(int argc, char **argv) {
 				printf("the_time errflag=%d\n", errflag);
 			}
 			
-			printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32767 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483647 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_date: in:\'11-jul-1977\' out: %s<<\nthe_time: in:\'23:59:59\' out: %s<<", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_string, the_date, the_time);
+			printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32767 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483647 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_string: in:\'%s\' out:\'%s\'<<\nthe_date: in:\'11-jul-1977\' out: %s<<\nthe_time: in:\'23:59:59\' out: %s<<", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, string_to_quote, the_string, the_date, the_time);
 			
 		}
 		else {
@@ -456,13 +469,13 @@ int main(int argc, char **argv) {
 		min = ptr_tm_time->tm_min;
 		sec = ptr_tm_time->tm_sec;
 
-		printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
+		printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_string: in:\'%s\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, string_to_quote, the_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
 
 		}
 	}
 	dbi_result_free(result);
 	
-	printf("\nTest 8: Drop table: \n");
+	printf("\nTest 9: Drop table: \n");
 	
 	if ((result = dbi_conn_query(conn, "DROP TABLE test_datatypes")) == NULL) {
 		dbi_conn_error(conn, &errmsg);
@@ -475,7 +488,7 @@ int main(int argc, char **argv) {
 	}
 	dbi_result_free(result);
 	
-	printf("\nTest 9: Drop database: \n");
+	printf("\nTest 10: Drop database: \n");
 	
 	if (!strcmp(drivername, "sqlite")) {
 		char dbpath[256];

@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = mysql pgsql sqlite msql
+SUBDIRS = mysql pgsql sqlite msql oracle

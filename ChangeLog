@@ -1,3 +1,7 @@
+2003-08-19 07:17 cms
+
+	* drivers/oracle Initial commit of the Oracle driver
+
 2003-06-22 20:07  dap24
 
 	* doc/Makefile.am (1.3), drivers/pgsql/dbd_pgsql.sgml (1.3): fixed

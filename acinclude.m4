@@ -293,3 +293,63 @@ else
 	AC_MSG_RESULT(no)
 fi
 ])
+
+## Oracle
+
+AC_DEFUN(AC_CHECK_ORACLE,
+[
+AM_CONDITIONAL(HAVE_ORACLE, false)
+ac_oracle="NO"
+ac_oracle_incdir="NO"
+ac_oracle_libdir="NO"
+
+# exported variables
+ORACLE_LIBS=""
+ORACLE_LDFLAGS=""
+ORACLE_INCLUDE=""
+
+AC_MSG_CHECKING(for Oracle support)
+
+AC_ARG_WITH(oracle,
+	[  --with-oracle		  Include Oracle support.],
+	[  ac_oracle="YES" ])
+AC_ARG_WITH(oracle-dir,
+	[  --with-oracle-dir	  Specifies ORACLE_HOME.],
+	[  ac_oracle_incdir="$withval"/rdbms/demo
+	   ac_oracle_libdir="$withval"/lib ])
+AC_ARG_WITH(oracle-incdir,
+	[  --with-oracle-incdir	  Specifies where the Oracle include files are.],
+	[  ac_oracle_incdir="$withval" ])
+AC_ARG_WITH(oracle-libdir,
+	[  --with-oracle-libdir	  Specifies where the Oracle libraries are.],
+	[  ac_oracle_libdir="$withval" ])
+
+if test "$ac_oracle" = "YES"; then
+	if test "$ac_oracle_incdir" = "NO" || test "$ac_oracle_libs" = "NO"; then
+		oracle_incdirs="$ORACLE_HOME/rdbms/demo $ORACLE_HOME/rdbms/public"
+		AC_FIND_FILE(oci.h, $oracle_incdirs, ac_oracle_incdir)
+		oracle_libdirs="$ORACLE_HOME/lib"
+		AC_FIND_FILE(libclntsh.so, $oracle_libdirs, ac_oracle_libdir)
+		if test "$ac_oracle_incdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid Oracle directory - include files not found.])
+		fi
+		if test "$ac_oracle_libdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid Oracle directory - libraries not found.])
+		fi
+	fi
+	AC_MSG_RESULT([yes: libs in $ac_oracle_libdir, headers in $ac_oracle_incdir])
+	AM_CONDITIONAL(HAVE_ORACLE, true)
+	
+	ORACLE_LIBS=-lclntsh
+	ORACLE_INCLUDE="-I$ac_oracle_incdir -I$ORACLE_HOME/rdbms/public"
+	ORACLE_LDFLAGS=-L$ac_oracle_libdir
+	
+	AC_SUBST(ORACLE_LIBS)
+	AC_SUBST(ORACLE_INCLUDE)
+	AC_SUBST(ORACLE_LDFLAGS)
+else
+	AC_MSG_RESULT(no)
+fi
+])

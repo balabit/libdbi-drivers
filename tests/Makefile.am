@@ -5,9 +5,10 @@ AUTOMAKE_OPTIONS = foreign
 TESTS = test_dbi
 check_PROGRAMS = test_dbi
 test_dbi_SOURCES = test_dbi.c
+test_dbi_LDADD = @LIBADD_DL@
 
-LIBS = -lm -ldl -ldbi
-INCLUDES =
+LIBS = -L@libdir@ -lm -ldbi
+INCLUDES = -I@includedir@
 CFLAGS = -DDBI_DRIVER_DIR=\"@driverdir@\"
 
 debug:

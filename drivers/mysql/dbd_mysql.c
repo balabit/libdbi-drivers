@@ -446,7 +446,7 @@ void _get_field_info(dbi_result_t *result) {
 	
 	while (idx < result->numfields) {
 		_translate_mysql_type(field[idx].type, &fieldtype, &fieldattribs);
-		if ((fieldtype == DBI_TYPE_INTEGER) && (field->flags & UNSIGNED_FLAG)) fieldattribs |= DBI_INTEGER_UNSIGNED;
+		if ((fieldtype == DBI_TYPE_INTEGER) && (field[idx].flags & UNSIGNED_FLAG)) fieldattribs |= DBI_INTEGER_UNSIGNED;
 		_dbd_result_add_field(result, idx, field[idx].name, fieldtype, fieldattribs);
 		idx++;
 	}

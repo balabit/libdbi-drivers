@@ -1,0 +1,27 @@
+#	$Id$	
+
+
+- fix segfault in dbi_shutdown() when driver is loaded. 
+
+- Implement Integers/Float types.
+  
+  Oracle stores all numeric types as SQLT_NUM (number) internaly.
+  The only diffence with numeric columns is the set of contraints that 
+  teels if there need to be a float or an interger or whatever.
+
+  This makes it very hard to map numbers against libdbi's type system becouse everything 
+  that you get from Oracle is an SQLT_NUM type internaly. SQLT_NUM has to be atleast an
+  unsigned char[21] as external datatype.
+  We need to fetch OCI_ATTR_PRECISION and OCI_ATTR_SCALE using OCIAttrGet() to find out if 
+  the column is a float column.
+  
+- Implement all other "special" oracle types.
+
+- Implement ping function ("select 1 from dual" or simular).
+
+- define driver capabilities.
+
+- write documentation.
+
+
+

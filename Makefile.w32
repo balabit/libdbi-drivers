@@ -29,9 +29,9 @@ host_triplet = i686-pc-cygwin
 AS = @AS@
 CC = gcc
 DEBUG = -g -Wall -D__NO_MATH_INLINES -fsigned-char
-MYSQL_LIBS = -ldbi -lmysqlclient -liberty
-PGSQL_LIBS = -ldbi -lpq -liberty
-SQLITE_LIBS = -ldbi -lsqlite -liberty
+MYSQL_LIBS = -L /usr/local/lib -ldbi -lmysqlclient -liberty
+PGSQL_LIBS = -L /usr/local/lib -ldbi -ldbi -lpq -liberty
+SQLITE_LIBS = -L /usr/local/lib -ldbi -ldbi -lsqlite -liberty
 driverdir = ${exec_prefix}/lib/dbd
 
 LIBMYSQL_DLL_NAME = libmysql.dll
@@ -42,7 +42,8 @@ LIBMYSQL_DLL_EXP_LIB = libmysql.dll.a
 LIBPGSQL_DLL_EXP_LIB = libpgsql.dll.a
 LIBSQLITE_DLL_EXP_LIB = libsqlite.dll.a
 
-all: libmysql-dll libpgsql-dll libsqlite-dll
+#all: libmysql-dll libpgsql-dll libsqlite-dll
+all: libmysql-dll libpgsql-dll
 
 libmysql-dll: $(top_srcdir)/drivers/mysql/dbd_mysql.o 
 	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(top_srcdir)/drivers/mysql/*.o $(MYSQL_LIBS)
@@ -53,16 +54,23 @@ libpgsql-dll: $(top_srcdir)/drivers/pgsql/dbd_pgsql.o
 libsqlite-dll: $(top_srcdir)/drivers/sqlite/dbd_sqlite.o 
 	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) -o $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME)  $(top_srcdir)/drivers/sqlite/*.o $(SQLITE_LIBS)
 
-install:
+#install: install-libmysql install-libpgsql install-libsqlite
+install: install-libmysql install-libpgsql
+
+install-libmysql:
 	cp $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_NAME) $(driverdir) && \
-	cp $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_EXP_LIB) $(driverdir) && \
+	cp $(top_srcdir)/drivers/mysql/.libs/$(LIBMYSQL_DLL_EXP_LIB) $(driverdir)
+
+install-libpgsql:
 	cp $(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_NAME) $(driverdir) && \
 	cp $(top_srcdir)/drivers/pgsql/.libs/$(LIBPGSQL_DLL_EXP_LIB) $(driverdir)
+
+install-libsqlite:
 	cp $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME) $(driverdir) && \
 	cp $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) $(driverdir)
 
 
-.PHONY: libmysql.dll libpgsql.dll libsqlite.dll install
+.PHONY: libmysql.dll libpgsql.dll libsqlite.dll install install-libmysql install-libpgsql install-libsqlite
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

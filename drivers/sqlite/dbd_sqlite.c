@@ -894,10 +894,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
     row->field_sizes[curfield] = 0;
     /* this will be set to the string size later on if the field is indeed a string */
 
-    /* sqlite is typeless, and all information is stored as \0-terminated
-       strings. Thus strlen is safe to use. UPDATE: Hehe, fooled myself here */
-/*     strsize = strlen(raw); */
-    if ((raw == NULL) || (strlen(raw) == 0)) {
+    if (raw == NULL) { /* no data available */
       curfield++;
       continue;
     }

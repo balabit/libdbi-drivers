@@ -1,0 +1,230 @@
+<!DOCTYPE Book PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
+
+<!ENTITY freedoc-license SYSTEM "include/copying-fdl.sgml">
+<!ENTITY www 'http://libdbi-drivers.sourceforge.net'>
+<!ENTITY www-libdbi 'http://libdbi.sourceforge.net'>
+<!ENTITY author-email 'david@neongoat.com'>
+<!ENTITY author-name 'David A. Parker'>
+<!ENTITY dbd-name 'pgsql'>
+
+]>
+
+<!-- $Id -->
+
+<book id="dbd_pgsql">
+
+<bookinfo>
+	<title>PostgreSQL Driver Notes</title>
+	<subtitle>Details about the libdbi driver providing support for PostgreSQL servers</subtitle>
+	<author>
+		<firstname>David</firstname>
+		<othername>A.</othername>
+		<surname>Parker</surname>
+		<affiliation>
+			<orgname>Neon Goat Productions</orgname>
+			<address><email>david@neongoat.com</email></address>
+		</affiliation>
+	</author>
+	<edition>Document revision: $Id$</edition>
+	<pubdate>$Date$</pubdate>
+	<revhistory>
+		<revision>
+			<revnumber>0.1</revnumber>
+			<date>2003-4-17</date>
+		</revision>
+	</revhistory>
+	<copyright>
+		<year>2001-2003</year>
+		<holder>David Parker, Neon Goat Productions</holder>
+	</copyright>
+	<legalnotice>
+		<para>
+			Permission is granted to copy, distribute and/or modify this
+			document under the terms of the <link linkend="copying-FDL">
+			<citetitle>GNU Free Documentation License</citetitle></link>,
+			Version 1.1 or any later version published by the Free Software
+			Foundation; with no Invariant Sections, with no	Front-Cover Texts,
+			and with no Back-Cover Texts.  A copy of the license is included in
+			<xref linkend="copying-FDL">.
+		</para>
+	</legalnotice>
+</bookinfo>
+
+<preface><title>Preface</title>
+	<para>
+		<ulink url="&www-libdbi;">libdbi</ulink> is a database abstraction
+		layer written in C. It implements a framework that can utilize
+		separate driver libraries for specific database servers. The <ulink
+		url="&www;">libdbi-drivers</ulink> project provides the drivers
+		necessary to talk to the supported database servers.
+	</para>
+	<para>
+		This manual provides information about the pgsql driver, which
+		provides support for PostgreSQL database servers. The manual is
+		intended for programmers who write applications linked against libdbi
+		and who want their applications to work with this driver.
+	</para>
+	<para>
+		Questions and comments about this driver should be sent to the
+		libdbi-drivers-devel mailing list (see the <ulink
+		url="&www;">website</ulink>). Questions and comments about the libdbi
+		library should be sent to the appropriate libdbi mailing list.
+	</para>
+	<para>
+		The sqlite driver is maintained by <ulink url="mailto:&author-email;">&author-name;</ulink>.
+	</para>
+</preface>
+
+<chapter id="intro"><title>Introduction</title>
+	<para>
+		(put postgres blurb here, main features, list of reasons to choose this DB)
+	</para>
+</chapter>
+
+<chapter id="install"><title>Installation</title>
+	<para>
+		This chapter describes the prerequisites and the procedures to build
+		and install the sqlite driver from the sources.
+	</para>
+	<section id="install-prereq"><title>Prerequisites</title>
+		<para>
+			The following packages have to be installed on your system:
+		</para>
+		<variablelist>
+			<varlistentry>
+				<term>libdbi</term>
+				<listitem>
+					<para>
+						This library provides the framework of the database
+						abstraction layer which can this driver to perform
+						database operations. The download page as well as the
+						mailing lists with bug reports and patches are
+						accessible from the <ulink url="&www-libdbi;">libdbi
+						website</ulink>.
+					</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>libpqX</term>
+				<listitem>
+					<para>
+						blah, link, version, etc.
+					</para>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+	</section>
+	<section id="install-build"><title>Build and install the driver</title>
+		<para>
+			First you have to unpack the libdbi-drivers archive in a suitable
+			directory. Unpacking will create a new subdirectory <filename
+			class="directory">libdbi-drivers-X.Y.Z</filename> where "X.Y.Z"
+			denotes the version:
+		</para>
+		<screen><prompt>$ </prompt><userinput>tar -xzf libdbi-drivers-0.3.tar.gz</userinput></screen>
+		<para>
+			The libdbi-drivers project consists of several drivers that use a
+			common build system. Therefore you <emphasis>must</emphasis> tell
+			configure explicitly that you want to build the sqlite driver (you
+			can list as many drivers as you want to build):
+		</para>
+		<screen><prompt>$ </prompt><userinput>cd libdbi-drivers</userinput></screen>
+		<screen><prompt>$ </prompt><userinput>./configure --with-&dbd-name;</userinput></screen>
+		<para>
+			Run <command>./configure --help</command> to find out about
+			additional options and other available drivers.
+		</para>
+		<para>
+			Then build the driver with the command:
+		</para>
+		<screen><prompt>$ </prompt><userinput>make</userinput></screen>
+		<note>
+			<para>
+				Please note that you may have to invoke
+				<command>gmake</command>, the GNU version of make, on some
+				systems.
+			</para>
+		</note>
+		<para>
+			Then install the driver with the command (you'll need root
+			permissions to do this):
+		</para>
+		<screen><prompt>$ </prompt><userinput>make install</userinput></screen>
+		<para>
+			To test the operation of the newly installed driver, use the
+			command:
+		</para>
+		<screen><prompt>$ </prompt><userinput>make check</userinput></screen>
+		<para>
+			This command creates and runs a test program that performs a few
+			basic input and output tests. The program will ask for a database
+			name. This can be any name that is a valid filename on your
+			system. It will also ask for a data directory. This is the
+			directory that is used to create the test database. Needless to
+			say that you need write access to that directory. If you accept
+			the default ".", the database will be created in the <filename
+			class="directory">tests</filename> subdirectory.
+		</para>
+		<note>
+			<para>
+				If for some reason you need to re-create the
+				autoconf/automake-related files, try running <command
+				moreinfo="none">./autogen.sh</command>. I've found out that
+				the current stable autoconf/automake/libtool versions (as
+				found in FreeBSD 4.7 and Debian 3.0) do not cooperate well, so
+				I found it necessary to run the older autoconf 2.13. If
+				necessary, edit <filename
+				moreinfo="none">autogen.sh</filename> so that it will catch
+				the older autoconf version on your system.
+			</para>
+		</note>
+	</section>
+</chapter>
+
+<chapter id="options"><title>Driver options</title>
+	<para>
+		Your application has to initialize libdbi drivers by setting some
+		driver options with the <function>dbi_conn_set_option()</function> and
+		the <function>dbi_conn_set_option_numeric()</function> library
+		functions. In contrast to most other drivers, the sqlite driver
+		supports only the following options (the other common options are
+		meaningless due to the embedded nature of the database engine):
+	</para>
+	<variablelist>
+		<varlistentry>
+			<term>dbname</term>
+			<listitem>
+				<para>
+					The name of the database you want to work with. As a
+					SQLite database corresponds to one file in your
+					filesystem, <varname>dbname</varname> can be any legal
+					filename. If the database/file doesn't exist when you
+					first try to access it, SQLite will create it on the fly.
+				</para>
+				<para>
+					It is important to understand that the full path of the
+					database is composed of <varname>sqlite-dbdir</varname>
+					and <varname>dbname</varname>. Therefore
+					<varname>dbname</varname> should not contain the full path
+					of a file, but just the name.
+				</para>
+			</listitem>
+		</varlistentry>
+	</variablelist>
+</chapter>
+
+<chapter id="specific"><title>PostgreSQL-specific Peculiarities</title>
+	<para>
+		This chapter lists known peculiarities of the sqlite driver. This
+		includes SQLite features that differ from what you know from the other
+		database servers supported by libdbi, and it includes features and
+		misfeatures introduced by the sqlite driver. It is the intention of
+		the driver author to reduce the number of misfeatures in future
+		releases if possible.
+	</para>
+</chapter>
+
+&freedoc-license;
+
+</book>
+

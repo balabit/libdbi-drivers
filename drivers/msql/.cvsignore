@@ -1,0 +1,9 @@
+*.pdf
+*.ps
+Makefile.in
+Makefile
+*.lo
+*.la
+.deps
+.libs
+dbd_msql

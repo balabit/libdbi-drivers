@@ -48,6 +48,7 @@ long long strtoll(const char *nptr, char **endptr, int base);
 #include <unistd.h> /* stat */
 #include <sys/stat.h> /* S_ISXX macros */
 #include <sys/types.h> /* directory listings */
+#include <ctype.h> /* toupper, etc */
 
 #include <dbi/dbi.h>
 #include <dbi/dbi-dev.h>
@@ -240,7 +241,6 @@ int dbd_get_socket(dbi_conn_t *conn){
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
-  dbi_result_t *res;
   char *sq_errmsg = NULL;
   char old_cwd[_POSIX_PATH_MAX] = "";
   int retval;
@@ -499,7 +499,6 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   char **table_result_table;
   char *curr_type;
   char* errmsg;
-  int i;
   int query_res;
   int table_numrows = 0;
   int table_numcols = 0;
@@ -942,7 +941,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
   
   int curfield = 0;
   char *raw = NULL;
-  unsigned long long strsize = 0;
   unsigned long sizeattrib;
   dbi_data_t *data;
 

@@ -579,7 +579,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				break;
 			}
 
-			free(cols[curfield]);
 			break;
 		case DBI_TYPE_DECIMAL:
 			sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DECIMAL_SIZE4, DBI_DECIMAL_SIZE8);
@@ -591,7 +590,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				break;
 			}
 
-			free(cols[curfield]);
 			break;
 
 		case DBI_TYPE_STRING:
@@ -611,7 +609,6 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				ptr[slen] = '\0'; /* Chop blanks */
 				row->field_sizes[curfield] = slen; /* alter field length */
 			}
-			free(cols[curfield]);
 			break;
 		case DBI_TYPE_BINARY:
 			data->d_string = malloc(row->field_sizes[curfield]);
@@ -624,6 +621,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			break;
 		}
     
+		if (cols[curfield]) free(cols[cufield]);
 		curfield++;
 	}
 }

@@ -1,70 +1,90 @@
-2002-11-27	David A. Parker  <david at neongoat dot com>
+2003-02-09 01:41  mhoenicka
 
-	* release 0.6.6 (the "Preemptive Ghostbusting" release)
-	* queries are now sent verbatim. old behavior moved to dbi_conn_queryf
-	  function. THIS CAN BREAK OLD CODE. IT WILL EAT YOUR FIRSTBORN CHILD.
-	  (hopefully that got your attention)
-	* docs are outdated, see README
-	* fixed mysql returning empty strings as NULL
-	* adapted to mysql's broken handling of trailing NULLs at the end of
-	  BINARY fields. see README.drivers
-	* began eliminating "int" values in favor of explicit types
-	* minor fix to error handling regarding NULL error messages
-	* fixed dbi_driver_is_reserved_word() hang
-	* Debian packaging done, "unstable" users can now apt-get install the
-	  following packages - libdbi0, libdbi0-dev, libdbd-mysql, libdbd-pgsql
+	* doc/manual.sgml (1.3): updated for 0.2
 
-2002-06-14  David A. Parker  <david at neongoat dot com>
-	
-	* release 0.6.5 (the "Slowly Intoxicated" release)
-	* new error handling framework
-	* beginnings of capabilities infrastructure
-	* extra hooks added to aid garbage collection
-	* sequencing API (mysql people can now use auto_increment! yay!)
-	* fixed small memory leak
-	* fixed big memory leak ;)
-	* fixed wrong mysql INSERT behavior
-	* fixed wrong mysql DATETIME parsing
-	* more cross-platform tweaks (asprintf for Solaris 7)
-	* new Debian packaging from scratch (bound for sid)
-	* support for queries with NULL characters
-	* additional helper functions for driver authors
-	* pattern matching ability for listing dbs/tables
-	* minor changes to option handling
+2003-02-09 01:41  mhoenicka
 
-2002-02-10  David A. Parker  <david at neongoat dot com>
-	
-	* release 0.6.4 (the "Only 2 Dog-Weeks Late" release)
-	* changed libdbi API nomenclature (plugin -> driver, driver -> connection)
-	* portability tweaks (Win32, FreeBSD, SunOS in particular)
-	* build system tweaks
-	* fixed memory leaks
-	* handful of small bugfixes
-	* finally, (the beginnings of) a test suite!
+	* mkinstalldirs (1.3): new autoconf stuff I guess
 
-2001-08-23  David A. Parker  <david at neongoat dot com>
+2003-02-09 01:41  mhoenicka
 
-	* release 0.6.2
-	* (switched to x.y.z versioning scheme)
-	* fixed one-off errors
-	* win32 port, better framework for portability
-	* better debian packaging
-	* first shot at a plugin author's guide
+	* configure.in (1.3): new package version, added support for libdl
+	stuff
 
-2001-08-15  David A. Parker  <david at neongoat dot com>
+2003-02-06 00:57  mhoenicka
 
-	* release 0.6
-	* added "by index" field functions
-	* fixed malloc/free bugs, causing weird segfaults
-	* fixed example code in docs
-	* added field info accessor functions
-	* added datetime support (as time_t)
-	* added DBD quote function
-	* more explicit NULL handling
-	* deb packaging tweaks
-	* bugfixes in plugins
+	* drivers/sqlite/dbd_sqlite_dbi.c (1.7): fixed off-by-one error on
+	dbd_list_dbs()
 
-2001-08-04  David A. Parker  <david at neongoat dot com>
+2003-02-05 00:39  mhoenicka
 
-	* initial release (0.5)
-	
+	* tests/Makefile.am (1.2): fixed lib and include stuff
+
+2003-02-04 23:47  mhoenicka
+
+	* autogen.sh (1.3): run libtoolize
+
+2003-02-04 23:47  mhoenicka
+
+	* config.guess (1.2), config.sub (1.2), install-sh (1.2), ltmain.sh
+	(1.2), missing (1.2), mkinstalldirs (1.2): new libtool version
+
+2003-02-04 23:37  mhoenicka
+
+	* autogen.sh (1.2): fixes automake-autoconf-libtool incompatibility
+
+2003-02-04 23:34  mhoenicka
+
+	* drivers/Makefile.in (1.2), drivers/sqlite/Makefile.in (1.2),
+	tests/Makefile.in (1.2): not required
+
+2003-02-04 23:32  mhoenicka
+
+	* config.h.in (1.2): updated due to use of old autoconf213
+
+2003-02-04 23:30  mhoenicka
+
+	* aclocal.m4 (1.2): updated, new aclocal version I guess
+
+2003-02-01 22:39  mhoenicka
+
+	* drivers/sqlite/dbd_sqlite_dbi.c (1.6): field name search now
+	skips newlines
+
+2003-01-30 00:53  mhoenicka
+
+	* drivers/sqlite/dbd_sqlite_dbi.c (1.5): added magic number check
+	for list_db stuff; handle field names including tables properly;
+	fixed case mistmatch problem with function names; fixed coredump
+	with NULL values
+
+2003-01-25 23:23  mhoenicka
+
+	* doc/manual.sgml (1.2): updated for libdbi version 0.6.7
+
+2003-01-25 23:22  mhoenicka
+
+	* drivers/sqlite/dbd_sqlite_dbi.c (1.4): fixed string escaping bugs
+
+2002-11-06 00:40  mhoenicka
+
+	* tests/libdbitest (1.2): file was unintentionally added
+
+2002-11-06 00:39  mhoenicka
+
+	* drivers/sqlite/dbd_sqlite_dbi.c (1.3): removed debug fprintf()
+	call
+
+2002-11-06 00:37  mhoenicka
+
+	* Makefile.am (1.2), configure.in (1.2): added doc subdir
+
+2002-11-06 00:36  mhoenicka
+
+	* Makefile.in (1.2), configure (1.2): file was unintentionally
+	added
+
+2002-11-06 00:32  mhoenicka
+
+	* doc/: Makefile.am (1.1), manual.sgml (1.1): initial versions
+

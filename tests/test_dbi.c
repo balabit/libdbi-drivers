@@ -403,7 +403,7 @@ int main(int argc, char **argv) {
 				printf("the_time errflag=%d\n", errflag);
 			}
 			
-			printf("the_char: in:-127 out:%d<<\nthe_uchar: in:255 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_date: in:\'1977-jul-11\' out: %s<<\nthe_time: in:\'23:59:59\' out: %s<<", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_string, the_date, the_time);
+			printf("the_char: in:-127 out:%d<<\nthe_uchar: in:255 out:%u<<\nthe_short: in:-32767 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483647 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%qd<<\nthe_ulonglong: in:9223372036854775807 out:%qu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_string: in:\'this is a test\' out:\'%s\'<<\nthe_date: in:\'11-jul-1977\' out: %s<<\nthe_time: in:\'23:59:59\' out: %s<<", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_string, the_date, the_time);
 			
 		}
 		else {

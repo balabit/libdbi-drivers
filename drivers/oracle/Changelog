@@ -1,3 +1,7 @@
 2003-08-25  Christian M. Stamgren  <christian@stamgren.com>
 
 	* Added files README TODO AUTHORS
+
+2003-08-31  Christian M. Stamgren  <christian@stamgren.com>
+
+	* Fix for a segfault in dbi_shutdown.

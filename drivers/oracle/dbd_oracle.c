@@ -158,6 +158,7 @@ int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum)
 int dbd_free_query(dbi_result_t *result) 
 {
 	if (result->result_handle) OCIHandleFree((dvoid *)result->result_handle, OCI_HTYPE_STMT);
+	result->result_handle = NULL;
 	return 0;
 }
 
@@ -271,8 +272,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 
 		
 		status = OCIStmtFetch2(stmt, Oconn->err,
-			       (ub4)10, OCI_FETCH_LAST, 0, OCI_DEFAULT);
-		checkerr(Oconn->err, status);
+			       (ub4)1, OCI_FETCH_LAST, 0, OCI_DEFAULT);
 
 		status = OCIAttrGet (stmt, OCI_HTYPE_STMT, (dvoid *) &numrows, 
 				     (ub4 *) 0, (ub4) OCI_ATTR_CURRENT_POSITION, Oconn->err); 
@@ -285,9 +285,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, u
 				   &cache_rows, sizeof(cache_rows), OCI_ATTR_PREFETCH_ROWS,
 				   Oconn->err);
 		}
-		//(void) fprintf(stderr, "fields: %d rows: %d cached rows %d\n", numfields, numrows, cache_rows);
 		
-
 		/* howto handle affected rows? I don't know .... */
 		
 	}
@@ -402,7 +400,6 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence)
 
 int dbd_ping(dbi_conn_t *conn) 
 {
-	/* select something from dual? */
 	return 0;
 }
 

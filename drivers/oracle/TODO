@@ -1,8 +1,6 @@
 #	$Id$	
 
 
-- fix segfault in dbi_shutdown() when driver is loaded. 
-
 - Implement Integers/Float types.
   
   Oracle stores all numeric types as SQLT_NUM (number) internaly.
@@ -14,6 +12,7 @@
   unsigned char[21] as external datatype.
   We need to fetch OCI_ATTR_PRECISION and OCI_ATTR_SCALE using OCIAttrGet() to find out if 
   the column is a float column.
+
   
 - Implement all other "special" oracle types.
 

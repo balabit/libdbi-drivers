@@ -122,7 +122,6 @@ int dbd_disconnect(dbi_conn_t *conn)
 		OCIHandleFree((dvoid *) Oconn->err, OCI_HTYPE_ERROR); 
 	}
     
-	if(conn->current_db) free(conn->current_db);
 	free(conn->connection);
 	conn->connection = NULL;
 	return 0;
@@ -183,12 +182,12 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	}
 	if (!buf) return NULL;
 	else {
-	  while (*oracle_encoding_hash[i]) {
-	    if (!strcmp(oracle_encoding_hash[i], buf)) {
-	      return oracle_encoding_hash[i+1];
-	    }
-	    i+=2;
-	  }
+		while (*oracle_encoding_hash[i]) {
+			if (!strcmp(oracle_encoding_hash[i], buf)) {
+				return oracle_encoding_hash[i+1];
+			}
+			i += 2;
+		}
 	}
 	return "UTF-16";
 }

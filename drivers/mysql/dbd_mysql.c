@@ -473,6 +473,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		/* this will be set to the string size later on if the field is indeed a string */
 
 		if ((strsizes[curfield] == 0) && (raw == NULL)) {
+		        _set_field_flag( row, curfield, DBI_VALUE_NULL, 1);
 			curfield++;
 			continue;
 		}

@@ -510,6 +510,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		/* will be set to strlen later on for strings */
 		
 		if (PQgetisnull((PGresult *)result->result_handle, rowidx, curfield) == 1) {
+		        _set_field_flag( row, curfield, DBI_VALUE_NULL, 1);
 			curfield++;
 			continue;
 		}

@@ -120,9 +120,19 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
     dbname = dbi_conn_get_option(conn, "dbname");
   }
 
+  if (!dbname) {
+    _dbd_internal_error_handler(conn, "no database specified", 0);
+    return -1;
+  }
+
   /* sqlite specific options */
   dbdir = dbi_conn_get_option(conn, "sqlite_dbdir");
 	
+  if (!dbdir) {
+    _dbd_internal_error_handler(conn, "no database directory specified", 0);
+    return -1;
+  }
+
   /* the requested database is a file in the given directory. Assemble
      full path of database */
   db_fullpath = malloc(strlen(dbname)+strlen(dbdir)+2); /* leave room

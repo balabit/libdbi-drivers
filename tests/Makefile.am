@@ -5,10 +5,10 @@ AUTOMAKE_OPTIONS = foreign
 TESTS = test_dbi
 check_PROGRAMS = test_dbi
 test_dbi_SOURCES = test_dbi.c
-test_dbi_LDADD = -L@libdir@ -lm -ldbi
+test_dbi_LDADD = -L@libdir@ -lm -ldbi @LIBADD_DL@
 
 INCLUDES = -I@includedir@
-CFLAGS = -DDBI_DRIVER_DIR=\"@driverdir@\"
+CFLAGS = -g -DDBI_DRIVER_DIR=\"@driverdir@\"
 
 debug:
 	$(MAKE) all CFLAGS="@DEBUG@"

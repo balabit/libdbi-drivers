@@ -122,6 +122,8 @@ dnl ==============================
 case $host in
 	*-*-win32*)
 		shlib_ext=.dll ;;
+	*-*-cygwin*)
+		shlib_ext=.dll ;;
 	*)
 		shlib_ext=.so ;;
 esac

@@ -1,7 +1,7 @@
 
 libdbi-drivers - drivers for libdbi, a database abstraction
 layer implemented in C
-Copyright (C) 2001-2003, Markus Hoenicka
+Copyright (C) 2001-2004, Markus Hoenicka
 http://libdbi-drivers.sourceforge.net
 
 
@@ -41,6 +41,7 @@ AVAILABLE DRIVERS:
 
 * mSQL
 * MySQL
+* Oracle
 * PostgreSQL
 * SQLite
 

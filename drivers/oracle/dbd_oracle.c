@@ -621,7 +621,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			break;
 		}
     
-		if (cols[curfield]) free(cols[cufield]);
+		if (cols[curfield]) free(cols[curfield]);
 		curfield++;
 	}
 }

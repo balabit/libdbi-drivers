@@ -1,0 +1,21 @@
+libdbi-drivers NEWS file
+========================
+
+_____________________________________
+0.7.0 (the "Pineapple Skunk" release)
+
+- the libdbi-drivers project now hosts 4 drivers: mysql and pgsql
+  (formerly part of libdbi), as well as msql and sqlite.
+
+- fixed dynamic loading stuff to work properly on OSX
+
+- added/updated driver documentation
+
+- improved test program
+
+- assorted fixes in the drivers
+
+- sqlite driver now attempts to support all MySQL and PosgreSQL data
+  types
+
+$Id$

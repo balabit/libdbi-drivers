@@ -116,6 +116,8 @@ int dbd_connect(dbi_conn_t *conn) {
 		options ? options : "",
 		tty ? tty : "");
 
+	if (conninfo_kludge) free(conninfo_kludge);
+
 	pgconn = PQconnectdb(conninfo);
 	if (conninfo) free(conninfo);
 	if (!pgconn) return -1;

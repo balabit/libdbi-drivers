@@ -1,25 +1,26 @@
 /*
- * libdbi - database independent abstraction layer for C.
- * Copyright (C) 2001, David Parker and Mark Tobenkin.
- * http://libdbi.sourceforge.net
+ * libdbi-drivers - 3rd-party drivers for libdbi, a database independent
+ * abstraction layer for C.
+ * Copyright (C) 2002, Markus Hoenicka
+ * http://libdbi-drivers.sourceforge.net
  * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
  * dbd_sqlite.c: SQLite database support (using libsqlite)
  * Copyright (C) 2002, Markus Hoenicka <mhoenicka@users.sourceforge.net>
- * http://libdbi.sourceforge.net
+ * http://libdbi-drivers.sourceforge.net
  * 
  * $Id$
  */
@@ -111,7 +112,7 @@ int _dbd_connect(dbi_conn_t *conn, const char* database) {
   conn->error_message = NULL;
 
   /* sqlite does not use hostname, username, password, port */
-  if (database && database[0]) {
+  if (database && *database) {
     dbname = database;
   }
   else {
@@ -121,7 +122,8 @@ int _dbd_connect(dbi_conn_t *conn, const char* database) {
   /* sqlite specific options */
   dbdir = dbi_conn_get_option(conn, "sqlite_dbdir");
 	
-  /* assemble full path of database */
+  /* the requested database is a file in the given directory. Assemble
+     full path of database */
   db_fullpath = malloc(strlen(dbname)+strlen(dbdir)+2); /* leave room
 							   for \0 and / */
   if (db_fullpath == NULL) {
@@ -129,19 +131,20 @@ int _dbd_connect(dbi_conn_t *conn, const char* database) {
     return -1;
   }
 
+  /* start with an empty string */
   db_fullpath[0] = '\0';
 	
-  if (dbdir && dbdir[0]) {
+  if (dbdir && *dbdir) {
     strcpy(db_fullpath, dbdir);
   }
-  if (db_fullpath[strlen(db_fullpath)-1] != dirsep[0]) {
+  if (db_fullpath[strlen(db_fullpath)-1] != *dirsep) {
     strcat(db_fullpath, dirsep);
   }
-  if (dbname && dbname[0]) {
+  if (dbname && *dbname) {
     strcat(db_fullpath, dbname);
   }
 
-  fprintf(stderr, "try to open %s<<\n", db_fullpath);
+/*   fprintf(stderr, "try to open %s<<\n", db_fullpath); */
   sqcon = sqlite_open(db_fullpath, 0 /* param not used */, &sq_errmsg);
   free(db_fullpath);
 	
@@ -232,8 +235,10 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
   /* this is not nice but we have to drop the table even if it does not
    exist (sqlite has no way to list *temporary* tables so we can't check
    for it's existence). Then we start over with a fresh table lest we
-   want duplicates ToDo: Now there is apparently a system table that lists
-   temporary tables */
+   want duplicates.
+   Update: Now apparently there is a system table that lists
+   temporary tables, but the DROP TABLE error doesn't hurt and is
+   most likely faster than checking for the existence of the table */
   dbd_query(conn, "DROP TABLE databases");
   dbd_query(conn, "CREATE TEMPORARY TABLE databases (dbname VARCHAR(255))");
 
@@ -247,6 +252,13 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
   while ((entry = readdir(dp)) != NULL) {
     stat(entry->d_name, &statbuf);
     if (S_ISREG(statbuf.st_mode)) {
+      /* ToDo: we could do a magic number check here to make sure we
+	 get only databases, not random files in the current directory.
+	 SQLite databases apparently start with the string:
+
+	 ** This file contains an SQLite 2.1 database **
+
+      */
       if (pattern) {
 	if (wild_case_compare(entry->d_name, &entry->d_name[strlen(entry->d_name)-1], pattern, &pattern[strlen(pattern)-1], '\\')) {
 	  retval = sqlite_exec_printf((sqlite*)(conn->connection), "INSERT INTO databases VALUES ('%s')", NULL, NULL, &sq_errmsg, entry->d_name);
@@ -276,6 +288,10 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
 }
 
 dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *pattern) {
+  /* list tables in a database. The current implementation lists permanent
+     tables only, as most applications know about the temporary tables
+     they created anyway.
+   */
   dbi_result_t *dbi_result;
   dbi_conn_t* tempconn;
   int retval;
@@ -296,7 +312,8 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
     return NULL;
   }
   
-  /* create temporary table for table names */
+  /* create temporary table for table names. The DROP command won't hurt
+     if the table doesn't exist yet */
   dbd_query(conn, "DROP TABLE tablenames");
   dbd_query(conn, "CREATE TEMPORARY TABLE tablenames (tablename VARCHAR(255))");
 /*   fprintf(stderr, "created temporary table\n"); */
@@ -372,9 +389,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
     return NULL;
   }
 	
-  /* sqlite does not know rows_affected, we assume numrows 
-   ToDo: apparently now there is a function returning rows_affected */
-  result = _dbd_result_create(conn, (void *)result_table, numrows, numrows);
+  result = _dbd_result_create(conn, (void *)result_table, numrows, sqlite_changes((sqlite*)conn->connection));
 
   _dbd_result_set_numfields(result, numcols);
 
@@ -383,14 +398,17 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
     int type;
 
     type = find_result_field_types(result_table[idx], conn, statement);
-    printf("type: %d<<\n", type);
+/*     printf("type: %d<<\n", type); */
     _translate_sqlite_type(type, &fieldtype, &fieldattribs);
-    /* the first row of the result table contains the field names */
+
     _dbd_result_add_field(result, idx, result_table[idx], fieldtype, fieldattribs);
     idx++;
   }
   
-  /* ToDo: can we call sqlite_free_table() here safely? */
+  /* ToDo: result_table is allocated memory, but we can't free
+   it here lest we want segfaults. It is quite unclear to me when, if
+   at all, this memory is deallocated */
+
   return result;
 }
 
@@ -409,7 +427,12 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
      However, sqlite stores the CREATE TABLE commands as a string in
      an internal table, so we can try to look up the types in these
-     strings.
+     strings. It is a VERY GOOD idea to declare the types if we want
+     the following to work
+
+     The code assumes that table and field names do not exceed a given
+     length limit. PostgreSQL uses 32 which is a bit low. SQLite
+     does not seem to have fixed limits. We use a limit of 128 here.
    */
 
   char* item;
@@ -426,7 +449,8 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   int type;
   dbi_error_flag errflag = 0;
 
-  /* check whether field contains the table info */
+  /* check whether field contains the table info. It does if the
+   notation "table.field" is used */
   item = strchr(field, (int)'.');
   if (!item) {
     /* the fields do not contain the table info. This means that
@@ -434,7 +458,9 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
        from the statement that created the result */
 
     /* To get started, we use the first item after 'from' or 'FROM'
-       as the table name */
+       as the table name (we currently ignore pathologic cases like
+       'FroM' or 'froM'. We could uppercase a copy but we need the
+       table name as is, so it is going to get complex) */
     if (!(table = strstr(statement, " from "))) {
       table = strstr(statement, " FROM ");
     }
@@ -464,11 +490,15 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
     /* for obvious reasons, the internal tables do not contain the
        commands how they were created themselves. We have to use known
-       for the field types */
+       values for the field types */
     if (!strcmp(curr_table, "sqlite_master") ||
 	!strcmp(curr_table, "sqlite_temp_master")) {
-      /* ToDo: some fields may be ints*/
-      return FIELD_TYPE_STRING;
+      if (!strcmp(field, "rootpage")) {
+	return FIELD_TYPE_LONG;
+      }
+      else {
+	return FIELD_TYPE_STRING;
+      }
     }
 
     strcpy(curr_field_name, field);
@@ -479,10 +509,33 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     strcpy(curr_field_name, item+1);
   }
 
-  printf("curr_table went to %s<<\ncurr_field_name went to %s<<\n", curr_table, curr_field_name);
+/*   printf("curr_table went to %s<<\ncurr_field_name went to %s<<\n", curr_table, curr_field_name); */
 
-  /* ToDo: check for known functions which may appear here instead
-     of field names */
+  /* check for known functions which may appear here instead
+     of field names. There is some overlap, i.e. some function work
+     both on strings and numbers. These cases would have to be
+     analyzed by checking the arguments */
+  if (strstr(curr_field_name, "abs(")
+      || strstr(curr_field_name, "last_insert_rowid(")
+      || strstr(curr_field_name, "length(")
+      || strstr(curr_field_name, "max(")
+      || strstr(curr_field_name, "min(")
+      || strstr(curr_field_name, "random(*)")
+      || strstr(curr_field_name, "round(")
+      || strstr(curr_field_name, "avg(")
+      || strstr(curr_field_name, "count(")
+      || strstr(curr_field_name, "sum(")) {
+    return FIELD_TYPE_LONG;
+  }
+  else if (strstr(curr_field_name, "coalesce(")
+	   || strstr(curr_field_name, "glob(")
+	   || strstr(curr_field_name, "like(")
+	   || strstr(curr_field_name, "lower(")
+	   || strstr(curr_field_name, "substr(")
+	   || strstr(curr_field_name, "upper(")) {
+    return FIELD_TYPE_STRING;
+  }
+      
 
   /* curr_table now contains the name of the table that the field
      belongs to. curr_field_name contains the name of the field.
@@ -509,7 +562,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     
     if (query_res || !table_numrows) {
       _error_handler(conn, errflag);
-      printf("field not found\n");
+/*       printf("field not found\n"); */
       return 0;
     }
   }
@@ -518,16 +571,17 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   /* table_result_table[3] now contains the sql statement that created
      the table containing the current field */
   /*  parse the sql statement to find the type of the current field */
-  printf("table_result_table[3]=%s<<\ncurr_field_name=%s<<\n", table_result_table[3], curr_field_name);
+/*   printf("table_result_table[3]=%s<<\ncurr_field_name=%s<<\n", table_result_table[3], curr_field_name); */
   curr_type = get_field_type(table_result_table[3], curr_field_name);
-  if (!curr_type) {
-    printf("out of memory\n");
-    return 0;
-  }
-  
+
   /* free memory */
   sqlite_free_table(table_result_table);
 
+  if (!curr_type) {
+/*     printf("out of memory\n"); */
+    return 0;
+  }
+  
   /* convert type to uppercase, reuse item */
   item = curr_type;
   while (*item) {
@@ -535,7 +589,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     item++;
   }
 
-  printf("field type: %s<<\n", curr_type);
+/*   printf("field type: %s<<\n", curr_type); */
   if (strstr(curr_type, "BLOB") ||
       strstr(curr_type, "CHAR") ||
       strstr(curr_type, "CLOB") ||
@@ -581,49 +635,65 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
 char* get_field_type(const char* statement, const char* curr_field_name) {
   /*
-    curr_type is a ptr to a string that will receive the type. The buffer
-    should be large enough for any type
+    statement is a ptr to a string with the "create table" statement
+    curr_field_name is a ptr to a string containing the name of the
+    field we need the type of.
+
+    returns the field type as an allocated string or NULL
+    if an error occurred
   */
   char *item;
   char *my_statement;
   char *field_name;
   char *end_field_name;
   char *type;
-  char *curr_type;
+  char *curr_type = NULL;
 
+  /* make a copy that we may modify */
   if ((my_statement = strdup(statement)) == NULL) {
     return NULL;
   }
 
+  /* the field list of the "create table" statement starts after the 
+     first opening bracket */
   item = strchr(my_statement, '(');
   if (!item) {
     free(my_statement);
     return NULL;
   }
 
+  /* make item point to the first item in the comma-separated list */
   item++;
 
+  /* now tokenize the field list */
   for (item = strtok(item, ","); item; item = strtok(NULL, ",")) {
-    printf("item:%s<<\n", item);
+/*     printf("item:%s<<\n", item); */
+
+    /* skip leading whitespace */
     field_name = item;
     while (*field_name == ' ') {
       field_name++;
     }
 
+    /* terminate field name */
     end_field_name = field_name+1;
     while (*end_field_name != ' ') {
       end_field_name++;
     }
     *end_field_name = '\0';
 
-    printf("field_name:%s<<\n", field_name);
+/*     printf("field_name:%s<<\n", field_name); */
+
+    /* analyze type if the field name is the one we want to check */
     if (!strcmp(field_name, curr_field_name)) {
+      /* skip leading whitespace */
       type = end_field_name + 1;
       while (*type == ' ') {
 	type++;
       }
+
       curr_type = strdup(type);
-      printf("curr_type:%s<<\n");
+/*       printf("curr_type:%s<<\n"); */
       break;
     }
   }
@@ -633,12 +703,23 @@ char* get_field_type(const char* statement, const char* curr_field_name) {
 }
 
 char *dbd_select_db(dbi_conn_t *conn, const char *db) {
+  /*
+    sqlite does not separate connecting to a database server and using
+    or opening a database. If we want to switch to a different database,
+    we have to drop the current connection and create a new one
+    instead, using the new database.
+   */
+
+  if (!db || !*db) {
+    return NULL;
+  }
+
   if (conn->connection) {
     sqlite_close((sqlite *)conn->connection);
   }
 
   if (_dbd_connect(conn, db)) {
-    return "";
+    return NULL;
   }
 
   return (char *)db;

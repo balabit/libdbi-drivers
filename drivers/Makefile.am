@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = mysql pgsql sqlite msql oracle firebird
+SUBDIRS = mysql pgsql sqlite sqlite3 msql oracle firebird

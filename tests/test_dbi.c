@@ -78,7 +78,8 @@ int main(int argc, char **argv) {
 			password[strlen(password)-1] = '\0';
 		}
 	}	  
-	if(!strcmp(drivername, "sqlite")) {
+	if(!strcmp(drivername, "sqlite")
+	   || !strcmp(drivername, "sqlite3")) {
 		printf("database directory? [.] ");
 		fgets(dbdir, 256, stdin);
 		if (dbdir[0] == '\n') {
@@ -124,7 +125,7 @@ int main(int argc, char **argv) {
 
 	driver = dbi_conn_get_driver(conn);
 	
-	printf("\nPlugin information:\n-------------------\n");
+	printf("\nDriver information:\n-------------------\n");
 	printf("\tName:       %s\n"
 	       "\tFilename:   %s\n"
 	       "\tDesc:       %s\n"
@@ -147,7 +148,7 @@ int main(int argc, char **argv) {
 			dbi_conn_set_option(conn, "host", hostname);
 		}
 	} else { /* sqlite */
-		dbi_conn_set_option(conn, "sqlite_dbdir", dbdir);
+		dbi_conn_set_option(conn, "sqlite3_dbdir", dbdir);
 	}
 
 	if (!strcmp(drivername, "mysql")) {
@@ -156,7 +157,8 @@ int main(int argc, char **argv) {
 	else if (!strcmp(drivername, "pgsql")) {
 		strcpy(initial_dbname, "template1");
 	}
-	else if (!strcmp(drivername, "sqlite")) {
+	else if (!strcmp(drivername, "sqlite")
+		 || !strcmp(drivername, "sqlite3")) {
 		strcpy(initial_dbname, dbname);
 	}
 	else { /* msql */
@@ -193,7 +195,9 @@ int main(int argc, char **argv) {
 	
 	printf("\nTest 2: Create database %s: \n", dbname);
 	
-	if (!strcmp(drivername, "sqlite") || !strcmp(drivername, "msql")) {
+	if (!strcmp(drivername, "sqlite")
+	    || !strcmp(drivername, "sqlite3")
+	    || !strcmp(drivername, "msql")) {
 		printf("\tThis is a no-op with the sqlite/msql drivers.\n");
 	}
 	else {
@@ -238,9 +242,10 @@ int main(int argc, char **argv) {
 	else if (!strcmp(drivername, "msql")) {
 	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char INT8, the_uchar UINT8, the_short INT16, the_ushort UINT16, the_long INT, the_ulong UINT, the_longlong INT64, the_ulonglong UINT64, the_float REAL, the_string CHAR(255), the_date DATE, the_time TIME)");		
 	}
-	else {
+	else { /* sqlite, sqlite3 */
 	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME, the_date DATE, the_time TIME)");
 	}
+
 	if ((result = dbi_conn_query(conn, query)) == NULL) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\tAAH! Can't create table! Error message: %s\n", errmsg);
@@ -490,7 +495,8 @@ int main(int argc, char **argv) {
 	
 	printf("\nTest 10: Drop database: \n");
 	
-	if (!strcmp(drivername, "sqlite")) {
+	if (!strcmp(drivername, "sqlite")
+	    || !strcmp(drivername, "sqlite3")) {
 		char dbpath[256];
 
 		strcpy(dbpath, dbdir);

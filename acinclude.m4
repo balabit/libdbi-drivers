@@ -234,6 +234,67 @@ else
 fi
 ])
 
+## SQLITE3
+
+AC_DEFUN(AC_CHECK_SQLITE3,
+[
+AM_CONDITIONAL(HAVE_SQLITE3, false)
+ac_sqlite3="NO"
+ac_sqlite3_incdir="NO"
+ac_sqlite3_libdir="NO"
+
+# exported variables
+SQLITE3_LIBS=""
+SQLITE3_LDFLAGS=""
+SQLITE3_INCLUDE=""
+
+AC_MSG_CHECKING(for SQLite3 support)
+
+AC_ARG_WITH(sqlite3,
+	[  --with-sqlite3		  Include SQLite3 support.],
+	[  ac_sqlite3="YES" ])
+AC_ARG_WITH(sqlite3-dir,
+	[  --with-sqlite3-dir	  Specifies the SQLite3 root directory.],
+	[  ac_sqlite3_incdir="$withval"/include
+	   ac_sqlite3_libdir="$withval"/lib ])
+AC_ARG_WITH(sqlite3-incdir,
+	[  --with-sqlite3-incdir  Specifies where the SQLite3 include files are.],
+	[  ac_sqlite3_incdir="$withval" ])
+AC_ARG_WITH(sqlite3-libdir,
+	[  --with-sqlite3-libdir  Specifies where the SQLite3 libraries are.],
+	[  ac_sqlite3_libdir="$withval" ])
+
+if test "$ac_sqlite3" = "YES"; then
+	if test "$ac_sqlite3_incdir" = "NO" || test "$ac_sqlite3_libs" = "NO"; then
+		sqlite3_incdirs="/usr/include /usr/local/include /usr/include/sqlite3 /usr/local/include/sqlite3 /usr/local/sqlite3/include /opt/sqlite3/include"
+		AC_FIND_FILE(sqlite3.h, $sqlite3_incdirs, ac_sqlite3_incdir)
+		sqlite3_libdirs="/usr/lib /usr/local/lib /usr/lib/sqlite3 /usr/local/lib/sqlite3 /usr/local/sqlite3/lib /opt/sqlite3/lib"
+		sqlite3_libs="libsqlite3.so libsqlite3.a"
+		AC_FIND_FILE($sqlite3_libs, $sqlite3_libdirs, ac_sqlite3_libdir)
+		if test "$ac_sqlite3_incdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid SQLite3 directory - include files not found.])
+		fi
+		if test "$ac_sqlite3_libdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid SQLite3 directory - libraries not found.])
+		fi
+	fi
+	AC_MSG_RESULT([yes: libs in $ac_sqlite3_libdir, headers in $ac_sqlite3_incdir])
+	AM_CONDITIONAL(HAVE_SQLITE3, true)
+	
+	SQLITE3_LIBS=-lsqlite3
+	SQLITE3_INCLUDE=-I$ac_sqlite3_incdir
+	SQLITE3_LDFLAGS=-L$ac_sqlite3_libdir
+	
+	AC_SUBST(SQLITE3_LIBS)
+	AC_SUBST(SQLITE3_INCLUDE)
+	AC_SUBST(SQLITE3_LDFLAGS)
+else
+	AC_MSG_RESULT(no)
+fi
+])
+
 ## mSQL
 
 AC_DEFUN(AC_CHECK_MSQL,

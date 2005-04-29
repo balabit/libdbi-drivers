@@ -1,0 +1,10 @@
+$Id$
+
+- improve the data type guessing code to support all SQL functions
+
+- define driver capabilities
+
+
+
+
+

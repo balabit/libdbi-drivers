@@ -168,6 +168,10 @@ int main(int argc, char **argv) {
 	dbi_conn_set_option(conn, "dbname", initial_dbname);
 	
 
+	if (!strcmp(drivername, "sqlite3")) {
+	  dbi_conn_set_option(conn, "sqlite3_encoding", "UTF-8");
+	}
+
 	if (dbi_conn_connect(conn) < 0) {
 		dbi_conn_error(conn, &errmsg);
 		printf("\nUnable to connect! Error message: %s\n", errmsg);

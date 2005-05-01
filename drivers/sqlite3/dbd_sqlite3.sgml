@@ -2,8 +2,8 @@
 <!-- $Id$ -->
 <book>
   <bookinfo>
-    <title>sqlite driver manual</title>
-    <subtitle>A libdbi driver using the SQLite embedded database engine</subtitle>
+    <title>sqlite3 driver manual</title>
+    <subtitle>A libdbi driver using the SQLite3 embedded database engine</subtitle>
   <author>
       <firstname>Markus</firstname>
       <surname>Hoenicka</surname>
@@ -13,29 +13,23 @@
     </author>
     <revhistory>
       <revision>
-	<revnumber>0.3</revnumber>
-	<date>2003-4-12</date>
-      </revision>
-      <revision>
-	<revnumber>0.2</revnumber>
-	<date>2003-2-4</date>
-      </revision>
-      <revision>
 	<revnumber>0.1</revnumber>
-	<date>2002-11-5</date>
+	<date>2005-05-01</date>
       </revision>
     </revhistory>
   </bookinfo>
   <preface>
     <title>Preface</title>
     <para><ulink url="http://libdbi.sourceforge.net">libdbi</ulink> is a database abstraction layer written in C. It implements a framework that can utilize separate driver libraries for specific database servers. The <ulink url="http://libdbi-drivers.sourceforge.net">libdbi-drivers</ulink> project provides the drivers necessary to talk to the supported database servers.</para>
-    <para>This manual provides information about the sqlite driver. The manual is intended for programmers who write applications linked against libdbi and who want their applications to work with the sqlite driver.</para>
-    <para>Questions and comments about the sqlite driver should be sent to the <ulink url="mailto:libdbi-drivers-devel@lists.sourceforge.net">libdbi-drivers-devel</ulink> mailing list. Visit the <ulink url="http://lists.sourceforge.net/lists/listinfo/libdbi-drivers-devel">libdbi-drivers-devel list page</ulink> to subscribe and for further information. Questions and comments about the libdbi library should be sent to the appropriate libdbi mailing list.</para>
-    <para>The sqlite driver is maintained by <ulink url="mailto:mhoenicka@users.sourceforge.net">Markus Hoenicka</ulink>.</para>
+    <para>This manual provides information about the sqlite3 driver. The manual is intended for programmers who write applications linked against libdbi and who want their applications to work with the sqlite3 driver.</para>
+    <para>Questions and comments about the sqlite3 driver should be sent to the <ulink url="mailto:libdbi-drivers-devel@lists.sourceforge.net">libdbi-drivers-devel</ulink> mailing list. Visit the <ulink url="http://lists.sourceforge.net/lists/listinfo/libdbi-drivers-devel">libdbi-drivers-devel list page</ulink> to subscribe and for further information. Questions and comments about the libdbi library should be sent to the appropriate libdbi mailing list.</para>
+    <para>The sqlite3 driver is maintained by <ulink url="mailto:mhoenicka@users.sourceforge.net">Markus Hoenicka</ulink>.</para>
   </preface>
   <chapter>
     <title>Introduction</title>
-    <para><ulink url="http://www.sqlite.org">SQLite</ulink> is a smart library that implements an embeddable SQL database engine. No need for an external database server - an application linked against libsqlite can do it all by itself. Of course there are a few limitations of this approach compared to "real" SQL database servers, mostly for massively parallel high-throughput database applications, but on the other hand, installation and administration are a breeze. Your application should support the sqlite driver if one of the following applies:</para>
+    <para><ulink url="http://www.sqlite.org">SQLite</ulink> is a smart library that implements an embeddable SQL database engine. No need for an external database server - an application linked against libsqlite can do it all by itself. Of course there are a few limitations of this approach compared to "real" SQL database servers, mostly for massively parallel high-throughput database applications, but on the other hand, installation and administration are a breeze.</para>
+    <para>SQLite3 is a redesign of SQLite which is incompatible with the older 2.x versions. As the API functions and the library itself were renamed, SQLite3 also requires a slightly modified libdbi driver. You can have both the sqlite and the sqlite3 driver installed on your system, but you have to make sure that you access your databases with the driver that matches the database version.</para>
+    <para>Your application should support the sqlite3 driver if one of the following applies:</para>
     <itemizedlist>
       <listitem>
 	<para>You want to support potential users of your application who don't have the skills to administer a database server.</para>
@@ -50,7 +44,7 @@
   </chapter>
   <chapter>
     <title>Installation</title>
-    <para>This chapter describes the prerequisites and the procedures to build and install the sqlite driver from the sources.</para>
+    <para>This chapter describes the prerequisites and the procedures to build and install the sqlite3 driver from the sources.</para>
     <sect1>
       <title>Prerequisites</title>
       <para>The following packages have to be installed on your system:</para>
@@ -58,24 +52,24 @@
 	<varlistentry>
 	  <term>libdbi</term>
 	  <listitem>
-	    <para>This library provides the framework of the database abstraction layer which can utilize the sqlite driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>. The current version of the sqlite driver requires at least libdbi version 0.6.7.</para>
+	    <para>This library provides the framework of the database abstraction layer which can utilize the sqlite3 driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>. The current version of the sqlite driver requires at least libdbi version 0.7.2.</para>
 	  </listitem>
 	</varlistentry>
 	<varlistentry>
-	  <term>sqlite</term>
+	  <term>sqlite3</term>
 	  <listitem>
-	    <para>This library implements the embeddable database engine. Find the most recent release at <ulink url="http://www.sqlite.org">www.sqlite.org</ulink>. The current version of the sqlite driver was tested with SQLite version 2.7.6. and should work ok with later releases.</para>
+	    <para>This library implements the embedded database engine. Find the most recent release at <ulink url="http://www.sqlite.org">www.sqlite.org</ulink>. The current version of the sqlite driver was tested with SQLite3 version 3.0.8 and should work ok with later releases.</para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
     </sect1>
     <sect1>
-      <title>Build and install the sqlite driver</title>
+      <title>Build and install the sqlite3 driver</title>
       <para>First you have to unpack the libdbi-drivers archive in a suitable directory. Unpacking will create a new subdirectory <filename class="directory">libdbi-drivers-X.Y</filename> where "X.Y" denotes the version:</para>
-      <screen><prompt>$ </prompt><userinput>tar -xzf libdbi-drivers-0.3.tar.gz</userinput></screen>
-      <para>The libdbi-drivers project consists of several drivers that use a common build system. Therefore you <emphasis>must</emphasis> tell configure explicitly that you want to build the sqlite driver (you can list as many drivers as you want to build):</para>
+      <screen><prompt>$ </prompt><userinput>tar -xzf libdbi-drivers-0.7.2.tar.gz</userinput></screen>
+      <para>The libdbi-drivers project consists of several drivers that use a common build system. Therefore you <emphasis>must</emphasis> tell configure explicitly that you want to build the sqlite3 driver (you can list as many drivers as you want to build):</para>
       <screen><prompt>$ </prompt><userinput>cd libdbi-drivers</userinput></screen>
-      <screen><prompt>$ </prompt><userinput>./configure --with-sqlite</userinput></screen>
+      <screen><prompt>$ </prompt><userinput>./configure --with-sqlite3</userinput></screen>
       <para>Run <command>./configure --help</command> to find out about additional options.</para>
       <para>Then build the driver with the command:</para>
       <screen><prompt>$ </prompt><userinput>make</userinput></screen>
@@ -112,17 +106,26 @@
 	  </note>
 	</listitem>
       </varlistentry>
+      <varlistentry>
+	<term>sqlite_encoding</term>
+	<listitem>
+	  <para>This option sets the character encoding used in the current connection. Allowed values are "UTF-8" and "UTF-16".</para>
+	  <note>
+	    <para>This setting affects the data storage format only if the database does not exist yet. An existing database will always use the storage format it was initialized for, but SQLite3 automatically converts the data to match the connection setting.</para>
+	  </note>
+	</listitem>
+      </varlistentry>
     </variablelist>
   </chapter>
   <chapter>
     <title>Peculiarities you should know about</title>
-    <para>This chapter lists known peculiarities of the sqlite driver. This includes SQLite features that differ from what you know from the other database servers supported by libdbi, and it includes features and misfeatures introduced by the sqlite driver. It is the intention of the driver author to reduce the number of misfeatures in future releases if possible.</para>
+    <para>This chapter lists known peculiarities of the sqlite3 driver. This includes SQLite3 features that differ from what you know from the other database servers supported by libdbi, and it includes features and misfeatures introduced by the sqlite3 driver. It is the intention of the driver author to reduce the number of misfeatures in future releases if possible.</para>
     <sect1>
-      <title>SQLite (mis)features</title>
-      <para>As the SQLite package is constantly being improved, you should refer to the original documentation about the SQL features it <ulink url="http://www.sqlite.org/lang.html">supports</ulink> and about the SQL features it <ulink url="http://www.sqlite.org/omitted.html">doesn't support</ulink>.</para>
-      <para>One noticeable difference between SQLite and other SQL database engines is that the former is typeless. All data are stored as strings, and you can insert any type of data into any column. While the SQLite author has good reasons for this feature, it is an obstacle to using the strongly typed retrieval functions of libdbi. The only way out is to declare the column types in a <command>CREATE TABLE</command> statement just as you would with any other SQL database engine. As an example, the following statement is perfectly fine with SQLite, but not with the sqlite driver:</para>
+      <title>SQLite3 (mis)features</title>
+      <para>As the SQLite3 package is constantly being improved, you should refer to the original documentation about the SQL features it <ulink url="http://www.sqlite.org/lang.html">supports</ulink> and about the SQL features it <ulink url="http://www.sqlite.org/omitted.html">doesn't support</ulink>.</para>
+      <para>One noticeable difference between SQLite3 and other SQL database engines is that the former uses something called "manifest typing". The practical difference to the typeless nature of SQLite 2.x is negligible as it still does not support the rich typing used by most other SQL database engines. In order to satisfy the needs of the strongly typed retrieval functions of libdbi, the only way out is to declare the column types in a <command>CREATE TABLE</command> statement just as you would with any other SQL database engine. As an example, the following statement is perfectly fine with SQLite3, but not with the sqlite3 driver:</para>
       <screen><userinput>CREATE TABLE foo (a,b,c)</userinput></screen>
-      <para>However, the following statement is fine with SQLite, the sqlite driver, and just about any other SQL database server:</para>
+      <para>However, the following statement is fine with SQLite3, the sqlite3 driver, and just about any other SQL database engine out there:</para>
       <screen><userinput>CREATE TABLE foo (a INTEGER,b TEXT,c VARCHAR(64))</userinput></screen>
       <para>The following table lists the column types which are positively recognized by the sqlite driver. Essentially all column types supported by MySQL and PostgreSQL are supported by this driver as well, making it reasonably easy to write portable SQL code. All other column types are treated as strings.</para>
       <table>
@@ -202,26 +205,18 @@
 	  </tbody>
 	</tgroup>
       </table>
-      <para>Another difference is the lack of access control on the database engine level. Most SQL database servers implement some mechanisms to restrict who is allowed to fiddle with the databases and who is not. As SQLite uses regular files to store its databases, all available access control is on the filesystem level. There is no SQL interface to this kind of access control, but <command>chmod</command> and <command>chown</command> are your friends.</para>
-      <para>SQLite appears to implement row and column counters as C long int values. This limits the maximum number of rows somewhat compared to other SQL database engines.</para>
-      <para>SQLite does not have specific support for binary data. If you want to store binary data (e.g. character sequences containing NULL bytes) in a fashion that is portable across all database servers supported by libdbi, think about encoding these data, using either CGI-style or base64 algorithms. Free or public domain implementations of both algorithms can be found all over the place in the internet. The SQLite sources also contain a file <filename moreinfo="none">src/encode.c</filename> that provides suitable endoding and decoding functions.</para>
-      <para>SQLite currently supports different character encodings only as compile-time options. There is no way to change the encoding at runtime or per database.</para>
+      <para>Another difference is the lack of access control on the database engine level. Most SQL database servers implement some mechanisms to restrict who is allowed to fiddle with the databases and who is not. As SQLite3 uses regular files to store its databases, all available access control is on the filesystem level. There is no SQL interface to this kind of access control, but <command>chmod</command> and <command>chown</command> are your friends.</para>
+      <para>In contrast to SQLite2.x, SQLite3 appears to implement row and column counters as C long long int values. This allows the same maximum number of rows as in most other SQL database engines.</para>
     </sect1>
     <sect1>
       <title>sqlite driver misfeatures</title>
       <para>And now we have to discuss how successful the sqlite driver is in squeezing the SQLite idea of a database engine into the libdbi framework which was shaped after MySQL and PostgreSQL. Keep in mind that the limitations mentioned here are not intrinsic, that is a sufficient amount of coding might fix these problems eventually.</para>
       <itemizedlist>
 	<listitem>
-	  <para>The sqlite driver has not been tested for memory leaks yet. It may leak memory like hell.</para>
-	</listitem>
-	<listitem>
-	  <para>The typeless nature of SQLite has some nasty consequences. The sqlite driver takes great care to reconstruct the type of a field that you request in a query, but this isn't always successful. Some of the functions that SQLite supports work both on numeric and text data. The sqlite driver currently cannot deduce the field type correctly as it would have to check all arguments of each function. Instead the sqlite driver makes a few assumptions that may be right or wrong in a given case. The affected functions are <function>coalesce(X,Y,...)</function>, <function>max(X)</function>, <function>min(X)</function>, and <function>count(X)</function>.</para>
+	  <para>The (essentially) typeless nature of SQLite has some nasty consequences. The sqlite driver takes great care to reconstruct the type of a field that you request in a query, but this isn't always successful. Some of the functions that SQLite supports work both on numeric and text data. The sqlite driver currently cannot deduce the field type correctly as it would have to check all arguments of each function. Instead the sqlite driver makes a few assumptions that may be right or wrong in a given case. The affected functions are <function>coalesce(X,Y,...)</function>, <function>max(X)</function>, <function>min(X)</function>, and <function>count(X)</function>.</para>
 	</listitem>
 	<listitem>
 	  <para>The sqlite driver currently assumes that the directory separator of your filesystem is a slash (/). This may be wrong on your particular system. It is not a problem for Windows systems as long as the sqlite driver is built with the Cygwin tools (see <filename>README.win32</filename>).</para>
-	  <note>
-	    <para>Building the sqlite driver on Windows/Cygwin has not been tested yet, but it uses the same procedure as the other libdbi drivers. Chances are that it works.</para>
-	  </note>
 	</listitem>
 	<listitem>
 	  <para>Listing tables with the <function>dbi_conn_get_table_list()</function> libdbi function currently returns only permanent tables. Temporary tables are ignored.</para>

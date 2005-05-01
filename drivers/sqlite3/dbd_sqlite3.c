@@ -73,6 +73,9 @@ static const char *reserved_words[] = SQLITE3_RESERVED_WORDS;
 static const char sqlite3_encoding_UTF8[] = "UTF-8";
 static const char sqlite3_encoding_UTF16[] = "UTF-16";
 
+/* pointers to sqlite3 functions - avoids tons of if/elses */
+/* int (*my_sqlite3_open)(const char *,sqlite3 **); */
+
 /* forward declarations */
 int _real_dbd_connect(dbi_conn_t *conn, const char* database);
 void _translate_sqlite3_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
@@ -123,6 +126,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
 
   const char *dbname;
   const char *dbdir;
+  const char *encoding;
 
   /* initialize error stuff */
   conn->error_number = 0;
@@ -142,6 +146,13 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   }
 
   /* sqlite3 specific options */
+  encoding = dbi_conn_get_option(conn, "sqlite3_encoding");
+
+  if (!encoding) {
+    /* use UTF-8 as default */
+    encoding = sqlite3_encoding_UTF8;
+  }
+
   dbdir = dbi_conn_get_option(conn, "sqlite3_dbdir");
 	
   if (!dbdir) {
@@ -172,7 +183,13 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   }
 
 /*   fprintf(stderr, "try to open %s<<\n", db_fullpath); */
-  sqlite3_errcode = sqlite3_open(db_fullpath, &sqcon);
+  if (!strcmp(encoding, sqlite3_encoding_UTF8)) {
+    sqlite3_errcode = sqlite3_open(db_fullpath, &sqcon);
+  }
+  else {
+    sqlite3_errcode = sqlite3_open16(db_fullpath, &sqcon);
+  }
+
   free(db_fullpath);
 	
   if (sqlite3_errcode) {
@@ -249,6 +266,7 @@ int dbd_get_socket(dbi_conn_t *conn){
 }
 
 const char *dbd_get_encoding(dbi_conn_t *conn){
+  const char* encoding;
   /* encoding is a compile-time option with the sqlite3
      library. Instead of using the sqlite3-provided string, we use the
      iana.org names */
@@ -259,8 +277,14 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 /*     return sqlite3_encoding_ISO8859; */
 /*   } */
 
+  encoding = dbi_conn_get_option(conn, "sqlite3_encoding");
+
+  if (!encoding) {
+    /* use UTF-8 as default */
+    encoding = sqlite3_encoding_UTF8;
+  }
   /* todo: implement utf8 vs utf16 distinction */
-  return sqlite3_encoding_UTF8;
+  return encoding;
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {

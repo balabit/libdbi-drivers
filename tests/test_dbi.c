@@ -143,12 +143,17 @@ int main(int argc, char **argv) {
 		dbi_conn_set_option(conn, "username", username);
 		dbi_conn_set_option(conn, "password", password);
 	
-	} else if (!strcmp(drivername, "msql")) {
+	} 
+	else if (!strcmp(drivername, "msql")) {
 		if( *hostname) {
 			dbi_conn_set_option(conn, "host", hostname);
 		}
-	} else { /* sqlite */
+	}
+	else if (!strcmp(drivername, "sqlite3")) { 
 		dbi_conn_set_option(conn, "sqlite3_dbdir", dbdir);
+	}
+	else { /* sqlite */
+		dbi_conn_set_option(conn, "sqlite_dbdir", dbdir);
 	}
 
 	if (!strcmp(drivername, "mysql")) {
@@ -286,7 +291,7 @@ int main(int argc, char **argv) {
 	if(!strcmp(drivername, "msql")) {
 		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32767, 32767, -2147483647, 2147483647, -9223372036854775807,9223372036854775807, 3.402823466E+38, %s, '11-jul-1977', '23:59:59')", quoted_string);
 	} else {
-		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775808, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", quoted_string);
+		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", quoted_string);
 	}
 
 	if (quoted_string) {

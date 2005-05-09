@@ -175,8 +175,8 @@
 	      <entry>4 byte (long) integer type used to store a signed integer between -2147483648 and 2147483647 or an unsigned integer between 0 and 4294967295.</entry>
 	    </row>
 	    <row>
-	      <entry>BIGINT, INT8</entry>
-	      <entry>8 byte (long long) integer type used to store a signed integer between -9223372036854775808 and 9223372036854775807 or an unsigned integer between 0 and 18446744073709551615.</entry>
+	      <entry>BIGINT, INT8, INTEGER PRIMARY KEY</entry>
+	      <entry>8 byte (long long) integer type used to store a signed integer between -9223372036854775808 and 9223372036854775807 or an unsigned integer between 0 and 18446744073709551615. See below for a discussion of INTEGER PRIMARY KEY.</entry>
 	    </row>
 	    <row>
 	      <entry>DECIMAL, NUMERIC</entry>
@@ -210,8 +210,14 @@
     </sect1>
     <sect1>
       <title>sqlite driver misfeatures</title>
-      <para>And now we have to discuss how successful the sqlite driver is in squeezing the SQLite idea of a database engine into the libdbi framework which was shaped after MySQL and PostgreSQL. Keep in mind that the limitations mentioned here are not intrinsic, that is a sufficient amount of coding might fix these problems eventually.</para>
+      <para>And now we have to discuss how successful the sqlite driver is in squeezing the SQLite idea of a database engine into the libdbi framework which was shaped after MySQL and PostgreSQL. Keep in mind that the limitations mentioned here are not intrinsic (except maybe the first one which is beyond our control), that is a sufficient amount of coding might fix these problems eventually.</para>
       <itemizedlist>
+	<listitem>
+	  <para>SQLite3 handles auto-increment columns in a fairly non-intuitive way. Only the type INTEGER PRIMARY KEY auto-increments. As a user of other database engine you might expect the row IDs to be 4-byte integers (they were in 2.x), but nope: they are in fact 8-byte integers, and therefore equivalent to INT8 or BIGINT of other engines. This leaves us with the odd "feature" of the sqlite3 driver that INTEGER is a 4-byte integer, whereas INTEGER PRIMARY KEY is a 8-bit integer type. If this were not the case, auto-incrementing columns would be artificially limited to the range of 4-byte integers. On the other hand this means that you cannot declare a real 4-byte integer auto-incrementing column.</para>
+	  <warning>
+	    <para>Do not forget to use <function moreinfo="none">dbi_result_get_longlong()</function> or <function moreinfo="none">dbi_result_get_ulonglong</function> to retrieve values from columns declared as INTEGER PRIMARY KEY.</para>
+	  </warning>
+	</listitem>
 	<listitem>
 	  <para>The (essentially) typeless nature of SQLite has some nasty consequences. The sqlite driver takes great care to reconstruct the type of a field that you request in a query, but this isn't always successful. Some of the functions that SQLite supports work both on numeric and text data. The sqlite driver currently cannot deduce the field type correctly as it would have to check all arguments of each function. Instead the sqlite driver makes a few assumptions that may be right or wrong in a given case. The affected functions are <function>coalesce(X,Y,...)</function>, <function>max(X)</function>, <function>min(X)</function>, and <function>count(X)</function>.</para>
 	</listitem>

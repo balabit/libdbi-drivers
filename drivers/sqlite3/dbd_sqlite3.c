@@ -201,11 +201,11 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
        access rights or an existing database is corrupted or created
        with an incompatible version */
     if (sq_errmsg) {
-      _dbd_internal_error_handler(conn, sq_errmsg, 0);
+      _dbd_internal_error_handler(conn, sq_errmsg, sqlite3_errcode);
       free(sq_errmsg);
     }
     else {
-      _dbd_internal_error_handler(conn, "could not open database", 0);
+      _dbd_internal_error_handler(conn, "could not open database", sqlite3_errcode);
     }
     return -1;
   }
@@ -738,6 +738,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     type = FIELD_TYPE_INT24;
   }
   else if (strstr(curr_type, "BIGINT")
+	   || strstr(curr_type, "INTEGER PRIMARY KEY") /* BAD BAD HACK */ 
 	   || strstr(curr_type, "INT8")) {
     type = FIELD_TYPE_LONGLONG;
   }
@@ -912,7 +913,7 @@ int dbd_ping(dbi_conn_t *conn) {
 void _translate_sqlite3_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs) {
   unsigned int _type = 0;
   unsigned int _attribs = 0;
-/*   printf("fieldtype:%d<<\n", fieldtype); */
+/* printf("fieldtype:%d<<\n", fieldtype); */
   switch (fieldtype) {
   case FIELD_TYPE_TINY:
     _type = DBI_TYPE_INTEGER;

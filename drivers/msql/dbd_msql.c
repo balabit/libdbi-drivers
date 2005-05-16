@@ -197,6 +197,10 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 }
 
 
+int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+  return dbd_quote_string(conn->driver, orig, dest);
+}
+
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) 
 {
 	return NULL;

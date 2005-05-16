@@ -426,6 +426,10 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
   return len+2;
 }
 
+int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+  return dbd_quote_string(conn->driver, orig, dest);
+}
+
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
   /* allocate a new dbi_result_t and fill its applicable members:
    * 

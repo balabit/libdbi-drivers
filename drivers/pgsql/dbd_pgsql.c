@@ -63,7 +63,7 @@ static const char *reserved_words[] = PGSQL_RESERVED_WORDS;
 
 /* encoding strings, array is terminated by empty string */
 static const char pgsql_encoding_hash[][16] = {
-  /* from , to */
+  /* PostgreSQL , www.iana.org */
   "SQL_ASCII", "US-ASCII",
   "EUC_JP", "EUC-JP",
   "EUC_KR", "EUC-KR",
@@ -92,6 +92,9 @@ static const char pgsql_encoding_hash[][16] = {
 void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
+int _dbd_real_connect(dbi_conn_t *conn, const char *db);
+const char* _encoding_pgsql2iana(const char *penc);
+const char* _encoding_iana2pgsql(const char *ienc);
 
 /* this function is available through the PostgreSQL client library, but it
    is not declared in any of their headers. I hope this won't break anything */
@@ -116,10 +119,15 @@ int dbd_initialize(dbi_driver_t *driver) {
 }
 
 int dbd_connect(dbi_conn_t *conn) {
+  return _dbd_real_connect(conn, NULL);
+}
+
+int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	const char *host = dbi_conn_get_option(conn, "host");
 	const char *username = dbi_conn_get_option(conn, "username");
 	const char *password = dbi_conn_get_option(conn, "password");
-	const char *dbname = dbi_conn_get_option(conn, "dbname");
+	const char *dbname;
+	const char *encoding = dbi_conn_get_option(conn, "encoding");
 	int port = dbi_conn_get_option_numeric(conn, "port");
 
 	/* pgsql specific options */
@@ -130,9 +138,21 @@ int dbd_connect(dbi_conn_t *conn) {
 	char *port_str;
 	char *conninfo;
 	char *conninfo_kludge;
+	char* sql_cmd;
 
-	if (port > 0) asprintf(&port_str, "%d", port);
-	else port_str = NULL;
+	if (db && *db) {
+	  dbname = db;
+	}
+	else {
+	  dbname = dbi_conn_get_option(conn, "dbname");
+	}
+
+	if (port > 0) {
+	  asprintf(&port_str, "%d", port);
+	}
+	else {
+	  port_str = NULL;
+	}
 
 	/* YUCK YUCK YUCK YUCK YUCK. stupid libpq. */
 	if (host && port_str) asprintf(&conninfo_kludge, "host='%s' port='%s'", host, port_str);
@@ -168,6 +188,25 @@ int dbd_connect(dbi_conn_t *conn) {
 		if (dbname) conn->current_db = strdup(dbname);
 	}
 	
+	if (encoding && *encoding) {
+	  /* set connection encoding */
+	  if (strcmp(encoding, "auto")) {
+/* 	    printf("try to set iana:%s<<pgsql:%s encoding\n", encoding, _encoding_iana2pgsql(encoding)); */
+/* 	    asprintf(&sql_cmd, "SET NAMES '%s'", _encoding_iana2pgsql(encoding)); */
+/* 	    dbd_query(conn, sql_cmd); */
+/* 	    free(sql_cmd); */
+	    if (PQsetClientEncoding(pgconn, _encoding_iana2pgsql(encoding))) {
+/* 	      printf("could not set client encoding to %s\n", _encoding_iana2pgsql(encoding)); */
+	    }
+	  }
+	  /* else: by default, pgsql uses the database encoding
+	     as the client encoding, nothing to do */
+/* 	  printf("set encoding to %s<<\n", encoding); */
+	}
+/* 	else { */
+/* 	  printf("leave encoding alone\n"); */
+/* 	} */
+
 	return 0;
 }
 
@@ -214,36 +253,81 @@ int dbd_get_socket(dbi_conn_t *conn)
 const char *dbd_get_encoding(dbi_conn_t *conn){
 
         char* my_enc;
+	int n_encoding;
+	const char* encodingopt;
+	char* sql_cmd;
+	dbi_result dbires = NULL;
 	PGconn *pgconn = (PGconn*) conn->connection;
 	
 	if(!pgconn) return NULL;
 
-	/* this is somewhat murky as the pg_encoding_to_char()
-	 function is not declared properly by the PostgreSQL client
-	 library headers.  This may indicate that it is not supposed
-	 to be exported or that it may disappear without a trace
-	 eventually. If it breaks, use a query "SHOW CLIENT_ENCODING"
-	 instead */
-        my_enc = pg_encoding_to_char(PQclientEncoding(pgconn));
+	encodingopt = dbi_conn_get_option(conn, "encoding");
+	if (encodingopt && !strcmp(encodingopt, "auto")) {
+
+	  /* this is somewhat murky as the pg_encoding_to_char()
+	     function is not declared properly by the PostgreSQL client
+	     library headers.  This may indicate that it is not supposed
+	     to be exported or that it may disappear without a trace
+	     eventually. If it breaks, use a query "SHOW CLIENT_ENCODING"
+	     instead */
+	  my_enc = pg_encoding_to_char(PQclientEncoding(pgconn));
+/*  	  printf("use PQclientEncoding, auto\n"); */
+	}
+	else if (encodingopt) {
+	  my_enc = pg_encoding_to_char(PQclientEncoding(pgconn));
+/*  	  printf("use PQclientEncoding, %s\n", encodingopt); */
+	}
+	else {
+	  asprintf(&sql_cmd, "SELECT encoding FROM pg_database WHERE datname='%s'", conn->current_db);
+	  
+	  dbires = dbi_conn_query(conn, sql_cmd);
+	  free(sql_cmd);
+
+	  if (dbires && dbi_result_next_row(dbires)) {
+	    n_encoding = dbi_result_get_long_idx(dbires, 1);
+	    my_enc = pg_encoding_to_char(n_encoding);
+/*  	    printf("select returned encoding %d<<%s\n", n_encoding, my_enc); */
+	  }
+	}
 
 	if (!my_enc) {
 	  return NULL;
 	}
 	else {
-	  int i = 0;
-
-	  /* loop over all even entries in hash and compare to my_enc */
-	  while (*pgsql_encoding_hash[i]) {
-	    if (!strcmp(pgsql_encoding_hash[i], my_enc)) {
-	      /* return corresponding odd entry */
-	      return pgsql_encoding_hash[i+1];
-	    }
-	    i+=2;
-	  }
-
-	  /* don't know how to translate, return original string */
-	  return my_enc;
+	  return _encoding_pgsql2iana(my_enc);
 	}
+}
+
+const char* _encoding_pgsql2iana(const char *penc) {
+  int i = 0;
+
+  /* loop over all even entries in hash and compare to penc */
+  while (*pgsql_encoding_hash[i]) {
+    if (!strcmp(pgsql_encoding_hash[i], penc)) {
+      /* return corresponding odd entry */
+      return pgsql_encoding_hash[i+1];
+    }
+    i+=2;
+  }
+
+  /* don't know how to translate, return original encoding */
+  return penc;
+}
+
+const char* _encoding_iana2pgsql(const char *ienc) {
+  int i = 0;
+
+  /* loop over all odd entries in hash and compare to ienc */
+  while (*pgsql_encoding_hash[i+1]) {
+    if (!strcmp(pgsql_encoding_hash[i+1], ienc)) {
+      /* return corresponding even entry */
+      return pgsql_encoding_hash[i];
+    }
+    i+=2;
+  }
+
+  /* don't know how to translate, return original encoding */
+  return ienc;
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
@@ -285,6 +369,10 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
 	return len+2;
 }
 
+int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+  return dbd_quote_string(conn->driver, orig, dest);
+}
+
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	/* allocate a new dbi_result_t and fill its applicable members:
 	 * 
@@ -324,8 +412,7 @@ char *dbd_select_db(dbi_conn_t *conn, const char *db) {
     conn->connection = NULL;
   }
 
-  dbi_conn_set_option(conn, "dbname", db);
-  if (dbd_connect(conn)) {
+  if (_dbd_real_connect(conn, db)) {
     return NULL;
   }
 

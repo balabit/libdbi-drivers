@@ -146,7 +146,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   }
 
   /* sqlite3 specific options */
-  encoding = dbi_conn_get_option(conn, "sqlite3_encoding");
+  encoding = dbi_conn_get_option(conn, "encoding");
 
   if (!encoding) {
     /* use UTF-8 as default */
@@ -277,7 +277,7 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 /*     return sqlite3_encoding_ISO8859; */
 /*   } */
 
-  encoding = dbi_conn_get_option(conn, "sqlite3_encoding");
+  encoding = dbi_conn_get_option(conn, "encoding");
 
   if (!encoding) {
     /* use UTF-8 as default */
@@ -456,6 +456,10 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
   strcat(dest, "'");
 	
   return len+2;
+}
+
+int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+  return dbd_quote_string(conn->driver, orig, dest);
 }
 
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {

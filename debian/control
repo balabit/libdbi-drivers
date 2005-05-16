@@ -1,0 +1,34 @@
+Source: libdbi-drivers
+Section: libs
+Priority: optional
+Maintainer: David Parker <david@neongoat.com>
+Build-Depends: debhelper (>> 3.0.0), libdbi0-dev (>= 0.7.1), libmysqlclient14-dev, postgresql-dev, libsqlite0-dev
+Standards-Version: 3.6.1
+
+Package: libdbd-sqlite
+Section: libs
+Architecture: any
+Depends: libdbi0 (>= 0.7.1), ${shlibs:Depends}
+Description: SQLite database driver for libdbi
+ This driver provides support for serverless SQLite databases through the
+ libdbi Database Independent Abstraction Layer. Switching a program's driver
+ does not require recompilation or rewriting source code.
+
+Package: libdbd-mysql
+Section: libs
+Architecture: any
+Depends: libdbi0 (>= 0.7.1), ${shlibs:Depends}
+Description: MySQL database server driver for libdbi
+ This driver provides connectivity to MySQL database servers through the
+ libdbi Database Independent Abstraction Layer. Switching a program's driver
+ does not require recompilation or rewriting source code.
+
+Package: libdbd-pgsql
+Section: libs
+Architecture: any
+Depends: libdbi0 (>= 0.7.1), ${shlibs:Depends}
+Description: PostgreSQL database server driver for libdbi
+ This driver provides connectivity to PostgreSQL database servers through the
+ libdbi Database Independent Abstraction Layer. Switching a program's driver
+ does not require recompilation or rewriting source code.
+

@@ -64,7 +64,7 @@ static const char *reserved_words[] = MYSQL_RESERVED_WORDS;
 
 /* encoding strings, array is terminated by empty string */
 static const char mysql_encoding_hash[][16] = {
-  /* from , to */
+  /* MySQL, www.iana.org */
   "ascii", "US-ASCII",
   "ujis", "EUC-JP",
   "euc_kr", "EUC-KR", 
@@ -103,9 +103,15 @@ static const char mysql_encoding_hash[][16] = {
   ""
 };
 
+/* forward declarations of local functions */
 void _translate_mysql_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
+const char* _encoding_mysql2iana(const char *penc);
+const char* _encoding_iana2mysql(const char *ienc);
+
+
+
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, const char ***_reserved_words) {
 	/* this is the first function called after the driver module is loaded into memory */
 	*_driver_info = &driver_info;
@@ -124,11 +130,13 @@ int dbd_initialize(dbi_driver_t *driver) {
 
 int dbd_connect(dbi_conn_t *conn) {
 	MYSQL *mycon;
-	
+	char* sql_cmd;
+
 	const char *host = dbi_conn_get_option(conn, "host");
 	const char *username = dbi_conn_get_option(conn, "username");
 	const char *password = dbi_conn_get_option(conn, "password");
 	const char *dbname = dbi_conn_get_option(conn, "dbname");
+	const char *encoding = dbi_conn_get_option(conn, "encoding");
 	int port = dbi_conn_get_option_numeric(conn, "port");
 	/* mysql specific options */
 	const char *unix_socket = dbi_conn_get_option(conn, "mysql_unix_socket");
@@ -152,6 +160,33 @@ int dbd_connect(dbi_conn_t *conn) {
 		if (dbname) conn->current_db = strdup(dbname);
 	}
 	
+	if (encoding && *encoding) {
+	  /* set connection encoding */
+	  if (!strcmp(encoding, "auto")) {
+	    encoding = dbd_get_encoding(conn);
+	    if (encoding) {
+	      asprintf(&sql_cmd, "SET NAMES '%s'", encoding);
+/* 	      printf("SET NAMES '%s'", encoding); */
+	      dbd_query(conn, sql_cmd);
+	      free(sql_cmd);
+	    }
+/* 	    else { */
+/* 	      printf("could not retrieve encoding\n"); */
+/* 	    } */
+	    /* else: do nothing, use default */
+	  }
+	  else {
+	    asprintf(&sql_cmd, "SET NAMES '%s'", _encoding_iana2mysql(encoding));
+/*  	    printf("SET NAMES '%s'", _encoding_iana2mysql(encoding)); */
+	    dbd_query(conn, sql_cmd);
+	    free(sql_cmd);
+	  }
+/* 	  printf("set encoding to %s<<\n", encoding); */
+	}
+/* 	else { */
+/* 	  printf("leave encoding alone\n"); */
+/* 	} */
+
 	return 0;
 }
 
@@ -196,34 +231,116 @@ int dbd_get_socket(dbi_conn_t *conn){
 
 const char *dbd_get_encoding(dbi_conn_t *conn){
 	MYSQL *mycon = (MYSQL*)conn->connection;
-	const char* my_enc;
+	const char* my_enc = NULL;
+	const char* iana_enc = NULL;
+	dbi_result dbires = NULL;
+	dbi_result dbires1 = NULL;
+	const char* schemastring;
+	const char* encodingopt;
+	char* encodingstart = NULL;
+	char* sql_cmd;
+	int i = 0;
 
 	if (!mycon) return NULL;
 
-	/* this function apparently returns the collation rather than
-	   the character set, as the name would imply. However, the
-	   collation name starts with the character set name that it
-	   belongs to, so we can extract the latter */
-	my_enc = mysql_character_set_name(mycon);
+	/* quite a mess. Set the dbi option "encoding" to "auto" to get
+	   a behaviour similar to PostgreSQL where the default connection
+	   encoding is identical to the database encoding. If you do not 
+	   use this option, or if you explicitly requested a particular
+	   connection encoding, this encoding will be returned
+	   [it has been set in dbd_connect()]
+	*/
+
+	encodingopt = dbi_conn_get_option(conn, "encoding");
+	if (encodingopt && !strcmp(encodingopt, "auto")) {
+	  asprintf(&sql_cmd, "SHOW CREATE DATABASE %s", conn->current_db);
+/* 	  printf("SHOW CREATE DATABASE %s", conn->current_db); */
+
+	  dbires = dbi_conn_query(conn, sql_cmd);
+	  free(sql_cmd);
+
+	  if (dbires && dbi_result_next_row(dbires)) {
+	    schemastring = dbi_result_get_string_idx(dbires, 2);
+
+	    if (schemastring && *schemastring) {
+	      my_enc = strstr(schemastring, "CHARACTER SET");
+/*   	      printf("schemastring:%s<<enc:%s<<\n", schemastring, my_enc); */
+	      if (my_enc) {
+		my_enc += 14; /* set to start of encoding name */	    }
+	    }
+	  }
+	}
 
 	if (!my_enc) {
-	  return NULL;
-	}
-	else {
-	  int i = 0;
+	  /* use connection encoding instead */
+	  asprintf(&sql_cmd, "SHOW VARIABLES LIKE '%s'", "character_set_connection");
+/* 	  printf("SHOW CREATE DATABASE %s", conn->current_db); */
 
-	  /* loop over all even entries in hash and compare to my_enc */
-	  while (*mysql_encoding_hash[i]) {
-	    if (!strncmp(mysql_encoding_hash[i], my_enc, strlen(mysql_encoding_hash[i]))) {
-	      /* return corresponding odd entry */
-	      return mysql_encoding_hash[i+1];
-	    }
-	    i+=2;
+	  dbires1 = dbi_conn_query(conn, sql_cmd);
+	  free(sql_cmd);
+
+	  if (dbires1 && dbi_result_next_row(dbires1)) {
+	    my_enc = dbi_result_get_string_idx(dbires1, 2);
 	  }
 
-	  /* don't know how to translate, return original string */
-	  return my_enc;
+/* 	  my_enc = mysql_character_set_name(mycon); */
+/*   	  printf("mysql claims enc:%s<<\n", my_enc); */
+	  if (!my_enc) {
+	    if (dbires) {
+	      dbi_result_free(dbires);
+	    }
+	    if (dbires1) {
+	      dbi_result_free(dbires1);
+	    }
+
+	    return NULL;
+	  }
 	}
+
+
+	iana_enc = _encoding_mysql2iana(my_enc);
+	
+	if (dbires) {
+	  dbi_result_free(dbires);
+	}
+
+	if (dbires1) {
+	  dbi_result_free(dbires1);
+	}
+
+	return iana_enc;
+}
+
+const char* _encoding_mysql2iana(const char *menc) {
+  int i = 0;
+
+  /* loop over all even entries in hash and compare to menc */
+  while (*mysql_encoding_hash[i]) {
+    if (!strncmp(mysql_encoding_hash[i], menc, strlen(mysql_encoding_hash[i]))) {
+      /* return corresponding odd entry */
+      return mysql_encoding_hash[i+1];
+    }
+    i+=2;
+  }
+
+  /* don't know how to translate, return original encoding */
+  return menc;
+}
+
+const char* _encoding_iana2mysql(const char *ienc) {
+  int i = 0;
+
+  /* loop over all odd entries in hash and compare to ienc */
+  while (*mysql_encoding_hash[i+1]) {
+    if (!strcmp(mysql_encoding_hash[i+1], ienc)) {
+      /* return corresponding even entry */
+      return mysql_encoding_hash[i];
+    }
+    i+=2;
+  }
+
+  /* don't know how to translate, return original encoding */
+  return ienc;
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
@@ -269,6 +386,19 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
 	
 	strcpy(dest, "'");
 	len = mysql_escape_string(dest+1, orig, strlen(orig));	
+	strcat(dest, "'");
+	
+	return len+2;
+}
+
+int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+	/* foo's -> 'foo\'s' */
+	unsigned int len;
+	MYSQL *mycon = (MYSQL*)conn->connection;
+	
+	/* todo: use mysql_real_escape_string */
+	strcpy(dest, "'");
+	len = mysql_real_escape_string(mycon, dest+1, orig, strlen(orig));	
 	strcat(dest, "'");
 	
 	return len+2;
@@ -327,6 +457,10 @@ char *dbd_select_db(dbi_conn_t *conn, const char *db) {
 		return "";
 	}
 
+	if (conn->current_db) {
+	  free(conn->current_db);
+	}
+	conn->current_db = strdup(db);
 	return (char *)db;
 }
 

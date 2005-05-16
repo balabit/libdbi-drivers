@@ -4,552 +4,970 @@
 
 #define QUERY_LEN 512
 
+/* todo: 
+   latin1 database cannot be deleted by postgres as it is still active
+   postgres reports latin1 database as latin1 even if using utf8 connection
+*/
+struct CONNINFO {
+  char driverdir[256];
+  char drivername[64];
+  char dbname[64];
+  char initial_dbname[64];
+  char dbdir[256];
+  char username[64];
+  char password[64];
+  char hostname[256];
+};
+
+char string_to_quote[] = "Can \'we\' \"quote\" this properly?";
+
+int ask_for_conninfo(struct CONNINFO* ptr_cinfo);
+int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding, const char* db);
+int test_list_db(dbi_conn conn);
+int test_create_db(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding);
+int test_select_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_list_tables(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_drop_table(dbi_conn conn);
+int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 
 int main(int argc, char **argv) {
-	dbi_driver driver;
-	dbi_conn conn;
-	dbi_result result;
+  dbi_driver driver;
+  dbi_conn conn;
+  const char *errmsg;
 
-	char driverdir[256];
-	char drivername[64];
-	char dbname[64];
-	char initial_dbname[64];
-	char dbdir[256];
-	char username[64];
-	char password[64];
-	char hostname[256];
-	char query[QUERY_LEN+1];
-	char string_to_quote[] = "Can \'we\' \"quote\" this properly?";
-	char *quoted_string = NULL;
-	const char *errmsg;
-	int numdrivers;
+  struct CONNINFO cinfo;
 
-	printf("\nlibdbi-drivers test program: $Id$\n"
-	       "Library version: %s\n\n", dbi_version());
-	
-	printf("libdbi driver directory? [%s] ", DBI_DRIVER_DIR);
-	fgets(driverdir, 256, stdin);
-	if (driverdir[0] == '\n') strncpy(driverdir, DBI_DRIVER_DIR, 255), driverdir[255] = '\0';
-	else driverdir[strlen(driverdir)-1] = '\0';
-	
-	numdrivers = dbi_initialize(driverdir);
-	
-	if (numdrivers < 0) {
-		printf("Unable to initialize libdbi! Make sure you specified a valid driver directory.\n");
-		dbi_shutdown();
-		return 1;
-	}
-	else if (numdrivers == 0) {
-		printf("Initialized libdbi, but no drivers were found!\n");
-		dbi_shutdown();
-		return 1;
-	}
-	
-	driver = NULL;
-	printf("%d drivers available: ", numdrivers);
-	while ((driver = dbi_driver_list(driver)) != NULL) {
-		printf("%s ", dbi_driver_get_name(driver));
-	}
-	driver = NULL;
-	drivername[0] = '\n';
+  if (ask_for_conninfo(&cinfo)) {
+    exit(1);
+  }
 
-	while (drivername[0] == '\n') {
-		printf("\ntest which driver? ");
-		fgets(drivername, 64, stdin);
-	}
-	drivername[strlen(drivername)-1] = '\0';
-	
-	if (!strcmp(drivername, "mysql") || !strcmp(drivername, "pgsql")) {
-		printf("\ndatabase administrator name? ");
-		fgets(username, 64, stdin);
-		if (*username == '\n') {
-			*username = '\0';
-		}
-		else {
-			username[strlen(username)-1] = '\0';
-		}
+  if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+    printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
+    dbi_shutdown();
+    return 1;
+  }
 
-		printf("\ndatabase administrator password? ");
-		fgets(password, 64, stdin);
-		if (*password == '\n') {
-			*password = '\0';
-		}
-		else {
-			password[strlen(password)-1] = '\0';
-		}
-	}	  
-	if(!strcmp(drivername, "sqlite")
-	   || !strcmp(drivername, "sqlite3")) {
-		printf("database directory? [.] ");
-		fgets(dbdir, 256, stdin);
-		if (dbdir[0] == '\n') {
-			dbdir[0] = '.';
-			dbdir[1] = '\0';
-		}
-		else {
-			dbdir[strlen(dbdir)-1] = '\0';
-		}
-	} else {
-		printf("\ndatabase hostname? [(blank for local socket if possible)] ");
-		fgets(hostname, 256, stdin);
-		if (*hostname == '\n') {
-			if (!strcmp(drivername, "pgsql") || !strcmp(drivername, "msql")) {
-				*hostname = '\0';
-			} else {
-				strcpy(hostname, "localhost");
-			}
-		} else {
-			hostname[strlen(hostname)-1] = '\0';
-			if (!strcmp(drivername, "pgsql")) {
-				if (!strcmp(hostname, "localhost")) {
-					*hostname = '\0';
-				} 
-			}
-		}
-	}
+  driver = dbi_conn_get_driver(conn);
+	
+  printf("\nDriver information:\n-------------------\n");
+  printf("\tName:       %s\n"
+	 "\tFilename:   %s\n"
+	 "\tDesc:       %s\n"
+	 "\tMaintainer: %s\n"
+	 "\tURL:        %s\n"
+	 "\tVersion:    %s\n"
+	 "\tCompiled:   %s\n", 
+	 dbi_driver_get_name(driver), dbi_driver_get_filename(driver), 
+	 dbi_driver_get_description(driver), dbi_driver_get_maintainer(driver), 
+	 dbi_driver_get_url(driver), dbi_driver_get_version(driver), 
+	 dbi_driver_get_date_compiled(driver));
+	
+  if (set_driver_options(&cinfo, conn, "", NULL)) {
+    dbi_shutdown();
+    exit(1);
+  }
 
-	printf("database name? [libdbitest] ");
-	fgets(dbname, 64, stdin);
-	if (dbname[0] == '\n') {
-		strcpy(dbname, "libdbitest");
-	}
-	else {
-		dbname[strlen(dbname)-1] = '\0';
-	}
+  if (dbi_conn_connect(conn) < 0) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\nUnable to connect! Error message: %s\n", errmsg);
+    dbi_shutdown();
+    exit(1);
+  }
 	
-	if ((conn = dbi_conn_new(drivername)) == NULL) {
-		printf("Can't instantiate '%s' driver into a dbi_conn!\n", drivername);
-		dbi_shutdown();
-		return 1;
-	}
+  printf("\nSuccessfully connected!\n");
 
-	driver = dbi_conn_get_driver(conn);
+  /* Test 1: list available databases */
+  printf("\nTest 1: List databases: \n");
 	
-	printf("\nDriver information:\n-------------------\n");
-	printf("\tName:       %s\n"
-	       "\tFilename:   %s\n"
-	       "\tDesc:       %s\n"
-	       "\tMaintainer: %s\n"
-	       "\tURL:        %s\n"
-	       "\tVersion:    %s\n"
-	       "\tCompiled:   %s\n", 
-	       dbi_driver_get_name(driver), dbi_driver_get_filename(driver), 
-	       dbi_driver_get_description(driver), dbi_driver_get_maintainer(driver), 
-	       dbi_driver_get_url(driver), dbi_driver_get_version(driver), 
-	       dbi_driver_get_date_compiled(driver));
+  if (test_list_db(conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* Test 2: create database */
+  printf("\nTest 2: Create database %s using default encoding: \n", cinfo.dbname);
 	
-	if (!strcmp(drivername, "mysql") || !strcmp(drivername, "pgsql")) {
-		dbi_conn_set_option(conn, "host", hostname);
-		dbi_conn_set_option(conn, "username", username);
-		dbi_conn_set_option(conn, "password", password);
+  if (test_create_db(&cinfo, conn, NULL)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* Test 3: select database */
+  printf("\nTest 3: Select database: \n");
+
+  if (test_select_db(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* Test 4: get encoding */
+  printf("\nTest 4: Get encoding: \n");
 	
+  printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
+
+
+  /* Test 5: create table */
+  printf("\nTest 5: Create table: \n");
+	
+  if (test_create_table(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* Test 6: list tables */
+  printf("\nTest 6: List tables: \n");
+	
+  if (test_list_tables(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* Test 7: insert row */
+  printf("\nTest 7: Insert row: \n");
+
+  if (test_insert_row(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* Test 8: retrieve data */
+  printf("\nTest 8: Retrieve data: \n");
+	
+  if (test_retrieve_data(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* Test 9: drop table */
+  printf("\nTest 9: Drop table: \n");
+	
+  if (test_drop_table(conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* Test 10: drop database */
+  printf("\nTest 10: Drop database:\n");
+	
+  if (test_drop_db(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  /* we're done with this connection */
+  dbi_conn_close(conn);
+  conn = NULL;
+
+  if (!strcmp(cinfo.drivername, "mysql")
+      ||!strcmp(cinfo.drivername, "pgsql")) {
+
+    printf("\nNow run a couple of tests related to character encodings\nThe previous tests used the default encoding, if any. Now we try to connect using UTF-8 and create an UTF-8 database\n");
+    if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+      printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
+      dbi_shutdown();
+      return 1;
+    }
+
+    driver = dbi_conn_get_driver(conn);
+	
+    if (set_driver_options(&cinfo, conn, "UTF-8", NULL)) {
+      dbi_shutdown();
+      exit(1);
+    }
+
+    if (dbi_conn_connect(conn) < 0) {
+      dbi_conn_error(conn, &errmsg);
+      printf("\nUnable to connect! Error message: %s\n", errmsg);
+      dbi_shutdown();
+      exit(1);
+    }
+	
+    printf("\nSuccessfully connected using an UTF-8 encoding!\n");
+	
+    /* Test 11: create UTF-8 database */
+    printf("\nTest 11: Create database %s with encoding UTF-8: \n", cinfo.dbname);
+	
+    if (test_create_db(&cinfo, conn, "UTF-8")) {
+      dbi_conn_close(conn);
+      dbi_shutdown();
+      exit(1);
+    }
+
+    /* Test 12: select UTF-8 database */
+    printf("\nTest 12: Select UTF-8 database: \n");
+
+    if (test_select_db(&cinfo, conn)) {
+      dbi_conn_close(conn);
+      dbi_shutdown();
+      exit(1);
+    }
+
+    /* Test 13: get encoding of UTF-8 database */
+    printf("\nTest 13: Get encoding of UTF-8 database: \n");
+	
+    printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
+
+    /* Test 14: drop UTF-8 database */
+    printf("\nTest 14: Drop UTF-8 database: \n");
+	
+    if (test_drop_db(&cinfo, conn)) {
+      dbi_conn_close(conn);
+      dbi_shutdown();
+      exit(1);
+    }
+
+
+    /* we're done with this connection */
+    dbi_conn_close(conn);
+    conn = NULL;
+
+    /* repeat test for latin1 encoding */
+    printf("\nNow repeat this test with a ISO-8859-1 encoding\n");
+    if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+      printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
+      dbi_shutdown();
+      return 1;
+    }
+
+    driver = dbi_conn_get_driver(conn);
+	
+    if (set_driver_options(&cinfo, conn, "ISO-8859-1", NULL)) {
+      dbi_shutdown();
+      exit(1);
+    }
+
+    if (dbi_conn_connect(conn) < 0) {
+      dbi_conn_error(conn, &errmsg);
+      printf("\nUnable to connect! Error message: %s\n", errmsg);
+      dbi_shutdown();
+      exit(1);
+    }
+	
+    printf("\nSuccessfully connected using a ISO-8859-1 encoding!\n");
+	
+    /* Test 15: create ISO-8859-1 database */
+    printf("\nTest 15: Create database %s with encoding ISO-8859-1: \n", cinfo.dbname);
+	
+    if (test_create_db(&cinfo, conn, "ISO-8859-1")) {
+      dbi_conn_close(conn);
+      dbi_shutdown();
+      exit(1);
+    }
+
+    /* Test 16: select ISO-8859-1 database */
+    printf("\nTest 16: Select ISO-8859-1 database: \n");
+
+    if (test_select_db(&cinfo, conn)) {
+      dbi_conn_close(conn);
+      dbi_shutdown();
+      exit(1);
+    }
+
+    /* Test 17: get encoding of ISO-8859-1 database */
+    printf("\nTest 17: Get encoding of ISO-8859-1 database: \n");
+	
+    printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
+
+    /* we're done with this connection */
+    dbi_conn_close(conn);
+    conn = NULL;
+
+    /* now make a connection to the existing database using a different
+       encoding */
+    printf("\nAttempt to connect to the existing ISO-8859-1 database using an UTF-8 encoding\n");
+    if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+      printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
+      dbi_shutdown();
+      return 1;
+    }
+
+    driver = dbi_conn_get_driver(conn);
+	
+    if (set_driver_options(&cinfo, conn, "UTF-8", "libdbitest")) {
+      dbi_shutdown();
+      exit(1);
+    }
+
+    if (dbi_conn_connect(conn) < 0) {
+      dbi_conn_error(conn, &errmsg);
+      printf("\nUnable to connect! Error message: %s\n", errmsg);
+      dbi_shutdown();
+      exit(1);
+    }
+	
+    printf("\nSuccessfully connected to ISO-8859-1 database using UTF-8 encoding!\n");
+	
+    /* Test 18: get encoding of ISO-8859-1 database */
+    printf("\nTest 18: Get encoding of ISO-8859-1 database using UTF-8 encoding: \n");
+	
+    printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
+
+    /* we're done with this connection */
+    dbi_conn_close(conn);
+    conn = NULL;
+
+    /* now make a connection to the existing database using the "auto"
+       encoding */
+    printf("\nAttempt to connect to the existing ISO-8859-1 database using the \"auto\" encoding feature\n");
+
+    if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+      printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
+      dbi_shutdown();
+      return 1;
+    }
+
+    driver = dbi_conn_get_driver(conn);
+	
+    if (set_driver_options(&cinfo, conn, "auto", "libdbitest")) {
+      dbi_shutdown();
+      exit(1);
+    }
+
+    if (dbi_conn_connect(conn) < 0) {
+      dbi_conn_error(conn, &errmsg);
+      printf("\nUnable to connect! Error message: %s\n", errmsg);
+      dbi_shutdown();
+      exit(1);
+    }
+	
+    printf("\nSuccessfully connected to ISO-8859-1 database using \"auto\" encoding!\n");
+	
+    /* Test 18: get encoding of ISO-8859-1 database */
+    printf("\nTest 18: Get encoding of ISO-8859-1 database using \"auto\" encoding: \n");
+	
+    printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
+
+    /* Test 19: drop ISO-8859-1 database */
+    printf("\nTest 19: Drop ISO-8859-1 database: \n");
+	
+    if (test_drop_db(&cinfo, conn)) {
+      dbi_conn_close(conn);
+      dbi_shutdown();
+      exit(1);
+    }
+  }
+	
+  printf("\n\n");
+  printf("SUCCESS! All done, disconnecting and shutting down libdbi. Have a nice day.\n\n");
+	
+  if (conn) {
+    dbi_conn_close(conn);
+  }
+
+  dbi_shutdown();
+	
+  exit (0);
+}
+
+/* ******************************************************************* */
+/* end of main program                                                 */
+/* ******************************************************************* */
+
+/* returns 0 on success, 1 on error */
+int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
+  int numdrivers;
+  dbi_driver driver;
+
+  fprintf(stderr, "\nlibdbi-drivers test program: $Id$\n"
+	 "Library version: %s\n\n", dbi_version());
+	
+  fprintf(stderr, "libdbi driver directory? [%s] ", DBI_DRIVER_DIR);
+  fgets(ptr_cinfo->driverdir, 256, stdin);
+  if ((ptr_cinfo->driverdir)[0] == '\n') {
+    strncpy(ptr_cinfo->driverdir, DBI_DRIVER_DIR, 255), (ptr_cinfo->driverdir)[255] = '\0';
+  }
+  else {
+    (ptr_cinfo->driverdir)[strlen(ptr_cinfo->driverdir)-1] = '\0';
+  }
+	
+  numdrivers = dbi_initialize(ptr_cinfo->driverdir);
+	
+  if (numdrivers < 0) {
+    fprintf(stderr, "Unable to initialize libdbi! Make sure you specified a valid driver directory.\n");
+    dbi_shutdown();
+    return 1;
+  }
+  else if (numdrivers == 0) {
+    fprintf(stderr, "Initialized libdbi, but no drivers were found!\n");
+    dbi_shutdown();
+    return 1;
+  }
+	
+  driver = NULL;
+  fprintf(stderr, "%d drivers available: ", numdrivers);
+  while ((driver = dbi_driver_list(driver)) != NULL) {
+    fprintf(stderr, "%s ", dbi_driver_get_name(driver));
+  }
+  driver = NULL;
+  (ptr_cinfo->drivername)[0] = '\n';
+
+  while ((ptr_cinfo->drivername)[0] == '\n') {
+    fprintf(stderr, "\ntest which driver? ");
+    fgets(ptr_cinfo->drivername, 64, stdin);
+  }
+  (ptr_cinfo->drivername)[strlen(ptr_cinfo->drivername)-1] = '\0';
+	
+  if (!strcmp(ptr_cinfo->drivername, "mysql")
+      || !strcmp(ptr_cinfo->drivername, "pgsql")) {
+    fprintf(stderr, "\ndatabase administrator name? ");
+    fgets(ptr_cinfo->username, 64, stdin);
+    if (*(ptr_cinfo->username) == '\n') {
+      *(ptr_cinfo->username) = '\0';
+    }
+    else {
+      (ptr_cinfo->username)[strlen(ptr_cinfo->username)-1] = '\0';
+    }
+
+    fprintf(stderr, "\ndatabase administrator password? ");
+    fgets(ptr_cinfo->password, 64, stdin);
+    if (*(ptr_cinfo->password) == '\n') {
+      *(ptr_cinfo->password) = '\0';
+    }
+    else {
+      (ptr_cinfo->password)[strlen(ptr_cinfo->password)-1] = '\0';
+    }
+  }	  
+  if(!strcmp(ptr_cinfo->drivername, "sqlite")
+     || !strcmp(ptr_cinfo->drivername, "sqlite3")) {
+    fprintf(stderr, "database directory? [.] ");
+    fgets(ptr_cinfo->dbdir, 256, stdin);
+    if ((ptr_cinfo->dbdir)[0] == '\n') {
+      (ptr_cinfo->dbdir)[0] = '.';
+      (ptr_cinfo->dbdir)[1] = '\0';
+    }
+    else {
+      (ptr_cinfo->dbdir)[strlen(ptr_cinfo->dbdir)-1] = '\0';
+    }
+  }
+  else {
+    fprintf(stderr, "\ndatabase hostname? [(blank for local socket if possible)] ");
+    fgets(ptr_cinfo->hostname, 256, stdin);
+    if (*(ptr_cinfo->hostname) == '\n') {
+      if (!strcmp(ptr_cinfo->drivername, "pgsql")
+	  || !strcmp(ptr_cinfo->drivername, "msql")) {
+	*(ptr_cinfo->hostname) = '\0';
+      } 
+      else {
+	strcpy(ptr_cinfo->hostname, "localhost");
+      }
+    }
+    else {
+      (ptr_cinfo->hostname)[strlen(ptr_cinfo->hostname)-1] = '\0';
+      if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
+	if (!strcmp(ptr_cinfo->hostname, "localhost")) {
+	  *(ptr_cinfo->hostname) = '\0';
 	} 
-	else if (!strcmp(drivername, "msql")) {
-		if( *hostname) {
-			dbi_conn_set_option(conn, "host", hostname);
-		}
-	}
-	else if (!strcmp(drivername, "sqlite3")) { 
-		dbi_conn_set_option(conn, "sqlite3_dbdir", dbdir);
-	}
-	else { /* sqlite */
-		dbi_conn_set_option(conn, "sqlite_dbdir", dbdir);
-	}
+      }
+    }
+  }
 
-	if (!strcmp(drivername, "mysql")) {
-		strcpy(initial_dbname, "mysql");
-	}
-	else if (!strcmp(drivername, "pgsql")) {
-		strcpy(initial_dbname, "template1");
-	}
-	else if (!strcmp(drivername, "sqlite")
-		 || !strcmp(drivername, "sqlite3")) {
-		strcpy(initial_dbname, dbname);
-	}
-	else { /* msql */
-		strcpy(initial_dbname, dbname);
-	}
+  fprintf(stderr, "database name? [libdbitest] ");
+  fgets(ptr_cinfo->dbname, 64, stdin);
+  if ((ptr_cinfo->dbname)[0] == '\n') {
+    strcpy(ptr_cinfo->dbname, "libdbitest");
+  }
+  else {
+    (ptr_cinfo->dbname)[strlen(ptr_cinfo->dbname)-1] = '\0';
+  }
+
+  return 0;
+}
+
+/* always returns 0 */
+int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding, const char* db) {
+  if (!strcmp(ptr_cinfo->drivername, "mysql")
+      || !strcmp(ptr_cinfo->drivername, "pgsql")) {
+    dbi_conn_set_option(conn, "host", ptr_cinfo->hostname);
+    dbi_conn_set_option(conn, "username", ptr_cinfo->username);
+    dbi_conn_set_option(conn, "password", ptr_cinfo->password);
 	
-	dbi_conn_set_option(conn, "dbname", initial_dbname);
+  } 
+  else if (!strcmp(ptr_cinfo->drivername, "msql")) {
+    if( *(ptr_cinfo->hostname)) {
+      dbi_conn_set_option(conn, "host", ptr_cinfo->hostname);
+    }
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "sqlite3")) { 
+    dbi_conn_set_option(conn, "sqlite3_dbdir", ptr_cinfo->dbdir);
+  }
+  else { /* sqlite */
+    dbi_conn_set_option(conn, "sqlite_dbdir", ptr_cinfo->dbdir);
+  }
+
+  if (!strcmp(ptr_cinfo->drivername, "mysql")) {
+    strcpy(ptr_cinfo->initial_dbname, "mysql");
+    
+    if (encoding && *encoding) {
+      dbi_conn_set_option(conn, "encoding", encoding);
+    }
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
+    strcpy(ptr_cinfo->initial_dbname, "template1");
+    if (encoding && *encoding) {
+      dbi_conn_set_option(conn, "encoding", encoding);
+    }
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "sqlite")
+	   || !strcmp(ptr_cinfo->drivername, "sqlite3")) {
+    strcpy(ptr_cinfo->initial_dbname, ptr_cinfo->dbname);
+    if (encoding && *encoding) {
+      dbi_conn_set_option(conn, "encoding", encoding);
+    }
+  }
+  else { /* msql */
+    strcpy(ptr_cinfo->initial_dbname, ptr_cinfo->dbname);
+  }
 	
+  if (db && *db) {
+    dbi_conn_set_option(conn, "dbname", db);
+  }
+  else {
+    dbi_conn_set_option(conn, "dbname", ptr_cinfo->initial_dbname);
+  }
 
-	if (!strcmp(drivername, "sqlite3")) {
-	  dbi_conn_set_option(conn, "sqlite3_encoding", "UTF-8");
-	}
+  return 0;
+}
 
-	if (dbi_conn_connect(conn) < 0) {
-		dbi_conn_error(conn, &errmsg);
-		printf("\nUnable to connect! Error message: %s\n", errmsg);
-		dbi_shutdown();
-		return 1;
-	}
+/* returns 0 on success, 1 on error */
+int test_list_db(dbi_conn conn) {
+  const char *errmsg;
+  dbi_result result;
+
+  if ((result = dbi_conn_get_db_list(conn, NULL)) == NULL) {
+    dbi_conn_error(conn, &errmsg);
+    printf("AAH! Can't get database list! Error message: %s\n", errmsg);
+    return 1;
+  }
+
+  printf("\tGot result, try to access rows\n\t\t");
+  while (dbi_result_next_row(result)) {
+    const char *databasename = NULL;
+    databasename = dbi_result_get_string_idx(result, 1);
+    printf("%s ", databasename);
+  }
 	
-	printf("\nSuccessfully connected!\nTest 1: List databases: \n");
+  dbi_result_free(result);
+  
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
+int test_create_db(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding) {
+  const char *errmsg;
+  dbi_result result;
+  char my_enc[32];
+
+  if (!strcmp(ptr_cinfo->drivername, "sqlite")
+      || !strcmp(ptr_cinfo->drivername, "sqlite3")
+      || !strcmp(ptr_cinfo->drivername, "msql")) {
+    printf("\tThis is a no-op with the sqlite/msql drivers.\n");
+  }
+  else {
+    if (encoding && *encoding) {
+      if (!strcmp(ptr_cinfo->drivername, "mysql")) {
+	result = dbi_conn_queryf(conn, "CREATE DATABASE %s CHARACTER SET %s", ptr_cinfo->dbname, (!strcmp(encoding, "UTF-8")) ? "utf8":"latin1");
+      }
+      else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
+	result = dbi_conn_queryf(conn, "CREATE DATABASE %s WITH ENCODING = '%s'", ptr_cinfo->dbname, (!strcmp(encoding, "UTF-8")) ? "UNICODE":"LATIN1");
+      }
+      else {
+	result = dbi_conn_queryf(conn, "CREATE DATABASE %s", ptr_cinfo->dbname);
+      }
+    }
+    else {
+      /* use default encoding */
+      result = dbi_conn_queryf(conn, "CREATE DATABASE %s", ptr_cinfo->dbname);
+    }
+
+    if (result == NULL) {
+      printf("\tDatabase not created.\n");
+      fflush(stdout);
+      dbi_conn_error(conn, &errmsg);
+      printf("\tDarn! Can't create database! Error message: %s\n", errmsg);
+      return 1;
+    }
+    printf("\tOk.\n");
+    fflush(stdout);
+    dbi_result_free(result);
+  }
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
+int test_select_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+  const char *errmsg;
+
+  if (dbi_conn_select_db(conn, ptr_cinfo->dbname)) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\tUh-oh! Can't select database! Error message: %s\n", errmsg);
+    return 1;
+  }
+  else {
+    printf("\tOk.\n");
+  }
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
+int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+  char query[QUERY_LEN+1];
+  const char *errmsg;
+  dbi_result result;
+
+  if (!strcmp(ptr_cinfo->drivername, "mysql")) {
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_datetime DATETIME, the_date DATE, the_time TIME)");
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_datetime TIMESTAMP, the_date DATE, the_time TIME)");
+  } 
+  else if (!strcmp(ptr_cinfo->drivername, "msql")) {
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char INT8, the_uchar UINT8, the_short INT16, the_ushort UINT16, the_long INT, the_ulong UINT, the_longlong INT64, the_ulonglong UINT64, the_float REAL, the_driver_string CHAR(255), the_conn_string CHAR(255), the_date DATE, the_time TIME)");		
+  }
+  else { /* sqlite, sqlite3 */
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_datetime DATETIME, the_date DATE, the_time TIME)");
+  }
+
+  if ((result = dbi_conn_query(conn, query)) == NULL) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\tAAH! Can't create table! Error message: %s\n", errmsg);
+    return 1;
+  }
+  else {
+    printf("\tOk.\n");
+  }
+  dbi_result_free(result);
+
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
+int test_list_tables(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+  const char *errmsg;
+  dbi_result result;
+
+  if ((result = dbi_conn_get_table_list(conn, ptr_cinfo->dbname, NULL)) == NULL) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\tOops! Can't get table list! Error message: %s\n", errmsg);
+    return 1;
+  }
+  printf("\tGot result, try to access rows\n\t\t");
+  while (dbi_result_next_row(result)) {
+    const char *tablename = NULL;
+    tablename = dbi_result_get_string_idx(result, 1);
+    printf("%s ", tablename);
+  }
 	
-	if ((result = dbi_conn_get_db_list(conn, NULL)) == NULL) {
-		dbi_conn_error(conn, &errmsg);
-		printf("AAH! Can't get database list! Error message: %s\n", errmsg);
-		dbi_conn_close(conn);
-		dbi_shutdown();
-		return 1;
-	}
-	printf("\tGot result, try to access rows\n\t\t");
-	while (dbi_result_next_row(result)) {
-		const char *databasename = NULL;
-		databasename = dbi_result_get_string_idx(result, 1);
-		printf("%s ", databasename);
-	}
-	
-	dbi_result_free(result);
-	
-	printf("\nTest 2: Create database %s: \n", dbname);
-	
-	if (!strcmp(drivername, "sqlite")
-	    || !strcmp(drivername, "sqlite3")
-	    || !strcmp(drivername, "msql")) {
-		printf("\tThis is a no-op with the sqlite/msql drivers.\n");
-	}
-	else {
-		if ((result = dbi_conn_queryf(conn, "CREATE DATABASE %s", dbname)) == NULL) {
-			printf("\tDatabase not created.\n");
-			fflush(stdout);
-			dbi_conn_error(conn, &errmsg);
-			printf("\tDarn! Can't create database! Error message: %s\n", errmsg);
-			dbi_conn_close(conn);
-			dbi_shutdown();
-			return 1;
-		}
-		printf("\tOk.\n");
-		fflush(stdout);
-		dbi_result_free(result);
-	}
+  dbi_result_free(result);
+  return 0;
+}
 
-	printf("\nTest 3: Select database: \n");
+/* returns 0 on success, 1 on error */
+int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+  char query[QUERY_LEN+1];
+  char *driver_quoted_string = NULL;
+  char *conn_quoted_string = NULL;
+  const char *errmsg;
+  dbi_result result;
 
-	if (dbi_conn_select_db(conn, dbname)) {
-		dbi_conn_error(conn, &errmsg);
-		printf("\tUh-oh! Can't select database! Error message: %s\n", errmsg);
-		dbi_conn_close(conn);
-		dbi_shutdown();
-		return 1;
-	} else {
-		printf("\tOk.\n");
-	}
-	
-	printf("\nTest 4: Get encoding: \n");
-	
-	printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
+  dbi_driver_quote_string_copy(dbi_conn_get_driver(conn), string_to_quote, &driver_quoted_string);
+  dbi_conn_quote_string_copy(conn, string_to_quote, &conn_quoted_string);
 
-	printf("\nTest 5: Create table: \n");
-	
-	if (!strcmp(drivername, "mysql")) {
-	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME, the_date DATE, the_time TIME)");
-	}
-	else if (!strcmp(drivername, "pgsql")) {
-	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime TIMESTAMP, the_date DATE, the_time TIME)");
-	} 
-	else if (!strcmp(drivername, "msql")) {
-	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char INT8, the_uchar UINT8, the_short INT16, the_ushort UINT16, the_long INT, the_ulong UINT, the_longlong INT64, the_ulonglong UINT64, the_float REAL, the_string CHAR(255), the_date DATE, the_time TIME)");		
-	}
-	else { /* sqlite, sqlite3 */
-	  snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_string VARCHAR(255), the_datetime DATETIME, the_date DATE, the_time TIME)");
-	}
+  if(!strcmp(ptr_cinfo->drivername, "msql")) {
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32767, 32767, -2147483647, 2147483647, -9223372036854775807,9223372036854775807, 3.402823466E+38, %s, %s, '11-jul-1977', '23:59:59')", driver_quoted_string, conn_quoted_string);
+  }
+  else {
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", driver_quoted_string, conn_quoted_string);
+  }
 
-	if ((result = dbi_conn_query(conn, query)) == NULL) {
-		dbi_conn_error(conn, &errmsg);
-		printf("\tAAH! Can't create table! Error message: %s\n", errmsg);
-		dbi_conn_close(conn);
-		dbi_shutdown();
-		return 1;
-	} else {
-		printf("\tOk.\n");
-	}
-	dbi_result_free(result);
-	
-	printf("\nTest 6: List tables: \n");
-	
-	if ((result = dbi_conn_get_table_list(conn, dbname, NULL)) == NULL) {
-		dbi_conn_error(conn, &errmsg);
-		printf("\tOops! Can't get table list! Error message: %s\n", errmsg);
-		dbi_conn_close(conn);
-		dbi_shutdown();
-		return 1;
-	}
-	printf("\tGot result, try to access rows\n\t\t");
-	while (dbi_result_next_row(result)) {
-		const char *tablename = NULL;
-		tablename = dbi_result_get_string_idx(result, 1);
-		printf("%s ", tablename);
-	}
-	
-	dbi_result_free(result);
-	
-	printf("\nTest 7: Insert row: \n");
+  if (driver_quoted_string) {
+    free(driver_quoted_string);
+  }
 
-	dbi_driver_quote_string_copy(driver, string_to_quote, &quoted_string);
+  if (conn_quoted_string) {
+    free(conn_quoted_string);
+  }
 
-	if(!strcmp(drivername, "msql")) {
-		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32767, 32767, -2147483647, 2147483647, -9223372036854775807,9223372036854775807, 3.402823466E+38, %s, '11-jul-1977', '23:59:59')", quoted_string);
-	} else {
-		snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", quoted_string);
-	}
+  if ((result = dbi_conn_query(conn, query)) == NULL) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\tAAH! Can't insert data! Error message: %s\n", errmsg);
+    return 1;
+  }
+  else {
+    printf("\tOk.\n");
+  }
+  dbi_result_free(result);
+  return 0;
+}
 
-	if (quoted_string) {
-	  free(quoted_string);
-	}
+/* returns 0 on success, 1 on error */
+int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+  const char *errmsg;
+  dbi_result result;
 
-	if ((result = dbi_conn_query(conn, query)) == NULL) {
-		dbi_conn_error(conn, &errmsg);
-		printf("\tAAH! Can't insert data! Error message: %s\n", errmsg);
-		dbi_conn_close(conn);
-		dbi_shutdown();
-		return 1;
-	} else {
-		printf("\tOk.\n");
-	}
-	dbi_result_free(result);
+  if ((result = dbi_conn_query(conn, "SELECT * from test_datatypes")) == NULL) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\tAAH! Can't get read data! Error message: %s\n", errmsg);
+    return 1;
+  }
 
-	printf("\nTest 8: Retrieve data: \n");
-	
-	if ((result = dbi_conn_query(conn, "SELECT * from test_datatypes")) == NULL) {
-		dbi_conn_error(conn, &errmsg);
-		printf("\tAAH! Can't get read data! Error message: %s\n", errmsg);
-		dbi_conn_close(conn);
-		dbi_shutdown();
-		return 1;
-	}
-	printf("\tGot result, try to access rows\n");
-	while (dbi_result_next_row(result)) {
-		signed char the_char;
-		unsigned char the_uchar;
-		short the_short;
-		unsigned short the_ushort;
-		long the_long;
-		unsigned long the_ulong;
-		long long the_longlong;
-		unsigned long long the_ulonglong;
-		float the_float;
-		double the_double;
-		const char* the_string;
-/* 		const unsigned char* the_binary; */
-		time_t the_datetime;
-		time_t the_date_dt;
-		time_t the_time_dt;
-		struct tm* ptr_tm;
-		struct tm* ptr_tm_date;
-		struct tm* ptr_tm_time;
-		const char *the_date;
-		const char *the_time;
-		int year_dt;
-		int mon_dt;
-		int day_dt;
-		int hour_dt;
-		int min_dt;
-		int sec_dt;
-		int year;
-		int mon;
-		int day;
-		int hour;
-		int min;
-		int sec;
+  printf("\tGot result, try to access rows\n");
 
-		dbi_error_flag errflag;
+  while (dbi_result_next_row(result)) {
+    signed char the_char;
+    unsigned char the_uchar;
+    short the_short;
+    unsigned short the_ushort;
+    long the_long;
+    unsigned long the_ulong;
+    long long the_longlong;
+    unsigned long long the_ulonglong;
+    float the_float;
+    double the_double;
+    const char* the_driver_string;
+    const char* the_conn_string;
+    time_t the_datetime;
+    time_t the_date_dt;
+    time_t the_time_dt;
+    struct tm* ptr_tm;
+    struct tm* ptr_tm_date;
+    struct tm* ptr_tm_time;
+    const char *the_date;
+    const char *the_time;
+    int year_dt;
+    int mon_dt;
+    int day_dt;
+    int hour_dt;
+    int min_dt;
+    int sec_dt;
+    int year;
+    int mon;
+    int day;
+    int hour;
+    int min;
+    int sec;
 
-		the_char = dbi_result_get_char(result, "the_char");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_char errflag=%d\n", errflag);
-		}
+    dbi_error_flag errflag;
 
-		the_uchar = dbi_result_get_uchar(result, "the_uchar");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_uchar errflag=%d\n", errflag);
-		}
+    the_char = dbi_result_get_char(result, "the_char");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_char errflag=%d\n", errflag);
+    }
 
-		the_short = dbi_result_get_short(result, "the_short");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_short errflag=%d\n", errflag);
-		}
+    the_uchar = dbi_result_get_uchar(result, "the_uchar");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_uchar errflag=%d\n", errflag);
+    }
 
-		the_ushort = dbi_result_get_ushort(result, "the_ushort");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_ushort errflag=%d\n", errflag);
-		}
+    the_short = dbi_result_get_short(result, "the_short");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_short errflag=%d\n", errflag);
+    }
 
-		the_long = dbi_result_get_long(result, "the_long");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_long errflag=%d\n", errflag);
-		}
+    the_ushort = dbi_result_get_ushort(result, "the_ushort");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_ushort errflag=%d\n", errflag);
+    }
 
-		the_ulong = dbi_result_get_ulong(result, "the_ulong");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_ulong errflag=%d\n", errflag);
-		}
+    the_long = dbi_result_get_long(result, "the_long");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_long errflag=%d\n", errflag);
+    }
 
-		the_longlong = dbi_result_get_longlong(result, "the_longlong");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_longlong errflag=%d\n", errflag);
-		}
+    the_ulong = dbi_result_get_ulong(result, "the_ulong");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_ulong errflag=%d\n", errflag);
+    }
 
-		the_ulonglong = dbi_result_get_ulonglong(result, "the_ulonglong");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_ulonglong errflag=%d\n", errflag);
-		}
+    the_longlong = dbi_result_get_longlong(result, "the_longlong");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_longlong errflag=%d\n", errflag);
+    }
 
-		the_float = dbi_result_get_float(result, "the_float");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_float errflag=%d\n", errflag);
-		}
+    the_ulonglong = dbi_result_get_ulonglong(result, "the_ulonglong");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_ulonglong errflag=%d\n", errflag);
+    }
 
-		if(!strcmp(drivername, "msql")) {
-			printf("the_double: test skipped for this driver.\n");
-		}
-		else {
-			the_double = dbi_result_get_double(result, "the_double");
-			errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-			if (errflag) {
-				printf("the_double errflag=%d\n", errflag);
-			}
-		}
-		the_string = dbi_result_get_string(result, "the_string");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_string errflag=%d\n", errflag);
-		}
+    the_float = dbi_result_get_float(result, "the_float");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_float errflag=%d\n", errflag);
+    }
 
-		if(!strcmp(drivername, "msql")) {
-			printf("the_datetime: test skipped for this driver.\n");
-		}
-		else {
-			the_datetime = dbi_result_get_datetime(result, "the_datetime");
-			errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-			if (errflag) {
-				printf("the_datetime errflag=%d\n", errflag);
-			}
-		}
-		if(!strcmp(drivername, "msql")) {
-			the_date = dbi_result_get_string(result, "the_date");
-			errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-			if (errflag) {
-				printf("the_date errflag=%d\n", errflag);
-			}
+    if(!strcmp(ptr_cinfo->drivername, "msql")) {
+      printf("the_double: test skipped for this driver.\n");
+    }
+    else {
+      the_double = dbi_result_get_double(result, "the_double");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_double errflag=%d\n", errflag);
+      }
+    }
+    the_driver_string = dbi_result_get_string(result, "the_driver_string");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_driver_string errflag=%d\n", errflag);
+    }
+    the_conn_string = dbi_result_get_string(result, "the_conn_string");
+    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    if (errflag) {
+      printf("the_conn_string errflag=%d\n", errflag);
+    }
+
+    if(!strcmp(ptr_cinfo->drivername, "msql")) {
+      printf("the_datetime: test skipped for this driver.\n");
+    }
+    else {
+      the_datetime = dbi_result_get_datetime(result, "the_datetime");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_datetime errflag=%d\n", errflag);
+      }
+    }
+    if(!strcmp(ptr_cinfo->drivername, "msql")) {
+      the_date = dbi_result_get_string(result, "the_date");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_date errflag=%d\n", errflag);
+      }
 			
-			the_time = dbi_result_get_string(result, "the_time");
-			errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-			if (errflag) {
-				printf("the_time errflag=%d\n", errflag);
-			}
+      the_time = dbi_result_get_string(result, "the_time");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_time errflag=%d\n", errflag);
+      }
 			
-			printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32767 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483647 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_string: in:\'%s\' out:\'%s\'<<\nthe_date: in:\'11-jul-1977\' out: %s<<\nthe_time: in:\'23:59:59\' out: %s<<", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, string_to_quote, the_string, the_date, the_time);
+      printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32767 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483647 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_driver_string: in:\'%s\' out:\'%s\'<<\nthe_conn_string: in:\'%s\' out:\'%s\'<<\nthe_date: in:\'11-jul-1977\' out: %s<<\nthe_time: in:\'23:59:59\' out: %s<<", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, string_to_quote, the_driver_string, string_to_quote, the_conn_string, the_date, the_time);
 			
-		}
-		else {
+    }
+    else {
 
-		the_date_dt = dbi_result_get_datetime(result, "the_date");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_date errflag=%d\n", errflag);
-		}
+      the_date_dt = dbi_result_get_datetime(result, "the_date");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_date errflag=%d\n", errflag);
+      }
 			
-		the_time_dt = dbi_result_get_datetime(result, "the_time");
-		errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-		if (errflag) {
-		  printf("the_time errflag=%d\n", errflag);
-		}
+      the_time_dt = dbi_result_get_datetime(result, "the_time");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_time errflag=%d\n", errflag);
+      }
 			
-		ptr_tm = gmtime(&the_datetime);
-		year_dt = ptr_tm->tm_year+1900;
-		mon_dt = ptr_tm->tm_mon+1;
-		day_dt = ptr_tm->tm_mday;
-		hour_dt = ptr_tm->tm_hour;
-		min_dt = ptr_tm->tm_min;
-		sec_dt = ptr_tm->tm_sec;
+      ptr_tm = gmtime(&the_datetime);
+      year_dt = ptr_tm->tm_year+1900;
+      mon_dt = ptr_tm->tm_mon+1;
+      day_dt = ptr_tm->tm_mday;
+      hour_dt = ptr_tm->tm_hour;
+      min_dt = ptr_tm->tm_min;
+      sec_dt = ptr_tm->tm_sec;
 
-		ptr_tm_date = gmtime(&the_date_dt);
-		year = ptr_tm_date->tm_year+1900;
-		mon = ptr_tm_date->tm_mon+1;
-		day = ptr_tm_date->tm_mday;
+      ptr_tm_date = gmtime(&the_date_dt);
+      year = ptr_tm_date->tm_year+1900;
+      mon = ptr_tm_date->tm_mon+1;
+      day = ptr_tm_date->tm_mday;
 
-		ptr_tm_time = gmtime(&the_time_dt);
-		hour = ptr_tm_time->tm_hour;
-		min = ptr_tm_time->tm_min;
-		sec = ptr_tm_time->tm_sec;
+      ptr_tm_time = gmtime(&the_time_dt);
+      hour = ptr_tm_time->tm_hour;
+      min = ptr_tm_time->tm_min;
+      sec = ptr_tm_time->tm_sec;
 
-		printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_string: in:\'%s\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, string_to_quote, the_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
+      printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775808 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_driver_string: in:\'%s\' out:\'%s\'<<\nthe_conn_string: in:\'%s\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
 
-		}
-	}
-	dbi_result_free(result);
-	
-	printf("\nTest 9: Drop table: \n");
-	
-	if ((result = dbi_conn_query(conn, "DROP TABLE test_datatypes")) == NULL) {
-		dbi_conn_error(conn, &errmsg);
-		printf("\tAAH! Can't drop table! Error message: %s\n", errmsg);
-		dbi_conn_close(conn);
-		dbi_shutdown();
-		return 1;
-	} else {
-		printf("\tOk.\n");
-	}
-	dbi_result_free(result);
-	
-	printf("\nTest 10: Drop database: \n");
-	
-	if (!strcmp(drivername, "sqlite")
-	    || !strcmp(drivername, "sqlite3")) {
-		char dbpath[256];
+    }
+  }
+  dbi_result_free(result);
 
-		strcpy(dbpath, dbdir);
-		if (dbpath[strlen(dbpath)-1] != '/') {
-			strcat(dbpath, "/");
-		}
-		strcat(dbpath, dbname);
-		if (unlink(dbpath)) {
-			printf("AAH! Can't delete database file!\n");
-			dbi_conn_close(conn);
-			dbi_shutdown();
-			return 1;
-		}
-	} else if (!strcmp(drivername, "msql")) {
-		printf("\tThis is a no-op with the mSQL driver.\n");
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
+int test_drop_table(dbi_conn conn) {
+  const char *errmsg;
+  dbi_result result;
+
+  if ((result = dbi_conn_query(conn, "DROP TABLE test_datatypes")) == NULL) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\tAAH! Can't drop table! Error message: %s\n", errmsg);
+    return 1;
+  }
+  else {
+    printf("\tOk.\n");
+  }
+  dbi_result_free(result);
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
+int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+  const char *errmsg;
+  dbi_result result;
+
+  if (!strcmp(ptr_cinfo->drivername, "sqlite")
+      || !strcmp(ptr_cinfo->drivername, "sqlite3")) {
+    char dbpath[256];
+
+    /* need this break to grant some time for db unlocking */
+    printf("...hang on a second...\n");
+    sleep(3);
+
+    strcpy(dbpath, ptr_cinfo->dbdir);
+    if (dbpath[strlen(dbpath)-1] != '/') {
+      strcat(dbpath, "/");
+    }
+    strcat(dbpath, ptr_cinfo->dbname);
+    if (unlink(dbpath)) {
+      printf("AAH! Can't delete database file!\n");
+      return 1;
+    }
+    printf("\tOk.\n");
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "msql")) {
+    printf("\tThis is a no-op with the mSQL driver.\n");
 		
-	}
-	else {
-		if (dbi_conn_select_db(conn, initial_dbname)) {
-			dbi_conn_error(conn, &errmsg);
-			printf("Uh-oh! Can't select database! Error message: %s\n", errmsg);
-			dbi_conn_close(conn);
-			dbi_shutdown();
-			return 1;
-		}
+  }
+  else {
+    if (dbi_conn_select_db(conn, ptr_cinfo->initial_dbname)) {
+      dbi_conn_error(conn, &errmsg);
+      printf("Uh-oh! Can't select database! Error message: %s\n", errmsg);
+      return 1;
+    }
 
-		if ((result = dbi_conn_queryf(conn, "DROP DATABASE %s", dbname)) == NULL) {
-			dbi_conn_error(conn, &errmsg);
-			printf("\tAAH! Can't drop database! Error message: %s\n", errmsg);
-			dbi_conn_close(conn);
-			dbi_shutdown();
-			return 1;
-		} else {
-			printf("Ok.\n");
-		}
+    /* need this break to grant some time for db unlocking */
+    printf("...hang on a second...\n");
+    sleep(3);
+
+    if ((result = dbi_conn_queryf(conn, "DROP DATABASE %s", ptr_cinfo->dbname)) == NULL) {
+      dbi_conn_error(conn, &errmsg);
+      printf("\tAAH! Can't drop database %s<< connected to database %s! Error message: %s\n", ptr_cinfo->dbname, ptr_cinfo->initial_dbname, errmsg);
+      return 1;
+    }
+    else {
+      printf("Ok.\n");
+    }
 		
-		dbi_result_free(result);
-	}
-	
-	printf("\n\n");
-	printf("SUCCESS! All done, disconnecting and shutting down libdbi. Have a nice day.\n\n");
-	
-	dbi_conn_close(conn);
-	dbi_shutdown();
-	
-	return 0;
+    dbi_result_free(result);
+  }
+  return 0;
 }

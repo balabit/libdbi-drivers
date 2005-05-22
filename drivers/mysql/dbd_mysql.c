@@ -107,8 +107,6 @@ static const char mysql_encoding_hash[][16] = {
 void _translate_mysql_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
-const char* _encoding_mysql2iana(const char *penc);
-const char* _encoding_iana2mysql(const char *ienc);
 
 
 
@@ -176,8 +174,8 @@ int dbd_connect(dbi_conn_t *conn) {
 	    /* else: do nothing, use default */
 	  }
 	  else {
-	    asprintf(&sql_cmd, "SET NAMES '%s'", _encoding_iana2mysql(encoding));
-/*  	    printf("SET NAMES '%s'", _encoding_iana2mysql(encoding)); */
+	    asprintf(&sql_cmd, "SET NAMES '%s'", dbd_encoding_from_iana(encoding));
+/*  	    printf("SET NAMES '%s'", dbd_encoding_from_iana(encoding)); */
 	    dbd_query(conn, sql_cmd);
 	    free(sql_cmd);
 	  }
@@ -298,7 +296,7 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	}
 
 
-	iana_enc = _encoding_mysql2iana(my_enc);
+	iana_enc = dbd_encoding_to_iana(my_enc);
 	
 	if (dbires) {
 	  dbi_result_free(dbires);
@@ -311,12 +309,12 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	return iana_enc;
 }
 
-const char* _encoding_mysql2iana(const char *menc) {
+const char* dbd_encoding_to_iana(const char *db_encoding) {
   int i = 0;
 
   /* loop over all even entries in hash and compare to menc */
   while (*mysql_encoding_hash[i]) {
-    if (!strncmp(mysql_encoding_hash[i], menc, strlen(mysql_encoding_hash[i]))) {
+    if (!strncmp(mysql_encoding_hash[i], db_encoding, strlen(mysql_encoding_hash[i]))) {
       /* return corresponding odd entry */
       return mysql_encoding_hash[i+1];
     }
@@ -324,15 +322,15 @@ const char* _encoding_mysql2iana(const char *menc) {
   }
 
   /* don't know how to translate, return original encoding */
-  return menc;
+  return db_encoding;
 }
 
-const char* _encoding_iana2mysql(const char *ienc) {
+const char* dbd_encoding_from_iana(const char *iana_encoding) {
   int i = 0;
 
   /* loop over all odd entries in hash and compare to ienc */
   while (*mysql_encoding_hash[i+1]) {
-    if (!strcmp(mysql_encoding_hash[i+1], ienc)) {
+    if (!strcmp(mysql_encoding_hash[i+1], iana_encoding)) {
       /* return corresponding even entry */
       return mysql_encoding_hash[i];
     }
@@ -340,7 +338,7 @@ const char* _encoding_iana2mysql(const char *ienc) {
   }
 
   /* don't know how to translate, return original encoding */
-  return ienc;
+  return iana_encoding;
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {

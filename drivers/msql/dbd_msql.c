@@ -150,6 +150,16 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
   return msql_encoding;
 }
 
+const char* dbd_encoding_to_iana(const char *db_encoding) {
+  /* nothing to translate, return original encoding */
+  return db_encoding;
+}
+
+const char* dbd_encoding_from_iana(const char *iana_encoding) {
+  /* nothing to translate, return original encoding */
+  return iana_encoding;
+}
+
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) 
 {
 	dbi_result_t *result = NULL;

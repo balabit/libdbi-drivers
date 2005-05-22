@@ -93,8 +93,6 @@ void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 int _dbd_real_connect(dbi_conn_t *conn, const char *db);
-const char* _encoding_pgsql2iana(const char *penc);
-const char* _encoding_iana2pgsql(const char *ienc);
 
 /* this function is available through the PostgreSQL client library, but it
    is not declared in any of their headers. I hope this won't break anything */
@@ -191,12 +189,12 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	if (encoding && *encoding) {
 	  /* set connection encoding */
 	  if (strcmp(encoding, "auto")) {
-/* 	    printf("try to set iana:%s<<pgsql:%s encoding\n", encoding, _encoding_iana2pgsql(encoding)); */
-/* 	    asprintf(&sql_cmd, "SET NAMES '%s'", _encoding_iana2pgsql(encoding)); */
+/* 	    printf("try to set iana:%s<<pgsql:%s encoding\n", encoding, dbd_encoding_from_iana(encoding)); */
+/* 	    asprintf(&sql_cmd, "SET NAMES '%s'", dbd_encoding_from_iana(encoding)); */
 /* 	    dbd_query(conn, sql_cmd); */
 /* 	    free(sql_cmd); */
-	    if (PQsetClientEncoding(pgconn, _encoding_iana2pgsql(encoding))) {
-/* 	      printf("could not set client encoding to %s\n", _encoding_iana2pgsql(encoding)); */
+	    if (PQsetClientEncoding(pgconn, dbd_encoding_from_iana(encoding))) {
+/* 	      printf("could not set client encoding to %s\n", dbd_encoding_from_iana(encoding)); */
 	    }
 	  }
 	  /* else: by default, pgsql uses the database encoding
@@ -294,16 +292,16 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	  return NULL;
 	}
 	else {
-	  return _encoding_pgsql2iana(my_enc);
+	  return dbd_encoding_to_iana(my_enc);
 	}
 }
 
-const char* _encoding_pgsql2iana(const char *penc) {
+const char* dbd_encoding_to_iana(const char *db_encoding) {
   int i = 0;
 
   /* loop over all even entries in hash and compare to penc */
   while (*pgsql_encoding_hash[i]) {
-    if (!strcmp(pgsql_encoding_hash[i], penc)) {
+    if (!strcmp(pgsql_encoding_hash[i], db_encoding)) {
       /* return corresponding odd entry */
       return pgsql_encoding_hash[i+1];
     }
@@ -311,15 +309,15 @@ const char* _encoding_pgsql2iana(const char *penc) {
   }
 
   /* don't know how to translate, return original encoding */
-  return penc;
+  return db_encoding;
 }
 
-const char* _encoding_iana2pgsql(const char *ienc) {
+const char* dbd_encoding_from_iana(const char *iana_encoding) {
   int i = 0;
 
   /* loop over all odd entries in hash and compare to ienc */
   while (*pgsql_encoding_hash[i+1]) {
-    if (!strcmp(pgsql_encoding_hash[i+1], ienc)) {
+    if (!strcmp(pgsql_encoding_hash[i+1], iana_encoding)) {
       /* return corresponding even entry */
       return pgsql_encoding_hash[i];
     }
@@ -327,7 +325,7 @@ const char* _encoding_iana2pgsql(const char *ienc) {
   }
 
   /* don't know how to translate, return original encoding */
-  return ienc;
+  return iana_encoding;
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {

@@ -4,10 +4,6 @@
 
 #define QUERY_LEN 512
 
-/* todo: 
-   latin1 database cannot be deleted by postgres as it is still active
-   postgres reports latin1 database as latin1 even if using utf8 connection
-*/
 struct CONNINFO {
   char driverdir[256];
   char drivername[64];
@@ -166,6 +162,16 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
+  /* Test 11: test character encoding conversion */
+  printf("\nTest 11: Character encoding conversion:\n");
+	
+  if (test_convert_encoding(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+
   /* we're done with this connection */
   dbi_conn_close(conn);
   conn = NULL;
@@ -196,8 +202,8 @@ int main(int argc, char **argv) {
 	
     printf("\nSuccessfully connected using an UTF-8 encoding!\n");
 	
-    /* Test 11: create UTF-8 database */
-    printf("\nTest 11: Create database %s with encoding UTF-8: \n", cinfo.dbname);
+    /* Test 12: create UTF-8 database */
+    printf("\nTest 12: Create database %s with encoding UTF-8: \n", cinfo.dbname);
 	
     if (test_create_db(&cinfo, conn, "UTF-8")) {
       dbi_conn_close(conn);
@@ -205,8 +211,8 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    /* Test 12: select UTF-8 database */
-    printf("\nTest 12: Select UTF-8 database: \n");
+    /* Test 13: select UTF-8 database */
+    printf("\nTest 13: Select UTF-8 database: \n");
 
     if (test_select_db(&cinfo, conn)) {
       dbi_conn_close(conn);
@@ -214,13 +220,13 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    /* Test 13: get encoding of UTF-8 database */
-    printf("\nTest 13: Get encoding of UTF-8 database: \n");
+    /* Test 14: get encoding of UTF-8 database */
+    printf("\nTest 14: Get encoding of UTF-8 database: \n");
 	
     printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
-    /* Test 14: drop UTF-8 database */
-    printf("\nTest 14: Drop UTF-8 database: \n");
+    /* Test 15: drop UTF-8 database */
+    printf("\nTest 15: Drop UTF-8 database: \n");
 	
     if (test_drop_db(&cinfo, conn)) {
       dbi_conn_close(conn);
@@ -257,8 +263,8 @@ int main(int argc, char **argv) {
 	
     printf("\nSuccessfully connected using a ISO-8859-1 encoding!\n");
 	
-    /* Test 15: create ISO-8859-1 database */
-    printf("\nTest 15: Create database %s with encoding ISO-8859-1: \n", cinfo.dbname);
+    /* Test 16: create ISO-8859-1 database */
+    printf("\nTest 16: Create database %s with encoding ISO-8859-1: \n", cinfo.dbname);
 	
     if (test_create_db(&cinfo, conn, "ISO-8859-1")) {
       dbi_conn_close(conn);
@@ -266,8 +272,8 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    /* Test 16: select ISO-8859-1 database */
-    printf("\nTest 16: Select ISO-8859-1 database: \n");
+    /* Test 17: select ISO-8859-1 database */
+    printf("\nTest 17: Select ISO-8859-1 database: \n");
 
     if (test_select_db(&cinfo, conn)) {
       dbi_conn_close(conn);
@@ -275,8 +281,8 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    /* Test 17: get encoding of ISO-8859-1 database */
-    printf("\nTest 17: Get encoding of ISO-8859-1 database: \n");
+    /* Test 18: get encoding of ISO-8859-1 database */
+    printf("\nTest 18: Get encoding of ISO-8859-1 database: \n");
 	
     printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
@@ -309,8 +315,8 @@ int main(int argc, char **argv) {
 	
     printf("\nSuccessfully connected to ISO-8859-1 database using UTF-8 encoding!\n");
 	
-    /* Test 18: get encoding of ISO-8859-1 database */
-    printf("\nTest 18: Get encoding of ISO-8859-1 database using UTF-8 encoding: \n");
+    /* Test 19: get encoding of ISO-8859-1 database */
+    printf("\nTest 19: Get encoding of ISO-8859-1 database using UTF-8 encoding: \n");
 	
     printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
@@ -344,13 +350,13 @@ int main(int argc, char **argv) {
 	
     printf("\nSuccessfully connected to ISO-8859-1 database using \"auto\" encoding!\n");
 	
-    /* Test 18: get encoding of ISO-8859-1 database */
-    printf("\nTest 18: Get encoding of ISO-8859-1 database using \"auto\" encoding: \n");
+    /* Test 20: get encoding of ISO-8859-1 database */
+    printf("\nTest 20: Get encoding of ISO-8859-1 database using \"auto\" encoding: \n");
 	
     printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
-    /* Test 19: drop ISO-8859-1 database */
-    printf("\nTest 19: Drop ISO-8859-1 database: \n");
+    /* Test 21: drop ISO-8859-1 database */
+    printf("\nTest 21: Drop ISO-8859-1 database: \n");
 	
     if (test_drop_db(&cinfo, conn)) {
       dbi_conn_close(conn);
@@ -968,6 +974,25 @@ int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     }
 		
     dbi_result_free(result);
+  }
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
+int test_convert_encoding(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+  char dbencoding[32] = "";
+
+  if (!strcmp(ptr_cinfo->drivername, "mysql")) {
+    strcpy(dbencoding, "latin1");
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
+    strcpy(dbencoding, "LATIN1");
+  }
+
+  printf("IANA encoding UTF-8 is known to the engine as %s\n", dbi_driver_encoding_from_iana(dbi_conn_get_driver(conn), "UTF-8"));
+
+  if (*dbencoding) {
+    printf("Engine encoding %s is known at IANA as %s\n", dbencoding, dbi_driver_encoding_to_iana(dbi_conn_get_driver(conn), dbencoding));
   }
   return 0;
 }

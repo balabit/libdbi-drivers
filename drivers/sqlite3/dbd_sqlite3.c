@@ -145,7 +145,6 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
     return -1;
   }
 
-  /* sqlite3 specific options */
   encoding = dbi_conn_get_option(conn, "encoding");
 
   if (!encoding) {
@@ -345,9 +344,9 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
       FILE* fp;
 
       if ((fp = fopen(entry->d_name, "r")) != NULL) {
-	char magic_text[48] = "";
+	char magic_text[16] = "";
 
-	if (fread(magic_text, 1, 47, fp) < 47) {
+	if (fread(magic_text, 1, 15, fp) < 15) {
 	  /* either we can't read at all, or the file is too small
 	     for a sqlite3 database anyway */
 	  fclose(fp);
@@ -355,7 +354,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
 	}
 
 	/* terminate magic text */
-	magic_text[47] = '\0';
+	magic_text[15] = '\0';
 
 	if (strcmp(magic_text, "SQLite format 3")) {
 	  /* this file is not meant for us */
@@ -453,13 +452,9 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   return dbd_query(conn, "SELECT tablename FROM libdbi_tablenames ORDER BY tablename");
 }
 
-dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) {
-	return NULL;
-}
-
-int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
+size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
   /* foo's -> 'foo\'s' */
-  unsigned int len;
+  size_t len;
 	
   strcpy(dest, "'");
   len = sqlite3_escape_string(dest+1, orig, strlen(orig));	
@@ -468,8 +463,30 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
   return len+2;
 }
 
-int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
   return dbd_quote_string(conn->driver, orig, dest);
+}
+
+size_t dbd_quote_binary(dbi_conn_t *conn, const char *orig, size_t from_length, char **ptr_dest) {
+  unsigned char *temp;
+  size_t len;
+
+  if ((temp = (unsigned char*)malloc(from_length*2)) == NULL) {
+    return 0;
+  }
+
+  strcpy(temp, "\'");
+  if (from_length) {
+    len = _dbd_encode_binary(orig, from_length, temp+1);
+  }
+  else {
+    len = 0;
+  }
+  strcat(temp, "'");
+
+  *ptr_dest = temp;
+
+  return len+2;
 }
 
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
@@ -484,7 +501,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
   int numcols;
   char** result_table;
   char* errmsg;
-  unsigned short idx = 0;
+  unsigned long idx = 0;
   unsigned short fieldtype;
   unsigned int fieldattribs;
   dbi_error_flag errflag = 0;
@@ -503,10 +520,10 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	
   result = _dbd_result_create(conn, (void *)result_table, (unsigned long long)numrows, (unsigned long long)sqlite3_changes((sqlite3*)conn->connection));
 /*   printf("numrows:%d, numcols:%d<<\n", numrows, numcols); */
-  _dbd_result_set_numfields(result, (unsigned short)numcols);
+  _dbd_result_set_numfields(result, (unsigned long)numcols);
 
   /* assign types to result */
-  while (idx < (unsigned short)numcols) {
+  while (idx < (unsigned long)numcols) {
     int type;
     char *item;
     
@@ -530,6 +547,11 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
   return result;
 }
 
+dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) {
+  /* todo: implement using sqlite3_prepare and friends */
+  return NULL;
+}
+
 int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement) {
   /* 
      field is the name of the field which we want to know the type of
@@ -538,10 +560,10 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
      returns the type as a FIELD_TYPE_XXX value
 
-     sqlite3 is typeless (with one exception) on purpose. You can
-     declare types with the CREATE TABLE statement, but they serve
-     descriptive purposes only. Therefore libsqlite3 does not provide
-     any helper function to find out about the type of a given field.
+     sqlite3 uses a type system insufficient for libdbi. Therefore
+     there is no convenience function to retrieve the types of
+     columns. You don't even have to declare the column types if
+     you don't want to.
 
      However, sqlite3 stores the CREATE TABLE commands as a string in
      an internal table, so we can try to look up the types in these
@@ -729,8 +751,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
      different thing in MySQL and PostgreSQL */
 
 /*   printf("field type: %s<<\n", curr_type); */
-  if (strstr(curr_type, "BLOB")
-      || strstr(curr_type, "CHAR(") /* note the opening bracket */
+  if (strstr(curr_type, "CHAR(") /* note the opening bracket */
       || strstr(curr_type, "CLOB")
       || strstr(curr_type, "TEXT") /* also catches TINYTEXT */
       || strstr(curr_type, "VARCHAR")
@@ -738,6 +759,10 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
       || strstr(curr_type, "SET")
       || strstr(curr_type, "YEAR")) { /* MySQL 2 or 4 digit year (string) */
     type = FIELD_TYPE_STRING;
+  }
+  else if (strstr(curr_type, "BLOB")
+	   || strstr(curr_type, "BYTEA")) {
+    type = FIELD_TYPE_BLOB;
   }
   else if (strstr(curr_type, "CHAR") /* this is a 1-byte value */
 	   || strstr(curr_type, "TINYINT")
@@ -1056,9 +1081,8 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
       row->field_sizes[curfield] = strlen(raw);
       break;
     case DBI_TYPE_BINARY:
-      /* treat as string */
       data->d_string = strdup(raw);
-      row->field_sizes[curfield] = strlen(raw);
+      row->field_sizes[curfield] = _dbd_decode_binary(data->d_string, data->d_string);
       break;
     case DBI_TYPE_DATETIME:
       sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DATETIME_DATE, DBI_DATETIME_TIME);

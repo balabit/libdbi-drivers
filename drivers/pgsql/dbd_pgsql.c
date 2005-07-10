@@ -189,21 +189,13 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	if (encoding && *encoding) {
 	  /* set connection encoding */
 	  if (strcmp(encoding, "auto")) {
-/* 	    printf("try to set iana:%s<<pgsql:%s encoding\n", encoding, dbd_encoding_from_iana(encoding)); */
-/* 	    asprintf(&sql_cmd, "SET NAMES '%s'", dbd_encoding_from_iana(encoding)); */
-/* 	    dbd_query(conn, sql_cmd); */
-/* 	    free(sql_cmd); */
 	    if (PQsetClientEncoding(pgconn, dbd_encoding_from_iana(encoding))) {
 /* 	      printf("could not set client encoding to %s\n", dbd_encoding_from_iana(encoding)); */
 	    }
 	  }
 	  /* else: by default, pgsql uses the database encoding
 	     as the client encoding, nothing to do */
-/* 	  printf("set encoding to %s<<\n", encoding); */
 	}
-/* 	else { */
-/* 	  printf("leave encoding alone\n"); */
-/* 	} */
 
 	return 0;
 }
@@ -356,9 +348,9 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 	}
 }
 
-int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
+size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
 	/* foo's -> 'foo\'s' */
-	int len;
+	size_t len;
 
 	strcpy(dest, "'");
 	len = PQescapeString(dest+1, orig, strlen(orig));
@@ -367,8 +359,34 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
 	return len+2;
 }
 
-int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
   return dbd_quote_string(conn->driver, orig, dest);
+}
+
+size_t dbd_quote_binary(dbi_conn_t *conn, const char* orig, size_t from_length, char **ptr_dest) {
+  char *temp = NULL;
+  char *quoted_temp = NULL;
+  size_t to_length;
+
+  temp = PQescapeBytea(orig, from_length, &to_length);
+
+  if (!temp) {
+    return 0;
+  }
+
+  if ((quoted_temp = (char*)malloc(to_length+2)) == NULL) {
+    PQfreemem(temp);
+    return 0;
+  }
+  
+  strcpy(quoted_temp, "'");
+  strcat(quoted_temp, temp);
+  strcat(quoted_temp, "'");
+
+  PQfreemem((void*)temp);
+
+  *ptr_dest = quoted_temp;
+  return to_length;
 }
 
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
@@ -585,6 +603,9 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	unsigned long long strsize = 0;
 	unsigned long sizeattrib;
 	dbi_data_t *data;
+	unsigned char *temp = NULL;
+	size_t unquoted_length;
+
 
 	while (curfield < result->numfields) {
 		raw = PQgetvalue((PGresult *)result->result_handle, rowidx, curfield);
@@ -632,11 +653,21 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				data->d_string = strdup(raw);
 				row->field_sizes[curfield] = strsize;
 				break;
-			case DBI_TYPE_BINARY:		  
-       			        strsize = PQgetlength((PGresult *)result->result_handle, rowidx, curfield);
-				row->field_sizes[curfield] = strsize;
-				data->d_string = malloc(strsize);
-				memcpy(data->d_string, raw, strsize);
+			case DBI_TYPE_BINARY:	
+			  temp = PQunescapeBytea(raw, &unquoted_length);
+			  printf("unquoted length went to %d<<\n", unquoted_length);
+			  if ((data->d_string = (char*)malloc(unquoted_length)) == NULL) {
+			    PQfreemem(temp);
+			    break;
+			  }
+			  memmove(data->d_string, temp, unquoted_length);
+			  PQfreemem(temp);
+			  row->field_sizes[curfield] = unquoted_length;
+			  /* todo: is raw ever unescaped binary data? */
+/*        			        strsize = PQgetlength((PGresult *)result->result_handle, rowidx, curfield); */
+/* 				row->field_sizes[curfield] = strsize; */
+/* 				data->d_string = malloc(strsize); */
+/* 				memcpy(data->d_string, raw, strsize); */
 				break;
 				
 			case DBI_TYPE_DATETIME:

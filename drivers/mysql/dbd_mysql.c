@@ -378,7 +378,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 	}
 }
 
-int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
+size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
 	/* foo's -> 'foo\'s' */
 	unsigned int len;
 	
@@ -386,20 +386,38 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
 	len = mysql_escape_string(dest+1, orig, strlen(orig));	
 	strcat(dest, "'");
 	
-	return len+2;
+	return (size_t)(len+2);
 }
 
-int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
 	/* foo's -> 'foo\'s' */
-	unsigned int len;
+	unsigned long len;
 	MYSQL *mycon = (MYSQL*)conn->connection;
 	
-	/* todo: use mysql_real_escape_string */
 	strcpy(dest, "'");
 	len = mysql_real_escape_string(mycon, dest+1, orig, strlen(orig));	
 	strcat(dest, "'");
 	
-	return len+2;
+	return (size_t)(len+2);
+}
+
+size_t dbd_quote_binary(dbi_conn_t *conn, const char* orig, size_t from_length, char **ptr_dest) {
+  char *temp;
+  unsigned long len;
+  MYSQL *mycon = (MYSQL*)conn->connection;
+
+  /* we allocate what mysql_real_escape_string needs, plus an extra two escape chars and a terminating zero*/
+  temp = (char*)malloc(2*from_length+1+2);
+
+  if (!temp) {
+    return DBI_LENGTH_ERROR;
+  }
+
+  strcpy(temp, "'");
+  len = mysql_real_escape_string(mycon, temp+1, orig, from_length);
+  strcpy(temp+len+1, "\'");
+  *ptr_dest = temp;
+  return (size_t)len+2;
 }
 
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {

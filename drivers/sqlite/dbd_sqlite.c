@@ -80,7 +80,7 @@ void _translate_sqlite_type(enum enum_field_types fieldtype, unsigned short *typ
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx);
 int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement);
 char* get_field_type(const char* statement, const char* curr_field_name);
-static unsigned long sqlite_escape_string(char *to, const char *from, unsigned long length);
+static size_t sqlite_escape_string(char *to, const char *from, unsigned long length);
 int wild_case_compare(const char *str,const char *str_end,
 		      const char *wildstr,const char *wildend,
 		      char escape);
@@ -425,7 +425,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, u
 	return NULL;
 }
 
-int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
+size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
   /* foo's -> 'foo\'s' */
   unsigned int len;
 	
@@ -436,8 +436,30 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
   return len+2;
 }
 
-int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
   return dbd_quote_string(conn->driver, orig, dest);
+}
+
+size_t dbd_quote_binary(dbi_conn_t *conn, const char *orig, size_t from_length, char **ptr_dest) {
+  unsigned char *temp;
+  size_t len;
+
+  if ((temp = (unsigned char*)malloc(from_length*2)) == NULL) {
+    return 0;
+  }
+
+  strcpy(temp, "\'");
+  if (from_length) {
+    len = _dbd_encode_binary(orig, from_length, temp+1);
+  }
+  else {
+    len = 0;
+  }
+  strcat(temp, "'");
+
+  *ptr_dest = temp;
+
+  return len+2;
 }
 
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
@@ -452,7 +474,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
   int numcols;
   char** result_table;
   char* errmsg;
-  unsigned short idx = 0;
+  unsigned long idx = 0;
   unsigned short fieldtype;
   unsigned int fieldattribs;
   dbi_error_flag errflag = 0;
@@ -471,10 +493,10 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	
   result = _dbd_result_create(conn, (void *)result_table, (unsigned long long)numrows, (unsigned long long)sqlite_changes((sqlite*)conn->connection));
 /*   printf("numrows:%d, numcols:%d<<\n", numrows, numcols); */
-  _dbd_result_set_numfields(result, (unsigned short)numcols);
+  _dbd_result_set_numfields(result, (unsigned long)numcols);
 
   /* assign types to result */
-  while (idx < (unsigned short)numcols) {
+  while (idx < (unsigned long)numcols) {
     int type;
     char *item;
     
@@ -697,7 +719,10 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
 /*   printf("field type: %s<<\n", curr_type); */
   if (strstr(curr_type, "BLOB")
-      || strstr(curr_type, "CHAR(") /* note the opening bracket */
+      || strstr(curr_type, "BYTEA")) {
+    type = FIELD_TYPE_BLOB;
+  }
+  else if (strstr(curr_type, "CHAR(") /* note the opening bracket */
       || strstr(curr_type, "CLOB")
       || strstr(curr_type, "TEXT") /* also catches TINYTEXT */
       || strstr(curr_type, "VARCHAR")
@@ -1022,9 +1047,8 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
       row->field_sizes[curfield] = strlen(raw);
       break;
     case DBI_TYPE_BINARY:
-      /* treat as string */
       data->d_string = strdup(raw);
-      row->field_sizes[curfield] = strlen(raw);
+      row->field_sizes[curfield] = _dbd_decode_binary(data->d_string, data->d_string);
       break;
     case DBI_TYPE_DATETIME:
       sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DATETIME_DATE, DBI_DATETIME_TIME);
@@ -1133,7 +1157,7 @@ int wild_case_compare(const char *str,const char *str_end,
 /* this function is stolen from MySQL. The quoting was changed to the
  SQL standard, i.e. single and double quotes are escaped by doubling,
  not by a backslash. Newlines and carriage returns are left alone */
-static unsigned long sqlite_escape_string(char *to, const char *from, unsigned long length)
+static size_t sqlite_escape_string(char *to, const char *from, unsigned long length)
 {
   const char *to_start=to;
   const char *end;
@@ -1158,5 +1182,6 @@ static unsigned long sqlite_escape_string(char *to, const char *from, unsigned l
       }
     }
   *to=0;
-  return (unsigned long) (to-to_start);
+  return (size_t) (to-to_start);
 }
+

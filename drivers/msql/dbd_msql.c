@@ -194,12 +194,12 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 }
 
 
-int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
+size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
 {
-	unsigned int len;
+	size_t len;
 	const char *escaped = "\'\"\\";
 	strcpy(dest, "'");
-	len = _dbd_quote_chars(dest, orig, escaped);
+	len = _dbd_quote_chars(dest, orig, strlen(orig), escaped);
 	
 	strcat(dest, "'");
 	
@@ -209,6 +209,28 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 
 int dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
   return dbd_quote_string(conn->driver, orig, dest);
+}
+
+size_t dbd_quote_binary(dbi_conn_t *conn, const char *orig, size_t from_length, char **ptr_dest) {
+  unsigned char *temp;
+  size_t len;
+
+  if ((temp = (unsigned char*)malloc(from_length*2)) == NULL) {
+    return 0;
+  }
+
+  strcpy(temp, "\'");
+  if (from_length) {
+    len = _dbd_encode_binary(orig, from_length, temp+1);
+  }
+  else {
+    len = 0;
+  }
+  strcat(temp, "'");
+
+  *ptr_dest = temp;
+
+  return len+2;
 }
 
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) 

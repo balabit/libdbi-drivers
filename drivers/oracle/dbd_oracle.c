@@ -128,7 +128,7 @@ int dbd_disconnect(dbi_conn_t *conn)
 }
 
 
-int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum) 
+int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) 
 {
 	dbi_row_t *row = NULL;
   
@@ -136,8 +136,8 @@ int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum)
 	
 	if (result->result_state == ROWS_RETURNED) {
 		row = _dbd_row_allocate(result->numfields);
-		_get_row_data(result, row, rownum);
-		_dbd_row_finalize(result, row, rownum);
+		_get_row_data(result, row, rowidx);
+		_dbd_row_finalize(result, row, rowidx);
 	}
   
 	return 1; 
@@ -152,7 +152,7 @@ int dbd_free_query(dbi_result_t *result)
 }
 
 
-int dbd_goto_row(dbi_result_t *result, unsigned long long row) 
+int dbd_goto_row(dbi_result_t *result, unsigned long long rowidx) 
 {	
 	return 1;
 }
@@ -222,9 +222,9 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 }
 
 
-int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
+size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
 {
-	unsigned int len;
+	size_t len;
 
 	strcpy(dest, "'");
 	const char *escaped = "\'\"\\";
@@ -236,7 +236,7 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 }
 
 
-dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, unsigned long st_length) 
+dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, size_t st_length) 
 {
 	OCIStmt *stmt;
 	OCIDefine *defnp;
@@ -323,6 +323,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 
 char *dbd_select_db(dbi_conn_t *conn, const char *db) 
 {
+  /* todo: PostgreSQL can't do it either, but there's a workaround */
 	return NULL; /* Oracle can't do that .... */
 }
 
@@ -493,8 +494,10 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	OCIDefine *defnp = (OCIDefine *) 0;
 	OCIParam *param;
 	Oraconn *Oconn = result->conn->connection; 
-	int curfield = 0, length = 0;
-	unsigned long sizeattrib,slen;
+	unsigned int curfield = 0;
+	size_t length = 0;
+	size_t slen;
+	unsigned int sizeattrib;
 	dbi_data_t *data;
 	char *ptr, *cols[result->numfields];
 	dword status;

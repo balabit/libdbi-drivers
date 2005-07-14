@@ -108,16 +108,16 @@ int dbd_disconnect(dbi_conn_t *conn)
 }
 
 
-int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum) 
+int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) 
 {
         dbi_row_t *row = NULL;
   
-	if (result->result_state == NOTHING_RETURNED) return -1;
+	if (result->result_state == NOTHING_RETURNED) return 0;
 	
 	if (result->result_state == ROWS_RETURNED) {
 		row = _dbd_row_allocate(result->numfields); 
-		_get_row_data(result, row, rownum);
-		_dbd_row_finalize(result, row, rownum);
+		_get_row_data(result, row, rowidx);
+		_dbd_row_finalize(result, row, rowidx);
 	}
 	
 	return 1; 
@@ -131,9 +131,9 @@ int dbd_free_query(dbi_result_t *result)
 }
 
 
-int dbd_goto_row(dbi_result_t *result, unsigned long long row) 
+int dbd_goto_row(dbi_result_t *result, unsigned long long rowidx) 
 {
-        msqlDataSeek((m_result *)result->result_handle, row);
+        msqlDataSeek((m_result *)result->result_handle, rowidx);
 	return 1;
 }
 
@@ -141,6 +141,7 @@ int dbd_goto_row(dbi_result_t *result, unsigned long long row)
 int dbd_get_socket(dbi_conn_t *conn)
 {
         if(! conn->connection) return -1;
+	/* todo: does this make sense? */
 	return (int)conn->connection;
 }
 
@@ -233,7 +234,7 @@ size_t dbd_quote_binary(dbi_conn_t *conn, const char *orig, size_t from_length, 
   return len+2;
 }
 
-dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) 
+dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) 
 {
 	return NULL;
 }
@@ -294,7 +295,8 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence)
 
 int dbd_ping(dbi_conn_t *conn) 
 {
-	return 0;
+  /* assume the server is still alive */
+	return 1;
 }
 
 /* CORE MSQL DATA FETCHING STUFF */
@@ -396,9 +398,9 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	m_result *_res = result->result_handle;
 	m_row _row;
 	
-	int curfield = 0;
+	unsigned int curfield = 0;
 	char *raw = NULL;
-	unsigned long sizeattrib;
+	unsigned int sizeattrib;
 	dbi_data_t *data;
   
 	msqlDataSeek(_res, rowidx);
@@ -422,7 +424,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				data->d_short = (short) atol(raw); break;
 			case DBI_INTEGER_SIZE3:
 			case DBI_INTEGER_SIZE4:
-				data->d_long = (long) atol(raw); break;
+				data->d_long = (int) atol(raw); break;
 			case DBI_INTEGER_SIZE8:
 				data->d_longlong = (long long) atoll(raw); break;
 			default:
@@ -443,7 +445,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			break;
 		case DBI_TYPE_STRING:
 			data->d_string = strdup(raw);
-			row->field_sizes[curfield] = (unsigned long long) strlen( raw );
+			row->field_sizes[curfield] = strlen( raw );
 			break;
 		case DBI_TYPE_DATETIME:
 		  sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DATETIME_DATE\
@@ -452,7 +454,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		  break;
 		default:	  
 			data->d_string = strdup(raw);
-			row->field_sizes[curfield] = (unsigned long long) strlen( raw );
+			row->field_sizes[curfield] = strlen( raw );
 			break;
 		}
 		curfield++;

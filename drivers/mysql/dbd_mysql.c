@@ -62,7 +62,7 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = MYSQL_RESERVED_WORDS;
 
-/* encoding strings, array is terminated by empty string */
+/* encoding strings, array is terminated by a pair of empty strings */
 static const char mysql_encoding_hash[][16] = {
   /* MySQL, www.iana.org */
   "ascii", "US-ASCII",
@@ -100,7 +100,7 @@ static const char mysql_encoding_hash[][16] = {
   "dec8","DEC-MCS",
   "tis620","TIS-620",
   "hp8","hp-roman8",
-  ""
+  "", ""
 };
 
 /* forward declarations of local functions */
@@ -193,16 +193,16 @@ int dbd_disconnect(dbi_conn_t *conn) {
 	return 0;
 }
 
-int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum) {
+int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) {
 	dbi_row_t *row = NULL;
 
-	if (result->result_state == NOTHING_RETURNED) return -1;
+	if (result->result_state == NOTHING_RETURNED) return 0;
 	
 	if (result->result_state == ROWS_RETURNED) {
 		/* get row here */
 		row = _dbd_row_allocate(result->numfields);
-		_get_row_data(result, row, rownum);
-		_dbd_row_finalize(result, row, rownum);
+		_get_row_data(result, row, rowidx);
+		_dbd_row_finalize(result, row, rowidx);
 	}
 	
 	return 1; /* 0 on error, 1 on successful fetchrow */
@@ -213,9 +213,12 @@ int dbd_free_query(dbi_result_t *result) {
 	return 0;
 }
 
-int dbd_goto_row(dbi_result_t *result, unsigned long long row) {
+int dbd_goto_row(dbi_result_t *result, unsigned long long rowidx) {
 	// XXX TODO: kosherize this, handle efficient queries.
-	mysql_data_seek((MYSQL_RES *)result->result_handle, row);
+	mysql_data_seek((MYSQL_RES *)result->result_handle, rowidx);
+	/* the return type of this function is indeed void, so it is
+	   unclear what happens if rowidx is outside the range. The
+	   calling function must make sure the row index is valid */
 	return 1;
 }
 
@@ -380,7 +383,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 
 size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
 	/* foo's -> 'foo\'s' */
-	unsigned int len;
+	unsigned long len;
 	
 	strcpy(dest, "'");
 	len = mysql_escape_string(dest+1, orig, strlen(orig));	
@@ -446,7 +449,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	return result;
 }
 
-dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) {
+dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) {
 	dbi_result_t *result;
 	MYSQL_RES *res;
 	
@@ -610,14 +613,14 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	MYSQL_RES *_res = result->result_handle;
 	MYSQL_ROW _row;
 	
-	int curfield = 0;
+	unsigned int curfield = 0;
 	char *raw = NULL;
-	unsigned long *strsizes = NULL;
-	unsigned long sizeattrib;
+	size_t *strsizes = NULL;
+	unsigned int sizeattrib;
 	dbi_data_t *data;	
 
 	_row = mysql_fetch_row(_res);
-	strsizes = mysql_fetch_lengths(_res);
+	strsizes = (size_t *)mysql_fetch_lengths(_res);
 
 	while (curfield < result->numfields) {
 		raw = _row[curfield];
@@ -642,7 +645,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 						data->d_short = (short) atol(raw); break;
 					case DBI_INTEGER_SIZE3:
 					case DBI_INTEGER_SIZE4:
-						data->d_long = (long) atol(raw); break;
+						data->d_long = (int) atol(raw); break;
 					case DBI_INTEGER_SIZE8:
 						data->d_longlong = (long long) atoll(raw); break;
 					default:
@@ -662,15 +665,16 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				break;
 			case DBI_TYPE_STRING:
 				data->d_string = strdup(raw);
-				row->field_sizes[curfield] = (unsigned long long) strsizes[curfield];
+				row->field_sizes[curfield] = strsizes[curfield];
 				break;
 			case DBI_TYPE_BINARY:
-				row->field_sizes[curfield] = (unsigned long long) strsizes[curfield];
+				row->field_sizes[curfield] = strsizes[curfield];
 				data->d_string = malloc(strsizes[curfield]+1); // one extra char for libdbi's null
 				if (!data->d_string) {
 					break;
 				}
 				memcpy(data->d_string, raw, strsizes[curfield]);
+				/* todo: revise as this looks kinda strange */
 				data->d_string[strsizes[curfield]] = '\0'; // manually null-terminate the data so C string casting still works
 				if (dbi_conn_get_option_numeric(result->conn, "mysql_include_trailing_null") == 1) {
 					row->field_sizes[curfield]++; // the extra null we added was actually part of the original data
@@ -683,7 +687,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				
 			default:
 				data->d_string = strdup(raw);
-				row->field_sizes[curfield] = (unsigned long long) strsizes[curfield];
+				row->field_sizes[curfield] = strsizes[curfield];
 				break;
 		}
 		

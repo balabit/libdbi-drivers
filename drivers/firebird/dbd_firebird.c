@@ -154,17 +154,17 @@ int dbd_disconnect(dbi_conn_t *conn)
 }
 
 
-int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum) 
+int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) 
 {
 	dbi_row_t *row = NULL;
 	
 	if (result->result_state == NOTHING_RETURNED) return -1;
 	if (result->result_state == ROWS_RETURNED) {
 	        row = _dbd_row_allocate(result->numfields);
-		if( _get_row_data(result, row, rownum) == 0 ) 
+		if( _get_row_data(result, row, rowidx) == 0 ) 
 			return 0;
 		
-		_dbd_row_finalize(result, row, rownum);
+		_dbd_row_finalize(result, row, rowidx);
 	}
   
 	return 1; 
@@ -187,7 +187,7 @@ int dbd_free_query(dbi_result_t *result)
 }
 
 
-int dbd_goto_row(dbi_result_t *result, unsigned long long row) 
+int dbd_goto_row(dbi_result_t *result, unsigned long long rowidx) 
 {	
 	return 1;
 }
@@ -227,11 +227,11 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 }
 
 
-int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
+size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
 {
 	const char *worker = orig;
 	register int i = 0, j = 0;
-	int length = strlen(orig);
+	size_t length = strlen(orig);
 
 	for(i = 0; i < length; i++) {
 		
@@ -248,7 +248,7 @@ int dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 }
 
 
-dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, unsigned long st_length) 
+dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, size_t st_length) 
 {	
 	return NULL;
 }
@@ -510,7 +510,7 @@ void _get_field_info(dbi_result_t *result)
 
 int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) 
 {
-	int curfield = 0;
+	unsigned int curfield = 0;
 	XSQLVAR var;
 	long fetch_stat = 0, blob_stat = 0;
 	ISC_QUAD bid;
@@ -519,7 +519,7 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 	unsigned short actual_seg_len;		
 	struct tm times;
 	char date_s[25];
-	unsigned long sizeattrib;
+	unsigned int sizeattrib;
 	dbi_data_t *data = NULL;
 	ibase_stmt_t *istmt = result->result_handle;
 	ibase_conn_t *iconn = (ibase_conn_t *)result->conn->connection;
@@ -568,7 +568,7 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 				data->d_short = *(short *) var.sqldata; break;
 			case DBI_INTEGER_SIZE3:
 			case DBI_INTEGER_SIZE4:
-				data->d_long = *(long *) var.sqldata; break;
+				data->d_long = *(int *) var.sqldata; break;
 			case DBI_INTEGER_SIZE8:
 				data->d_longlong = *(ISC_INT64 *) var.sqldata; break;
 			default:

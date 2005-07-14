@@ -79,10 +79,10 @@ static const char sqlite3_encoding_UTF16[] = "UTF-16";
 /* forward declarations */
 int _real_dbd_connect(dbi_conn_t *conn, const char* database);
 void _translate_sqlite3_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
-void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx);
+void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement);
 char* get_field_type(const char* statement, const char* curr_field_name);
-static unsigned long sqlite3_escape_string(char *to, const char *from, unsigned long length);
+static size_t sqlite3_escape_string(char *to, const char *from, size_t length);
 int wild_case_compare(const char *str,const char *str_end,
 		      const char *wildstr,const char *wildend,
 		      char escape);
@@ -232,16 +232,16 @@ int dbd_disconnect(dbi_conn_t *conn) {
   return 0;
 }
 
-int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum) {
+int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) {
   dbi_row_t *row = NULL;
 
-  if (result->result_state == NOTHING_RETURNED) return -1;
+  if (result->result_state == NOTHING_RETURNED) return 0;
 	
   if (result->result_state == ROWS_RETURNED) {
     /* get row here */
     row = _dbd_row_allocate(result->numfields);
-    _get_row_data(result, row, rownum);
-    _dbd_row_finalize(result, row, rownum);
+    _get_row_data(result, row, rowidx);
+    _dbd_row_finalize(result, row, rowidx);
   }
 	
   return 1; /* 0 on error, 1 on successful fetchrow */
@@ -254,8 +254,8 @@ int dbd_free_query(dbi_result_t *result) {
   return 0;
 }
 
-int dbd_goto_row(dbi_result_t *result, unsigned long long row) {
-  result->currowidx = row;
+int dbd_goto_row(dbi_result_t *result, unsigned long long rowidx) {
+  result->currowidx = rowidx;
   return 1;
 }
 
@@ -501,7 +501,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
   int numcols;
   char** result_table;
   char* errmsg;
-  unsigned long idx = 0;
+  int idx = 0;
   unsigned short fieldtype;
   unsigned int fieldattribs;
   dbi_error_flag errflag = 0;
@@ -518,12 +518,12 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
     return NULL;
   }
 	
-  result = _dbd_result_create(conn, (void *)result_table, (unsigned long long)numrows, (unsigned long long)sqlite3_changes((sqlite3*)conn->connection));
+  result = _dbd_result_create(conn, (void *)result_table, numrows, (unsigned long long)sqlite3_changes((sqlite3*)conn->connection));
 /*   printf("numrows:%d, numcols:%d<<\n", numrows, numcols); */
-  _dbd_result_set_numfields(result, (unsigned long)numcols);
+  _dbd_result_set_numfields(result, numcols);
 
   /* assign types to result */
-  while (idx < (unsigned long)numcols) {
+  while (idx < numcols) {
     int type;
     char *item;
     
@@ -547,7 +547,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
   return result;
 }
 
-dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) {
+dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) {
   /* todo: implement using sqlite3_prepare and friends */
   return NULL;
 }
@@ -1026,12 +1026,12 @@ void _translate_sqlite3_type(enum enum_field_types fieldtype, unsigned short *ty
 }
 
 
-void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
+void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) {
   char **result_table = result->result_handle;
   
-  int curfield = 0;
+  unsigned int curfield = 0;
   char *raw = NULL;
-  unsigned long sizeattrib;
+  unsigned int sizeattrib;
   dbi_data_t *data;
 
   while (curfield < result->numfields) {
@@ -1058,7 +1058,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned int rowidx) {
 	data->d_short = (short) atol(raw); break;
       case DBI_INTEGER_SIZE3:
       case DBI_INTEGER_SIZE4:
-	data->d_long = (long) atol(raw); break;
+	data->d_long = (int) atol(raw); break;
       case DBI_INTEGER_SIZE8:
 	data->d_longlong = (long long) atoll(raw); break; /* hah, wonder if that'll work */
       default:
@@ -1191,7 +1191,7 @@ int wild_case_compare(const char *str,const char *str_end,
 /* this function is stolen from MySQL. The quoting was changed to the
  SQL standard, i.e. single and double quotes are escaped by doubling,
  not by a backslash. Newlines and carriage returns are left alone */
-static unsigned long sqlite3_escape_string(char *to, const char *from, unsigned long length)
+static size_t sqlite3_escape_string(char *to, const char *from, size_t length)
 {
   const char *to_start=to;
   const char *end;
@@ -1216,5 +1216,5 @@ static unsigned long sqlite3_escape_string(char *to, const char *from, unsigned 
       }
     }
   *to=0;
-  return (unsigned long) (to-to_start);
+  return (size_t) (to-to_start);
 }

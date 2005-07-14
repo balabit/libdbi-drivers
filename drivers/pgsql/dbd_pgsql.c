@@ -61,7 +61,7 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = PGSQL_RESERVED_WORDS;
 
-/* encoding strings, array is terminated by empty string */
+/* encoding strings, array is terminated by a pair of empty strings */
 static const char pgsql_encoding_hash[][16] = {
   /* PostgreSQL , www.iana.org */
   "SQL_ASCII", "US-ASCII",
@@ -85,7 +85,7 @@ static const char pgsql_encoding_hash[][16] = {
   "KOI8", "KOI8-R",
   "WIN", "windows-1251",
   "ALT", "IBM866",
-  ""
+  "", ""
 };
 
 /* forward declarations of internal functions */
@@ -205,16 +205,16 @@ int dbd_disconnect(dbi_conn_t *conn) {
 	return 0;
 }
 
-int dbd_fetch_row(dbi_result_t *result, unsigned long long rownum) {
+int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) {
 	dbi_row_t *row = NULL;
 
-	if (result->result_state == NOTHING_RETURNED) return -1;
+	if (result->result_state == NOTHING_RETURNED) return 0;
 	
 	if (result->result_state == ROWS_RETURNED) {
 		/* get row here */
 		row = _dbd_row_allocate(result->numfields);
-		_get_row_data(result, row, rownum);
-		_dbd_row_finalize(result, row, rownum);
+		_get_row_data(result, row, rowidx);
+		_dbd_row_finalize(result, row, rowidx);
 	}
 	
 	return 1; /* 0 on error, 1 on successful fetchrow */
@@ -225,7 +225,7 @@ int dbd_free_query(dbi_result_t *result) {
 	return 0;
 }
 
-int dbd_goto_row(dbi_result_t *result, unsigned long long row) {
+int dbd_goto_row(dbi_result_t *result, unsigned long long rowidx) {
 	/* libpq doesn't have to do anything, the row index is specified when
 	 * fetching fields */
 	return 1;
@@ -274,7 +274,7 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	  free(sql_cmd);
 
 	  if (dbires && dbi_result_next_row(dbires)) {
-	    n_encoding = dbi_result_get_long_idx(dbires, 1);
+	    n_encoding = dbi_result_get_int_idx(dbires, 1);
 	    my_enc = pg_encoding_to_char(n_encoding);
 /*  	    printf("select returned encoding %d<<%s\n", n_encoding, my_enc); */
 	  }
@@ -406,14 +406,14 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 		return NULL;
 	}
 
-	result = _dbd_result_create(conn, (void *)res, PQntuples(res), atol(PQcmdTuples(res)));
-	_dbd_result_set_numfields(result, PQnfields((PGresult *)result->result_handle));
+	result = _dbd_result_create(conn, (void *)res, (unsigned long long)PQntuples(res), (unsigned long long)atoll(PQcmdTuples(res)));
+	_dbd_result_set_numfields(result, (unsigned int)PQnfields((PGresult *)result->result_handle));
 	_get_field_info(result);
 
 	return result;
 }
 
-dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, unsigned long st_length) {
+dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) {
 	return NULL;
 }
 
@@ -459,7 +459,7 @@ unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) {
 	if (result) {
 		rawdata = PQgetvalue((PGresult *)result->result_handle, 0, 0);
 		if (rawdata) {
-			seq_last = atoll(rawdata);
+			seq_last = (unsigned long long)atoll(rawdata);
 		}
 		dbi_result_free((dbi_result)result);
 	}
@@ -481,7 +481,7 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) {
 	if (result) {	
 		rawdata = PQgetvalue((PGresult *)result->result_handle, 0, 0);
 		if (rawdata) {
-			seq_next = atoll(rawdata);
+			seq_next = (unsigned long long)atoll(rawdata);
 		}
 		dbi_result_free((dbi_result)result);
 	}
@@ -598,10 +598,10 @@ void _get_field_info(dbi_result_t *result) {
 }
 
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx) {
-	int curfield = 0;
+	unsigned int curfield = 0;
 	char *raw = NULL;
-	unsigned long long strsize = 0;
-	unsigned long sizeattrib;
+	size_t strsize = 0;
+	unsigned int sizeattrib;
 	dbi_data_t *data;
 	unsigned char *temp = NULL;
 	size_t unquoted_length;
@@ -630,7 +630,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 						data->d_short = (short) atol(raw); break;
 					case DBI_INTEGER_SIZE3:
 					case DBI_INTEGER_SIZE4:
-						data->d_long = (long) atol(raw); break;
+						data->d_long = (int) atol(raw); break;
 					case DBI_INTEGER_SIZE8:
 						data->d_longlong = (long long) atoll(raw); break; /* hah, wonder if that'll work */
 					default:
@@ -649,13 +649,12 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				}
 				break;
 			case DBI_TYPE_STRING:
-			        strsize = PQgetlength((PGresult *)result->result_handle, rowidx, curfield);
+			        strsize = (size_t)PQgetlength((PGresult *)result->result_handle, rowidx, curfield);
 				data->d_string = strdup(raw);
 				row->field_sizes[curfield] = strsize;
 				break;
 			case DBI_TYPE_BINARY:	
 			  temp = PQunescapeBytea(raw, &unquoted_length);
-			  printf("unquoted length went to %d<<\n", unquoted_length);
 			  if ((data->d_string = (char*)malloc(unquoted_length)) == NULL) {
 			    PQfreemem(temp);
 			    break;

@@ -32,6 +32,10 @@
 	<edition>Document revision: $Id$</edition>
 	<pubdate>$Date$</pubdate>
 	<revhistory>
+      <revision>
+	<revnumber>0.2</revnumber>
+	<date>2005-07-17</date>
+      </revision>
 		<revision>
 			<revnumber>0.1</revnumber>
 			<date>2003-4-17</date>
@@ -236,6 +240,12 @@
 				</para>
 			</listitem>
 		</varlistentry>
+      <varlistentry>
+	<term>encoding</term>
+	<listitem>
+	  <para>The IANA name of a character encoding which is to be used as the connection encoding. Input and output data will be silently converted from and to this character encoding, respectively. The list of available character encodings depends on your local PostgreSQL installation. If you set this option to "auto", the connection encoding will be the same as the database encoding.</para>
+	</listitem>
+      </varlistentry>
 		<varlistentry>
 			<term>pgsql_options</term>
 			<listitem>
@@ -251,6 +261,7 @@
 					A file or tty for optional debug output from the backend.
 				</para>
 			</listitem>
+      </varlistentry>
 	</variablelist>
 </chapter>
 
@@ -267,6 +278,7 @@
 		user-defined unsigned types). User-defined types are not handled
 		specially. All unrecognized datatypes are preserved as strings.
 	</para>
+    <para>PostgreSQL does not support a 1-byte numeric datatype.</para>
 </chapter>
 
 &freedoc-license;

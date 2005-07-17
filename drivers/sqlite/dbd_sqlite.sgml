@@ -13,6 +13,10 @@
     </author>
     <revhistory>
       <revision>
+	<revnumber>0.4</revnumber>
+	<date>2005-07-17</date>
+      </revision>
+      <revision>
 	<revnumber>0.3</revnumber>
 	<date>2003-4-12</date>
       </revision>
@@ -58,7 +62,7 @@
 	<varlistentry>
 	  <term>libdbi</term>
 	  <listitem>
-	    <para>This library provides the framework of the database abstraction layer which can utilize the sqlite driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>. The current version of the sqlite driver requires at least libdbi version 0.6.7.</para>
+	    <para>This library provides the framework of the database abstraction layer which can utilize the sqlite driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>.</para>
 	  </listitem>
 	</varlistentry>
 	<varlistentry>
@@ -136,7 +140,7 @@
 	  </thead>
 	  <tbody>
 	    <row>
-	      <entry>TINYBLOB, BLOB, MEDIUMBLOB, LONGBLOB</entry>
+	      <entry>TINYBLOB, BLOB, MEDIUMBLOB, LONGBLOB, BYTEA</entry>
 	      <entry>String types of unlimited length. Binary data must be safely encoded, see text.</entry>
 	    </row>
 	    <row>
@@ -204,7 +208,7 @@
       </table>
       <para>Another difference is the lack of access control on the database engine level. Most SQL database servers implement some mechanisms to restrict who is allowed to fiddle with the databases and who is not. As SQLite uses regular files to store its databases, all available access control is on the filesystem level. There is no SQL interface to this kind of access control, but <command>chmod</command> and <command>chown</command> are your friends.</para>
       <para>SQLite appears to implement row and column counters as C long int values. This limits the maximum number of rows somewhat compared to other SQL database engines.</para>
-      <para>SQLite does not have specific support for binary data. If you want to store binary data (e.g. character sequences containing NULL bytes) in a fashion that is portable across all database servers supported by libdbi, think about encoding these data, using either CGI-style or base64 algorithms. Free or public domain implementations of both algorithms can be found all over the place in the internet. The SQLite sources also contain a file <filename moreinfo="none">src/encode.c</filename> that provides suitable endoding and decoding functions.</para>
+      <para>SQLite does not have specific support for binary data. If you want to store binary data (e.g. character sequences containing NULL bytes) in a fashion that is portable across all database servers supported by libdbi, use the libdbi function <function moreinfo="none">_dbd_encode_binary</function>.</para>
       <para>SQLite currently supports different character encodings only as compile-time options. There is no way to change the encoding at runtime or per database.</para>
     </sect1>
     <sect1>

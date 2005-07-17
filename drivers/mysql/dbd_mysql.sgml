@@ -13,6 +13,10 @@
     </author>
     <revhistory>
       <revision>
+	<revnumber>0.4</revnumber>
+	<date>2005-07-15</date>
+      </revision>
+      <revision>
 	<revnumber>0.3</revnumber>
 	<date>2003-4-12</date>
       </revision>
@@ -47,13 +51,13 @@
 	<varlistentry>
 	  <term>libdbi</term>
 	  <listitem>
-	    <para>This library provides the framework of the database abstraction layer which can utilize the MySQL driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>. The current version of the MySQL driver requires at least libdbi version 0.6.7.</para>
+	    <para>This library provides the framework of the database abstraction layer which can utilize the MySQL driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>. The current version of the MySQL driver requires libdbi version 0.8.x.</para>
 	  </listitem>
 	</varlistentry>
 	<varlistentry>
 	  <term>libmysqlclient</term>
 	  <listitem>
-	    <para>This library implements the client API for MySQL programs. Find the most recent release at <ulink url="http://www.mysql.org">www.mysql.org</ulink>. The current version of the mysql driver was tested with MySQL version 4.0.13-1, and it should work with other 4.0+ releases.</para>
+	    <para>This library implements the client API for MySQL programs. Find the most recent release at <ulink url="http://www.mysql.org">www.mysql.org</ulink>. The current version of the mysql driver was tested with MySQL version 4.1.10a, and it should work with other 4.x releases.</para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
@@ -61,7 +65,7 @@
     <sect1>
       <title>Build and install the mysql driver</title>
       <para>First you have to unpack the libdbi-drivers archive in a suitable directory. Unpacking will create a new subdirectory <filename class="directory">libdbi-drivers-X.Y</filename> where "X.Y" denotes the version:</para>
-      <screen><prompt>$ </prompt><userinput>tar -xzf libdbi-drivers-0.3.tar.gz</userinput></screen>
+      <screen><prompt>$ </prompt><userinput>tar -xzf libdbi-drivers-X.Y.tar.gz</userinput></screen>
       <para>The libdbi-drivers project consists of several drivers that use a common build system. Therefore you <emphasis>must</emphasis> tell configure explicitly that you want to build the mysql driver (you can list as many drivers as you want to build):</para>
       <screen><prompt>$ </prompt><userinput>cd libdbi-drivers</userinput></screen>
       <screen><prompt>$ </prompt><userinput>./configure --with-mysql</userinput></screen>
@@ -112,7 +116,13 @@
       <varlistentry>
 	<term>dbname</term>
 	<listitem>
-	  <para>The name of the database used for the initial connection.</para>
+	  <para>The name of the database used for the initial connection. If your program must be able to connect to a fresh MySQL installation, use the system database <filename moreinfo="none">mysql</filename>.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>encoding</term>
+	<listitem>
+	  <para>The IANA name of a character encoding which is to be used as the connection encoding. Input and output data will be silently converted from and to this character encoding, respectively. The list of available character encodings depends on your local MySQL installation. If you set this option to "auto", the connection encoding will be the same as the default encoding of the database.</para>
 	</listitem>
       </varlistentry>
       <varlistentry>

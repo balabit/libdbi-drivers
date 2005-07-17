@@ -28,7 +28,7 @@
   <chapter>
     <title>Introduction</title>
     <para><ulink url="http://www.sqlite.org">SQLite</ulink> is a smart library that implements an embeddable SQL database engine. No need for an external database server - an application linked against libsqlite can do it all by itself. Of course there are a few limitations of this approach compared to "real" SQL database servers, mostly for massively parallel high-throughput database applications, but on the other hand, installation and administration are a breeze.</para>
-    <para>SQLite3 is a redesign of SQLite which is incompatible with the older 2.x versions. As the API functions and the library itself were renamed, SQLite3 also requires a slightly modified libdbi driver. You can have both the sqlite and the sqlite3 driver installed on your system, but you have to make sure that you access your databases with the driver that matches the database version.</para>
+    <para>SQLite3 is a redesign of SQLite which is incompatible with the older 2.x versions. As the API functions and the library itself were renamed, SQLite3 also requires a slightly modified libdbi driver. You can have both the sqlite and the sqlite3 driver installed on your system, but you have to make sure that you access your databases with the driver that matches the database version. The easiest way to accomplish this is to use different database directories for each version.</para>
     <para>Your application should support the sqlite3 driver if one of the following applies:</para>
     <itemizedlist>
       <listitem>
@@ -52,7 +52,7 @@
 	<varlistentry>
 	  <term>libdbi</term>
 	  <listitem>
-	    <para>This library provides the framework of the database abstraction layer which can utilize the sqlite3 driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>. The current version of the sqlite driver requires at least libdbi version 0.7.2.</para>
+	    <para>This library provides the framework of the database abstraction layer which can utilize the sqlite3 driver to perform database operations. The download page as well as the mailing lists with bug reports and patches are accessible at <ulink url="http://sourceforge.net/projects/libdbi">sourceforge.net/projects/libdbi</ulink>.</para>
 	  </listitem>
 	</varlistentry>
 	<varlistentry>
@@ -106,15 +106,6 @@
 	  </note>
 	</listitem>
       </varlistentry>
-      <varlistentry>
-	<term>sqlite_encoding</term>
-	<listitem>
-	  <para>This option sets the character encoding used in the current connection. Allowed values are "UTF-8" and "UTF-16".</para>
-	  <note>
-	    <para>This setting affects the data storage format only if the database does not exist yet. An existing database will always use the storage format it was initialized for, but SQLite3 automatically converts the data to match the connection setting.</para>
-	  </note>
-	</listitem>
-      </varlistentry>
     </variablelist>
   </chapter>
   <chapter>
@@ -139,7 +130,7 @@
 	  </thead>
 	  <tbody>
 	    <row>
-	      <entry>TINYBLOB, BLOB, MEDIUMBLOB, LONGBLOB</entry>
+	      <entry>TINYBLOB, BLOB, MEDIUMBLOB, LONGBLOB, BYTEA</entry>
 	      <entry>String types of unlimited length. Binary data must be safely encoded, see text.</entry>
 	    </row>
 	    <row>
@@ -206,7 +197,6 @@
 	</tgroup>
       </table>
       <para>Another difference is the lack of access control on the database engine level. Most SQL database servers implement some mechanisms to restrict who is allowed to fiddle with the databases and who is not. As SQLite3 uses regular files to store its databases, all available access control is on the filesystem level. There is no SQL interface to this kind of access control, but <command>chmod</command> and <command>chown</command> are your friends.</para>
-      <para>In contrast to SQLite2.x, SQLite3 appears to implement row and column counters as C long long int values. This allows the same maximum number of rows as in most other SQL database engines.</para>
     </sect1>
     <sect1>
       <title>sqlite driver misfeatures</title>

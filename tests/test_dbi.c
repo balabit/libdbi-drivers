@@ -639,6 +639,8 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_binary_string BLOB, the_datetime DATETIME, the_date DATE, the_time TIME, id INT AUTO_INCREMENT, PRIMARY KEY (id))");
   }
   else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
+    /* PostgreSQL does not have a 1-byte integer, use smallint
+       instead. This will raise a warning when retrieving the value */
     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_binary_string BYTEA, the_datetime TIMESTAMP, the_date DATE, the_time TIME, id SERIAL PRIMARY KEY)");
   } 
   else if (!strcmp(ptr_cinfo->drivername, "msql")) {

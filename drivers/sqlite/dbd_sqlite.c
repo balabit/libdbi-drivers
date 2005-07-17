@@ -855,7 +855,7 @@ char* get_field_type(const char* statement, const char* curr_field_name) {
   return curr_type;
 }
 
-char *dbd_select_db(dbi_conn_t *conn, const char *db) {
+const char *dbd_select_db(dbi_conn_t *conn, const char *db) {
   /*
     sqlite does not separate connecting to a database server and using
     or opening a database. If we want to switch to a different database,
@@ -875,7 +875,7 @@ char *dbd_select_db(dbi_conn_t *conn, const char *db) {
     return NULL;
   }
 
-  return (char *)db;
+  return db;
 }
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) {

@@ -6,7 +6,7 @@
 ## Hoenicka who then used for the libdbi-drivers project
 ##
 
-AC_DEFUN(AC_FIND_FILE,
+AC_DEFUN([AC_FIND_FILE],
 [
 $3=NO
 for i in $2; do
@@ -21,7 +21,7 @@ done
 
 ## DBI
 
-AC_DEFUN(AC_CHECK_DBI,
+AC_DEFUN([AC_CHECK_DBI],
 [
 AM_CONDITIONAL(HAVE_DBI, false)
 ac_dbi_incdir="NO"
@@ -53,7 +53,7 @@ AC_SUBST(DBI_INCLUDE)
 
 ## MYSQL
 
-AC_DEFUN(AC_CHECK_MYSQL,
+AC_DEFUN([AC_CHECK_MYSQL],
 [
 AM_CONDITIONAL(HAVE_MYSQL, false)
 ac_mysql="NO"
@@ -114,7 +114,7 @@ fi
 
 ## PGSQL
 
-AC_DEFUN(AC_CHECK_PGSQL,
+AC_DEFUN([AC_CHECK_PGSQL],
 [
 AM_CONDITIONAL(HAVE_PGSQL, false)
 ac_pgsql="NO"
@@ -175,7 +175,7 @@ fi
 
 ## SQLITE
 
-AC_DEFUN(AC_CHECK_SQLITE,
+AC_DEFUN([AC_CHECK_SQLITE],
 [
 AM_CONDITIONAL(HAVE_SQLITE, false)
 ac_sqlite="NO"
@@ -236,7 +236,7 @@ fi
 
 ## SQLITE3
 
-AC_DEFUN(AC_CHECK_SQLITE3,
+AC_DEFUN([AC_CHECK_SQLITE3],
 [
 AM_CONDITIONAL(HAVE_SQLITE3, false)
 ac_sqlite3="NO"
@@ -297,7 +297,7 @@ fi
 
 ## mSQL
 
-AC_DEFUN(AC_CHECK_MSQL,
+AC_DEFUN([AC_CHECK_MSQL],
 [
 AM_CONDITIONAL(HAVE_MSQL, false)
 ac_msql="NO"
@@ -357,7 +357,7 @@ fi
 
 ## Oracle
 
-AC_DEFUN(AC_CHECK_ORACLE,
+AC_DEFUN([AC_CHECK_ORACLE],
 [
 AM_CONDITIONAL(HAVE_ORACLE, false)
 ac_oracle="NO"
@@ -419,7 +419,7 @@ fi
 
 
 ## Firebird
-AC_DEFUN(AC_CHECK_FIREBIRD_INTERBASE,
+AC_DEFUN([AC_CHECK_FIREBIRD_INTERBASE],
 [
 AM_CONDITIONAL(HAVE_FIREBIRD_INTERBASE, false)
 ac_firebird="NO"

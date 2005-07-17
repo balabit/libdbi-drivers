@@ -35,19 +35,21 @@ libmysql_la_DEPENDENCIES = dbd_mysql.h
 EXTRA_DIST = dbd_mysql.c dbd_mysql.h AUTHORS TODO README dbd_mysql.pdf dbd_mysql/*
 
 # jadetex spews out tons of useless crap. shut it up:
-dbd_mysql.pdf:
-	@echo "Converting dbd_mysql.sgml to PostScript...";
-	sgmltools -b ps -s $(top_srcdir)/doc/include/doc-print.dsl dbd_mysql.sgml > /dev/null 2>&1
-	@echo "Converting dbd_mysql.ps to PDF...";
-	ps2pdf dbd_mysql.ps
+dbd_mysql.pdf: dbd_mysql.sgml
+	@echo "Converting dbd_mysql.sgml to PDF...";
+	openjade -t tex -V tex-backend -d $(top_srcdir)/doc/include/doc-print.dsl dbd_mysql.sgml
+# run jadetex three times to get the references right
+	pdftex "&pdfjadetex" dbd_mysql.tex
+	pdftex "&pdfjadetex" dbd_mysql.tex
+	pdftex "&pdfjadetex" dbd_mysql.tex
 
-dbd_mysql/*:
+dbd_mysql/*: dbd_mysql.sgml
 	@echo "Converting dbd_mysql.sgml to HTML...";
-	sgmltools -b html -s $(top_srcdir)/doc/include/doc-html.dsl dbd_mysql.sgml
+	mkdir -p dbd_mysql && cd dbd_mysql && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_mysql.sgml
 
 
 distclean: clean
-	rm -f dbd_mysql.ps dbd_mysql.pdf dbd_mysql/*
+	rm -f dbd_mysql.pdf dbd_mysql/*
 
 # manually install the docs
 install-data-local: 

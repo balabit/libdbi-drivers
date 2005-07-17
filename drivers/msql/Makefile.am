@@ -31,18 +31,20 @@ libmsql_la_DEPENDENCIES = dbd_msql.h
 
 EXTRA_DIST = dbd_msql.c dbd_msql.h dbd_msql.sgml dbd_msql.pdf dbd_msql/*
 
-dbd_msql.pdf:
-	@echo "Converting dbd_msql.sgml to PostScript...";
-	sgmltools -b ps -s $(top_srcdir)/doc/include/doc-print.dsl dbd_msql.sgml > /dev/null 2>&1
-	@echo "Converting dbd_msql.ps to PDF...";
-	ps2pdf dbd_msql.ps
+dbd_msql.pdf: dbd_msql.sgml
+	@echo "Converting dbd_msql.sgml to PDF...";
+	openjade -t tex -V tex-backend -d $(top_srcdir)/doc/include/doc-print.dsl dbd_msql.sgml
+# run jadetex three times to get the references right
+	pdftex "&pdfjadetex" dbd_msql.tex
+	pdftex "&pdfjadetex" dbd_msql.tex
+	pdftex "&pdfjadetex" dbd_msql.tex
 
-dbd_msql/*:
+dbd_msql/*: dbd_msql.sgml
 	@echo "Converting dbd_msql.sgml to HTML...";
-	sgmltools -b html -s $(top_srcdir)/doc/include/doc-html.dsl dbd_msql.sgml
+	mkdir -p dbd_msql && cd dbd_msql && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_msql.sgml
 
 distclean: clean
-	rm -f dbd_msql.ps dbd_msql.pdf dbd_msql/*
+	rm -f dbd_msql.pdf dbd_msql/*
 
 
 # manually install the docs

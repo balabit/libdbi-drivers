@@ -37,19 +37,21 @@ libsqlite_la_DEPENDENCIES = dbd_sqlite.h
 EXTRA_DIST = dbd_sqlite.c dbd_sqlite.h AUTHORS TODO README dbd_sqlite.pdf dbd_sqlite/*
 
 # jadetex spews out tons of useless crap. shut it up:
-dbd_sqlite.pdf:
-	@echo "Converting dbd_sqlite.sgml to PostScript...";
-	sgmltools -b ps -s $(top_srcdir)/doc/include/doc-print.dsl dbd_sqlite.sgml > /dev/null 2>&1
-	@echo "Converting dbd_sqlite.ps to PDF...";
-	ps2pdf dbd_sqlite.ps
+dbd_sqlite.pdf: dbd_sqlite.sgml
+	@echo "Converting dbd_sqlite.sgml to PDF...";
+	openjade -t tex -V tex-backend -d $(top_srcdir)/doc/include/doc-print.dsl dbd_sqlite.sgml
+# run jadetex three times to get the references right
+	pdftex "&pdfjadetex" dbd_sqlite.tex
+	pdftex "&pdfjadetex" dbd_sqlite.tex
+	pdftex "&pdfjadetex" dbd_sqlite.tex
 
-dbd_sqlite/*:
+dbd_sqlite/*: dbd_sqlite.sgml
 	@echo "Converting dbd_sqlite.sgml to HTML...";
-	sgmltools -b html -s $(top_srcdir)/doc/include/doc-html.dsl dbd_sqlite.sgml
+	mkdir -p dbd_sqlite && cd dbd_sqlite && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_sqlite.sgml
 
 
 distclean: clean
-	rm -f dbd_sqlite.ps dbd_sqlite.pdf dbd_sqlite/*
+	rm -f dbd_sqlite.pdf dbd_sqlite/*
 
 # manually install the docs
 install-data-local: 

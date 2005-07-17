@@ -200,7 +200,7 @@ size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 	size_t len;
 	const char *escaped = "\'\"\\";
 	strcpy(dest, "'");
-	len = _dbd_quote_chars(dest, orig, strlen(orig), escaped);
+	len = _dbd_escape_chars(dest, orig, strlen(orig), escaped);
 	
 	strcat(dest, "'");
 	
@@ -261,13 +261,13 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 }
 
 
-char *dbd_select_db(dbi_conn_t *conn, const char *db) 
+const char *dbd_select_db(dbi_conn_t *conn, const char *db) 
 {
 	if (msqlSelectDB((int)conn->connection, (char *)db) < 0) {
 		_error_handler(conn, DBI_ERROR_DBD);
 		return "";
 	}
-	return (char *)db;
+	return db;
 }
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) 

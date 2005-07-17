@@ -228,7 +228,7 @@ size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 
 	strcpy(dest, "'");
 	const char *escaped = "\'\"\\";
-	len = _dbd_quote_chars(dest, orig, escaped);
+	len = _dbd_escape_chars(dest, orig, escaped);
 	
 	strcat(dest, "'");
 	

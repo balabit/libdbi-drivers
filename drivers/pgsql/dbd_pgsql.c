@@ -136,7 +136,6 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	char *port_str;
 	char *conninfo;
 	char *conninfo_kludge;
-	char* sql_cmd;
 
 	if (db && *db) {
 	  dbname = db;
@@ -417,7 +416,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, s
 	return NULL;
 }
 
-char *dbd_select_db(dbi_conn_t *conn, const char *db) {
+const char *dbd_select_db(dbi_conn_t *conn, const char *db) {
   /* postgresql doesn't support switching databases without reconnecting */
   if (!db || !*db) {
     return NULL;
@@ -432,7 +431,7 @@ char *dbd_select_db(dbi_conn_t *conn, const char *db) {
     return NULL;
   }
 
-  return (char *)db;
+  return db;
 }
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) {

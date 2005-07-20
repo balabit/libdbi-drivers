@@ -1,413 +1,302 @@
-2003-08-19 07:17 cms
+2005-07-20 22:11  mhoenicka
 
-	* drivers/oracle Initial commit of the Oracle driver
+	* drivers/: mysql/Makefile.am (1.11), pgsql/Makefile.am (1.12),
+	sqlite/Makefile.am (1.10), sqlite3/Makefile.am (1.3): added doc
+	sources to EXTRA_DIST
 
-2003-06-22 20:07  dap24
+2005-07-17 23:10  mhoenicka
 
-	* doc/Makefile.am (1.3), drivers/pgsql/dbd_pgsql.sgml (1.3): fixed
-	pgsql doc errors
+	* doc/include/doc-print.dsl (1.2): fixed page margins to print on
+	both letter and A4
 
-2003-06-22 18:49  mhoenicka
+2005-07-17 23:08  mhoenicka
 
-	* drivers/: msql/Makefile.am (1.8), mysql/Makefile.am (1.9),
-	pgsql/Makefile.am (1.10), sqlite/Makefile.am (1.8): wrapped if
-	blocks around doc installation stuff to avoid failures if driver
-	was not requested, admittedly curing symptoms instead of a thorough
-	fix
+	* NEWS (1.2): updated
 
-2003-06-22 00:09  dap24
+2005-07-17 02:59  mhoenicka
 
-	* AUTHORS (1.5), configure.in (1.17): minor tweaks for release
+	* tests/test_dbi.c (1.22): added comment about missing 1-byte int
+	in pgsql
 
-2003-06-21 22:39  dap24
+2005-07-17 02:58  mhoenicka
 
-	* drivers/sqlite/dbd_sqlite.c (1.20): clean up gcc warnings
+	* drivers/: mysql/dbd_mysql.sgml (1.3), pgsql/dbd_pgsql.sgml (1.4),
+	sqlite/dbd_sqlite.sgml (1.7), sqlite3/dbd_sqlite3.sgml (1.4):
+	updated to latest driver versions
 
-2003-06-17 08:35  dap24
+2005-07-17 02:56  mhoenicka
 
-	* drivers/: mysql/dbd_mysql.c (1.70), pgsql/dbd_pgsql.c (1.34),
-	sqlite/dbd_sqlite.c (1.19): made _parse_datetime a DBD helper
-	function
+	* drivers/: sqlite/dbd_sqlite.c (1.29), sqlite3/dbd_sqlite3.c
+	(1.8): dbd_select_db() now returns const char ptr
 
-2003-06-17 07:51  dap24
+2005-07-17 02:55  mhoenicka
 
-	* drivers/pgsql/: TODO (1.2), dbd_pgsql.sgml (1.2): finished some
-	decent pgsql docs
+	* drivers/pgsql/dbd_pgsql.c (1.45): removed unused local variable;
+	dbd_select_db() now returns const char ptr
 
-2003-06-17 06:57  dap24
+2005-07-17 02:53  mhoenicka
 
-	* drivers/pgsql/: AUTHORS (1.1), ChangeLog (1.1), README (1.1),
-	TODO (1.1), dbd_pgsql.c (1.33): Added meta-files, freed asprintf'd
-	strings
+	* drivers/oracle/dbd_oracle.c (1.14): renamed _dbd_quote_chars() to
+	_dbd_escape_chars()
 
-2003-06-12 23:58  mmt
+2005-07-17 02:51  mhoenicka
 
-	* drivers/mysql/: dbd_mysql.c (1.69), dbd_mysql.h (1.3): Fixed
-	notes in the file descriptions.
+	* drivers/mysql/dbd_mysql.c (1.82): removed unused local
+	variables;dbd_select_db() now returns const char ptr
 
-2003-06-12 00:16  mhoenicka
+2005-07-17 02:50  mhoenicka
 
-	* drivers/mysql/dbd_mysql.sgml (1.2): filled in missing option info
+	* drivers/msql/dbd_msql.c (1.14): renamed _dbd_quote_chars() to
+	_dbd_escape_chars(); dbd_select_db() now returns const char ptr
 
-2003-06-11 22:39  mhoenicka
+2005-07-17 02:48  mhoenicka
 
-	* tests/test_dbi.c (1.9): fixed uchar input/output
+	* drivers/: msql/Makefile.am (1.9), mysql/Makefile.am (1.10),
+	pgsql/Makefile.am (1.11), sqlite/Makefile.am (1.9),
+	sqlite3/Makefile.am (1.2): changed doc build system from sgmltools
+	to openjade/jadetex
 
-2003-06-11 13:43  bhazer
+2005-07-17 02:46  mhoenicka
 
-	* tests/test_dbi.c (1.8): repeat after me ... Test before code
-	commit. Test before code commit. Test before code commit. Test code
-	before commit.
+	* configure.in (1.25): bumped up version number
 
-2003-06-11 13:20  mmt
+2005-07-17 02:46  mhoenicka
 
-	* drivers/mysql/: AUTHORS (1.1), README (1.1), TODO (1.1),
-	dbd_mysql.sgml (1.1): Added documentation for MySQL.
+	* acinclude.m4 (1.13): fixed quoting
 
-2003-06-11 12:44  bhazer
+2005-07-14 22:26  mhoenicka
 
-	* drivers/msql/AUTHORS (1.1): added AUTHORS file
+	* drivers/: firebird/dbd_firebird.c (1.13), msql/dbd_msql.c (1.13),
+	mysql/dbd_mysql.c (1.81), oracle/dbd_oracle.c (1.13),
+	pgsql/dbd_pgsql.c (1.44), sqlite/dbd_sqlite.c (1.28),
+	sqlite3/dbd_sqlite3.c (1.7): adapted to libdbi changes
 
-2003-06-11 12:40  bhazer
+2005-07-10 21:40  mhoenicka
 
-	* tests/test_dbi.c (1.7): make check for mSQL workd again
+	* tests/test_dbi.c (1.21): added checks for string and binary
+	lengths; added check for binary inserts and retrievals
 
-2003-06-11 12:39  bhazer
+2005-07-10 21:38  mhoenicka
 
-	* drivers/msql/: Makefile.am (1.7), dbd_msql.c (1.4): Hmm I should
-	have done this tests long ago
+	* drivers/: mysql/dbd_mysql.c (1.80), pgsql/dbd_pgsql.c (1.43),
+	sqlite/dbd_sqlite.c (1.27), sqlite3/dbd_sqlite3.c (1.6): changed
+	return type of dbd_quote_string(), dbd_conn_quote_string() to
+	size_t, added dbd_quote_binary()
 
-2003-06-10 23:37  mhoenicka
+2005-07-10 21:36  mhoenicka
 
-	* Makefile.am (1.6): added README.osx
+	* drivers/msql/dbd_msql.c (1.12): added dbd_quote_binary()
 
-2003-06-10 20:13  mhoenicka
+2005-07-03 00:50  mhoenicka
 
-	* fixlt.sh (1.1): initial (and hopefully last) version
+	* tests/test_dbi.c (1.20): fixed typo in the ulonglong test string
 
-2003-06-09 22:05  mhoenicka
+2005-07-02 13:11  bhazer
 
-	* README (1.6): added OSX info
+	* drivers/pgsql/dbd_pgsql.c (1.42):    * Changed pgsql use
+	PQgetlength() to fetch lengths.
+	     PQfmod() is something completly diffrent and very wrong.
 
-2003-06-09 22:04  mhoenicka
+2005-05-22 22:13  mhoenicka
 
-	* README.osx (1.1): initial version
+	* tests/test_dbi.c (1.19): added tests for
+	dbi_driver_encoding_from_iana() and dbi_driver_encoding_to_iana()
 
-2003-06-09 20:25  mhoenicka
+2005-05-22 22:08  mhoenicka
 
-	* drivers/sqlite/dbd_sqlite.sgml (1.6): added column type info
+	* drivers/sqlite3/README (1.2): added encoding info
 
-2003-06-09 20:24  mhoenicka
+2005-05-22 22:06  mhoenicka
 
-	* configure.in (1.16): fixed program checks
+	* drivers/: msql/dbd_msql.c (1.11), mysql/dbd_mysql.c (1.79),
+	pgsql/dbd_pgsql.c (1.41), sqlite/dbd_sqlite.c (1.26),
+	sqlite3/dbd_sqlite3.c (1.5): new functions dbd_encoding_from_iana()
+	and dbd_encoding_to_iana()
 
-2003-06-08 18:35  mhoenicka
+2005-05-16 18:59  mhoenicka
 
-	* drivers/sqlite/dbd_sqlite.sgml (1.5): talk about blobs and
-	encoding issues
+	* tests/test_dbi.c (1.18): moved tests into functions;test encoding
+	stuff;test dbd_conn_quote_string()
 
-2003-06-08 18:34  mhoenicka
+2005-05-16 18:58  mhoenicka
 
-	* drivers/sqlite/dbd_sqlite.h (1.2): new define MAX_IDENT_LENGTH
+	* drivers/pgsql/dbd_pgsql.c (1.40): added
+	_encoding_pgsql2iana(),_encoding_iana2pgsql();moved dbd_connect()
+	body to new _dbd_real_connect();added support for encoding
+	option;added dbd_conn_quote_string()
 
-2003-06-08 18:33  mhoenicka
+2005-05-16 18:56  mhoenicka
 
-	* drivers/sqlite/dbd_sqlite.c (1.18): use libdbi_databases and
-	libdbi_tablenames to make name clashes less likely; use define for
-	curr_table size; extended type support
+	* drivers/mysql/dbd_mysql.c (1.78): added
+	_encoding_mysql2iana(),_encoding_iana2mysql();added support for
+	encoding option;added dbd_conn_quote_string()
 
-2003-06-08 01:29  mhoenicka
+2005-05-16 18:54  mhoenicka
 
-	* tests/test_dbi.c (1.6): decreased double test value; use e to
-	format float/double values
+	* drivers/sqlite3/dbd_sqlite3.c (1.4): changed sqlite3_encoding to
+	encoding;added dbd_conn_quote_string()
 
-2003-06-08 01:28  mhoenicka
+2005-05-16 18:53  mhoenicka
 
-	* drivers/sqlite/dbd_sqlite.c (1.17): removed _parse_datetime(),
-	now in libdbi:dbi_main.c;added support for double precision, FLOAT8
-	types
+	* drivers/: msql/dbd_msql.c (1.10), sqlite/dbd_sqlite.c (1.25):
+	added dbd_conn_quote_string()
 
-2003-06-08 01:26  mhoenicka
+2005-05-09 22:33  mhoenicka
 
-	* drivers/pgsql/dbd_pgsql.h (1.3): fixed OIDs for DATETIME and
-	TIMESTAMP
+	* tests/test_dbi.c (1.17): set dbdir option correctly for sqlite
+	and sqlite3;decreased long long test value by 1 as it exceeded
+	sqlite3s limit
 
-2003-06-08 01:24  mhoenicka
+2005-05-09 22:31  mhoenicka
 
-	* drivers/pgsql/dbd_pgsql.c (1.32): added support for DATETIME and
-	TIMESTAMP
+	* drivers/sqlite3/dbd_sqlite3.sgml (1.3): updated and revised
 
-2003-06-08 01:23  mhoenicka
+2005-05-09 22:31  mhoenicka
 
-	* drivers/mysql/dbd_mysql.c (1.68): removed _parse_datetime(), now
-	in libdbi:dbi_main.c
+	* drivers/sqlite3/dbd_sqlite3.c (1.3): made INTEGER PRIMARY KEY
+	equivalent to BIGINT;let _dbd_internal_error_handler() return
+	sqlite3 error codes
 
-2003-06-06 00:49  mhoenicka
+2005-05-01 23:06  mhoenicka
 
-	* tests/test_dbi.c (1.5): make CREATE TABLE depend on database type
+	* tests/test_dbi.c (1.16): set encoding option for sqlite3 driver
 
-2003-06-06 00:47  mhoenicka
+2005-05-01 23:04  mhoenicka
 
-	* drivers/: msql/dbd_msql.c (1.3), mysql/dbd_mysql.c (1.67),
-	pgsql/dbd_pgsql.c (1.31), sqlite/dbd_sqlite.c (1.16): added atoll
-	and strtoll prototypes
+	* drivers/sqlite3/: dbd_sqlite3.c (1.2), dbd_sqlite3.sgml (1.2):
+	minor fixes
 
-2003-06-05 23:39  mhoenicka
+2005-04-29 22:42  mhoenicka
 
-	* configure.in (1.15): added --with-ltdl option and libdl/libltdl
-	checking code
+	* drivers/sqlite3/: AUTHORS (1.1), Makefile.am (1.1), README (1.1),
+	TODO (1.1), dbd_sqlite3.c (1.1), dbd_sqlite3.h (1.1),
+	dbd_sqlite3.sgml (1.1): initial version
 
-2003-06-05 23:36  mhoenicka
+2005-04-29 22:38  mhoenicka
 
-	* tests/Makefile.am (1.5): added LIBADD_DL to test_dbi_LDADD;use
-	debug switch by default
+	* acinclude.m4 (1.12), configure.in (1.24), drivers/Makefile.am
+	(1.6), tests/test_dbi.c (1.15): added sqlite3 support
 
-2003-06-05 02:23  mhoenicka
+2005-02-14 00:01  mhoenicka
 
-	* tests/test_dbi.c (1.4): extended column type testing
+	* drivers/mysql/dbd_mysql.c (1.77): fixed character set translation
+	in dbd_get_encoding()
 
-2003-06-05 02:21  mhoenicka
+2005-02-14 00:00  mhoenicka
 
-	* drivers/: sqlite/dbd_sqlite.c (1.15), mysql/dbd_mysql.c (1.66):
-	_parse_datetime(): fixed raw vs cur typo
+	* tests/test_dbi.c (1.14): fixed available drivers screen
+	message;changed long long printf specifier from qu to llu
 
-2003-06-04 22:19  mhoenicka
+2005-01-12 08:40  bhazer
 
-	* drivers/mysql/dbd_mysql.c (1.65): added NULL/string length checks
-	to _parse_datetime()
+	* drivers/mysql/dbd_mysql.c (1.76): Fixed a bug in the mysql
+	driver, found by "Shim Manning" <shim@shimpossible.com>
 
-2003-06-03 23:39  mhoenicka
+2004-11-22 21:33  bhazer
 
-	* drivers/sqlite/dbd_sqlite.c (1.14): dbd_connect(): removed
-	leftover return;find_result_field_types(): use uppercased field
-	name for comparison;_parse_datetime(): added checks for NULL date
-	and string lengths
+	* drivers/: mysql/dbd_mysql.c (1.75), pgsql/dbd_pgsql.c (1.39):
+	added missing calls to _set_field_flag() to mark coulmns as NULL.
 
-2003-05-26 22:20  mhoenicka
+2004-11-22 21:20  bhazer
 
-	* drivers/sqlite/dbd_sqlite.sgml (1.4): fixed sqlite-dbdir vs
-	sqlite_dbdir typos
+	* drivers/: msql/dbd_msql.c (1.9), mysql/dbd_mysql.c (1.74): remove
+	extra calls error handlers.
 
-2003-05-26 22:04  mhoenicka
+2004-09-29 11:26  bhazer
 
-	* drivers/sqlite/dbd_sqlite.c (1.13): fixed crash if dbname or
-	dbdir were not set
+	* drivers/firebird/dbd_firebird.c (1.12): Make the firebird driver
+	take host as an option instedd of  part of the database name. 
+	Patch from Dominik Fässler <d.faessler@performa-software.ch>
 
-2003-04-30 19:57  mhoenicka
+2004-09-25 11:42  bhazer
 
-	* AUTHORS (1.4): updated for OSX patches
+	* drivers/firebird/dbd_firebird.c (1.11): Patch from Dominik
+	Faessler <d.faessler@performa-software.ch> The firebird driver did
+	return the last row twice ..  this patch fixes this behaviour so
+	that we only return the last row ones.
+	
+	Also commiting a small fix to make the dbd_connect() return -1 (not
+	0) on failure so that the firebird driver work the same way as the
+	other drivers.
 
-2003-04-18 23:00  mhoenicka
+2004-09-16 21:32  bhazer
 
-	* configure.in (1.14), drivers/msql/Makefile.am (1.6),
-	drivers/mysql/Makefile.am (1.8), drivers/pgsql/Makefile.am (1.9),
-	drivers/sqlite/Makefile.am (1.7): Peters first attempt for OSX
-	fixes
+	* drivers/: firebird/dbd_firebird.c (1.10), msql/dbd_msql.c (1.8),
+	oracle/dbd_oracle.c (1.12): Aplyying the correct NULL handling
 
-2003-04-18 02:21  dap24
+2004-07-25 23:23  bhazer
 
-	* drivers/pgsql/dbd_pgsql.sgml (1.1): beginnings of pgsql docs.
-	need to finish writing, parameterize and make a generic doc
-	template, add README/AUTHORS/TODO/ChangeLog/COPYING/etc, move doc
-	building to doc/ subdir. a task hopefully for tonight (:
+	* drivers/firebird/dbd_firebird.h (1.2): *puh*, Adding
+	firebird/interbase reserved words, That sure was a dirty job......
 
-2003-04-15 06:26  dap24
+2004-07-25 21:46  bhazer
 
-	* configure.in (1.13): added AM_MAINTAINER_MODE to ease build
-	system issues (see
-	http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=186975 )
+	* drivers/firebird/dbd_firebird.c (1.9): ok, libdbi wants ping() to
+	try to reconnect if disconnected.
 
-2003-04-13 23:42  mhoenicka
+2004-07-25 20:44  bhazer
 
-	* drivers/msql/Makefile.am (1.5): fixed missing backslash in
-	install-data-local loop
+	* drivers/firebird/: TODO (1.2), dbd_firebird.c (1.8): dbd_ping()
+	implemented, and a fix for error messages.
 
-2003-04-13 23:07  mhoenicka
+2004-07-25 17:55  bhazer
 
-	* tests/Makefile.am (1.4): removed LIBS, fixed test_dbi_LDADD
+	* drivers/msql/dbd_msql.c (1.7): make mSQL driver return dates as
+	time_t as the other drivers.
 
-2003-04-13 23:01  mhoenicka
+2004-07-25 17:11  bhazer
 
-	* drivers/sqlite/dbd_sqlite.c (1.12): renamed _dbd_connect() to
-	_real_dbd_connect(), added prototype
+	* drivers/firebird/TODO (1.1): Adding a TODO file
 
-2003-04-13 23:00  mhoenicka
+2004-07-25 17:07  bhazer
 
-	* configure.in (1.12): added check for dlopen in libdl
+	* drivers/firebird/dbd_firebird.c (1.7): dbd_quote_string() &&
+	dbd_select_db()
 
-2003-04-13 22:29  bhazer
+2004-07-25 16:28  bhazer
 
-	* .cvsignore (1.2), doc/.cvsignore (1.2), drivers/.cvsignore (1.2),
-	drivers/msql/.cvsignore (1.2), drivers/pgsql/.cvsignore (1.2),
-	drivers/sqlite/.cvsignore (1.2), tests/.cvsignore (1.2): peace and
-	quiet :)
+	* drivers/firebird/dbd_firebird.c (1.6): Implemented Blob support,
+	fix for a stupid error in sequencing code.
 
-2003-04-13 22:17  bhazer
+2004-07-25 14:57  bhazer
 
-	* drivers/mysql/.cvsignore (1.1): ssssh
+	* drivers/firebird/dbd_firebird.c (1.5): Finsished sequencing code,
+	started on blob support.
 
-2003-04-13 22:15  bhazer
+2004-07-24 23:38  bhazer
 
-	* .cvsignore (1.1), doc/.cvsignore (1.1), drivers/.cvsignore (1.1),
-	drivers/msql/.cvsignore (1.1), drivers/pgsql/.cvsignore (1.1),
-	drivers/sqlite/.cvsignore (1.1), tests/.cvsignore (1.1): peace and
-	quite :)
+	* drivers/firebird/dbd_firebird.c (1.4): removed some debugging
+	code, clenups, and fix for a memory leak.
 
-2003-04-13 21:38  bhazer
+2004-07-24 23:03  bhazer
 
-	* drivers/msql/: Makefile.am (1.4), dbd_msql.sgml (1.1): added docs
-	(mostly stolen from the sqlite driver) hey its a start OK? ;)
+	* drivers/firebird/dbd_firebird.c (1.3): implemeted
+	dbd_list_tables().
 
-2003-04-13 21:36  bhazer
+2004-07-24 22:39  bhazer
 
-	* drivers/sqlite/Makefile.am (1.6): noinst_DATA is not aloud in
-	EXTRA_DIST section
+	* drivers/firebird/dbd_firebird.c (1.2): figured out
+	username/password handling for secure databases...
 
-2003-04-13 21:34  bhazer
+2004-07-23 08:58  bhazer
 
-	* acinclude.m4 (1.9): added missing AM_CONDITIONAL in the sqlite
-	section
+	* drivers/firebird/: AUTHORS (1.1), Makefile.am (1.1), README
+	(1.1), dbd_firebird.c (1.1), dbd_firebird.h (1.1): And yes, we need
+	the driver file as well....
 
-2003-04-13 20:34  mhoenicka
+2004-07-23 08:54  bhazer
 
-	* acinclude.m4 (1.8): added missing AM_CONDITIONAL to the msql
-	section
+	* AUTHORS (1.7), README (1.8), acinclude.m4 (1.11), configure.in
+	(1.23), drivers/Makefile.am (1.5), drivers/mysql/dbd_mysql.c
+	(1.73): Adding An firebird driver.
 
-2003-04-12 23:54  mhoenicka
+2004-02-29 10:21  bhazer
 
-	* Makefile.am (1.5): removed README.drivers from EXTRA_DIST
+	* drivers/oracle/dbd_oracle.c (1.11): Removed an extra free() in
+	dbd_disconnect(). Found by "Don Kinzer" <dkinzer@easystreet.com>
 
-2003-04-12 23:53  mhoenicka
+2004-02-07 16:00  mhoenicka
 
-	* README.drivers (1.3): replaced by READMEs in the driver subdirs
-
-2003-04-12 23:37  mhoenicka
-
-	* drivers/sqlite/dbd_sqlite.sgml (1.3): incremented revnumber
-
-2003-04-12 23:36  mhoenicka
-
-	* drivers/sqlite/Makefile.am (1.5): added doc handling
-
-2003-04-12 23:35  mhoenicka
-
-	* drivers/msql/Makefile.am (1.3): fixed myql.c vs. msql.c typo in
-	EXTRA_DIST
-
-2003-04-12 21:20  mhoenicka
-
-	* drivers/sqlite/dbd_sqlite.sgml (1.2): assorted fixes to reflect
-	the new libdbi-driver structure
-
-2003-04-12 19:14  mhoenicka
-
-	* drivers/sqlite/Makefile.am (1.4): added AUTHORS TODO README to
-	EXTRA_DIST
-
-2003-04-12 19:10  mhoenicka
-
-	* TODO (1.3): added general info, moved sqlite info into
-	drivers/sqlite/TODO
-
-2003-04-12 19:08  mhoenicka
-
-	* README (1.5), README.win32 (1.2): more fixes to reflect the new
-	structure
-
-2003-04-12 19:06  mhoenicka
-
-	* drivers/sqlite/: AUTHORS (1.1), README (1.1), TODO (1.1): initial
-	version
-
-2003-04-12 13:59  bhazer
-
-	* tests/: Makefile.am (1.3), test_dbi.c (1.3): mSQL fixes
-
-2003-04-12 00:13  mhoenicka
-
-	* tests/test_dbi.c (1.2): updated to work with mysql, pgsql, sqlite
-	drivers
-
-2003-04-12 00:12  mhoenicka
-
-	* drivers/pgsql/dbd_pgsql.c (1.30): dbd_select_db(): functional
-	implementation
-
-2003-04-12 00:11  mhoenicka
-
-	* drivers/mysql/dbd_mysql.c (1.64): dbd_query(), dbd_query_null():
-	fixed segfault if no rows are returned
-
-2003-04-12 00:09  mhoenicka
-
-	* README (1.4): updated for new drivers
-
-2003-04-11 01:06  mhoenicka
-
-	* drivers/msql/dbd_msql.c (1.2): fixed swapped lines in
-	dbd_quote_string
-
-2003-04-11 01:05  mhoenicka
-
-	* drivers/: msql/Makefile.am (1.2), mysql/Makefile.am (1.7),
-	pgsql/Makefile.am (1.8), sqlite/Makefile.am (1.3): added
-	DBI_INCLUDE
-
-2003-04-11 01:03  mhoenicka
-
-	* acinclude.m4 (1.7), configure.in (1.11): added test for libdbi
-	headers
-
-2003-04-07 00:17  bhazer
-
-	* AUTHORS (1.3), README (1.3), TODO (1.2), acinclude.m4 (1.6),
-	autogen.sh (1.5), configure.in (1.10), drivers/Makefile.am (1.3),
-	drivers/msql/Makefile.am (1.1), drivers/msql/dbd_msql.c (1.1),
-	drivers/msql/dbd_msql.h (1.1): inital commit of the mSQL driver
-
-2003-04-03 23:46  mhoenicka
-
-	* drivers/sqlite/dbd_sqlite.c (1.11): new function dbd_ping()
-
-2003-04-03 23:45  mhoenicka
-
-	* acinclude.m4 (1.5): look for mysql/mysql.h instead of only
-	mysql.h
-
-2003-03-29 03:58  dap24
-
-	* Makefile.am (1.4), acinclude.m4 (1.4), configure.in (1.9),
-	drivers/sqlite/dbd_sqlite.c (1.10): Mac OS X
-
-2003-03-29 03:19  dap24
-
-	* Makefile.w32 (1.3), configure.in (1.8): oops again
-
-2003-03-29 03:17  dap24
-
-	* configure.in (1.7): oops
-
-2003-03-29 03:08  dap24
-
-	* acinclude.m4 (1.3), configure.in (1.6): mac osx, autoconf tweaks
-
-2003-03-28 22:47  dap24
-
-	* AUTHORS (1.2), Makefile.w32 (1.2), acinclude.m4 (1.2), autogen.sh
-	(1.4), configure.in (1.5), libdbi.spec.in (1.2), doc/Makefile.am
-	(1.2), doc/manual.sgml (1.4), doc/include/copying-fdl.sgml (1.1),
-	doc/include/doc-html.dsl (1.1), doc/include/doc-print.dsl (1.1),
-	doc/include/doc-single-html.dsl (1.1), drivers/Makefile.am (1.2),
-	drivers/mysql/Makefile.am (1.6), drivers/mysql/dbd_mysql.c (1.63),
-	drivers/mysql/mysql-stuff.h (1.3), drivers/pgsql/Makefile.am (1.7),
-	drivers/pgsql/dbd_pgsql.c (1.29), drivers/pgsql/pgsql-stuff.h
-	(1.3), drivers/sqlite/Makefile.am (1.2),
-	drivers/sqlite/dbd_sqlite.c (1.9), drivers/sqlite/dbd_sqlite.sgml
-	(1.1): moved drivers out of libdbi and into libdbi-drivers
-
-2003-03-28 21:28  dap24
-
-	* aclocal.m4 (1.3), config.guess (1.3), config.h.in (1.3),
-	config.sub (1.3), install-sh (1.3), ltmain.sh (1.3), missing (1.3),
-	mkinstalldirs (1.4), stamp-h.in (1.2): remove autogenerated stuff
+	* drivers/sqlite/dbd_sqlite.c (1.24): don't escape newlines and
+	carriage returns
 

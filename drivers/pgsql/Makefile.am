@@ -32,7 +32,7 @@ libpgsql_la_LDFLAGS = $(pgsql_ldflags) @PGSQL_LDFLAGS@ @PGSQL_LIBS@
 libpgsql_la_SOURCES = $(pgsql_sources)
 libpgsql_la_DEPENDENCIES = dbd_pgsql.h
 
-EXTRA_DIST = dbd_pgsql.c dbd_pgsql.h AUTHORS TODO README dbd_pgsql.pdf dbd_pgsql/*
+EXTRA_DIST = dbd_pgsql.c dbd_pgsql.h AUTHORS TODO README dbd_pgsql.sgml dbd_pgsql.pdf dbd_pgsql/*
 
 # jadetex spews out tons of useless crap. shut it up:
 dbd_pgsql.pdf: dbd_pgsql.sgml

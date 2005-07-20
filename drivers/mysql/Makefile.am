@@ -32,7 +32,7 @@ libmysql_la_LDFLAGS = $(mysql_ldflags) @MYSQL_LDFLAGS@ @MYSQL_LIBS@
 libmysql_la_SOURCES = $(mysql_sources)
 libmysql_la_DEPENDENCIES = dbd_mysql.h
 
-EXTRA_DIST = dbd_mysql.c dbd_mysql.h AUTHORS TODO README dbd_mysql.pdf dbd_mysql/*
+EXTRA_DIST = dbd_mysql.c dbd_mysql.h AUTHORS TODO README dbd_mysql.sgml dbd_mysql.pdf dbd_mysql/*
 
 # jadetex spews out tons of useless crap. shut it up:
 dbd_mysql.pdf: dbd_mysql.sgml

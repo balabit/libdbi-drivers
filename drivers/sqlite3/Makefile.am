@@ -34,7 +34,7 @@ libsqlite3_la_LDFLAGS = $(sqlite3_ldflags) @SQLITE3_LDFLAGS@ @SQLITE3_LIBS@
 libsqlite3_la_SOURCES = $(sqlite3_sources)
 libsqlite3_la_DEPENDENCIES = dbd_sqlite3.h
 
-EXTRA_DIST = dbd_sqlite3.c dbd_sqlite3.h AUTHORS TODO README dbd_sqlite3.pdf dbd_sqlite3/*
+EXTRA_DIST = dbd_sqlite3.c dbd_sqlite3.h AUTHORS TODO README dbd_sqlite3.sgml dbd_sqlite3.pdf dbd_sqlite3/*
 
 # jadetex spews out tons of useless crap. shut it up:
 dbd_sqlite3.pdf: dbd_sqlite3.sgml

@@ -43,6 +43,11 @@
 #include "dbd_oracle.h"
 #include "oracle_charsets.h"
 
+/* declarations of optional external functions */
+#ifndef HAVE_ASPRINTF
+int asprintf(char **result, const char *format, ...);
+#endif
+
 static const dbi_info_t driver_info = {
 	"Oracle",
 	"Oracle database support (using Oracle Call Interface)",
@@ -228,7 +233,7 @@ size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 
 	strcpy(dest, "'");
 	const char *escaped = "\'\"\\";
-	len = _dbd_escape_chars(dest, orig, escaped);
+	len = _dbd_escape_chars(dest, orig, strlen(orig), escaped);
 	
 	strcat(dest, "'");
 	
@@ -321,7 +326,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 }
 
 
-char *dbd_select_db(dbi_conn_t *conn, const char *db) 
+const char *dbd_select_db(dbi_conn_t *conn, const char *db) 
 {
   /* todo: PostgreSQL can't do it either, but there's a workaround */
 	return NULL; /* Oracle can't do that .... */
@@ -378,7 +383,7 @@ int dbd_ping(dbi_conn_t *conn)
 {
 	unsigned long long retval = 0;
 	char *sql_cmd = NULL;
-	Oraconn *Oconn = conn->connection;
+/* 	Oraconn *Oconn = conn->connection; */
 
 	asprintf(&sql_cmd, "SELECT 1 from dual");
 	
@@ -633,7 +638,7 @@ unsigned long long _oracle_query_to_longlong(dbi_conn_t *conn, const char *query
 void _checkerr(OCIError * errhp, sword status)
 {
 	text errbuf[512];
-	ub4 buflen;
+/* 	ub4 buflen; */
 	ub4 errcode;
 
 	switch (status)

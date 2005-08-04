@@ -41,6 +41,7 @@ long long strtoll(const char *nptr, char **endptr, int base);
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h> /* for isdigit() */
 
 #include <dbi/dbi.h>
 #include <dbi/dbi-dev.h>
@@ -317,6 +318,52 @@ const char* dbd_encoding_from_iana(const char *iana_encoding) {
 
   /* don't know how to translate, return original encoding */
   return iana_encoding;
+}
+
+char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) {
+  dbi_result_t *dbi_result;
+  const char *versioninfo = NULL;
+
+  /* initialize return string */
+  *versionstring = '\0';
+
+  dbi_result = dbd_query(conn, "SELECT VERSION()");
+
+  /* this query will return something like:
+     PostgreSQL 8.0.1 on i386-portbld-freebsd5.4, compiled by GCC cc (GCC) 3.4.2 [FreeBSD] 20040728
+  */
+  if (dbi_result) {
+    if (dbi_result_next_row(dbi_result)) {
+      char *dot = NULL;
+      char *start = NULL;
+      char *stop = NULL;
+      versioninfo = dbi_result_get_string_idx(dbi_result, 1);
+
+      /* try to locate the version number. Look for the first dot, go
+	 back where the number before the dot starts, then walk
+	 forward to the last dot or number */
+      dot = strchr(versioninfo, (int)'.');
+      if (dot) {
+	start = dot-1;
+	while (start>versioninfo && isdigit((int)(*start))) {
+	  start--;
+	}
+
+	stop = start;
+	while (*stop && (isdigit((int)(*stop)) || *stop=='.')) {
+	  stop++;
+	}
+
+	if (stop-start < VERSIONSTRING_LENGTH) {
+	  strncpy(versionstring, start, VERSIONSTRING_LENGTH-1);
+	  versionstring[VERSIONSTRING_LENGTH-1] = '\0';
+	}
+      }
+    }
+    dbi_result_free(dbi_result);
+  }
+
+  return versionstring;
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {

@@ -161,6 +161,12 @@ const char* dbd_encoding_from_iana(const char *iana_encoding) {
   return iana_encoding;
 }
 
+char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) {
+	/* todo: query db engine for version */
+	*versionstring = '\0';
+	return versionstring;
+}
+
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) 
 {
 	dbi_result_t *result = NULL;

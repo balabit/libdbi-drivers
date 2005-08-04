@@ -203,6 +203,12 @@ const char *dbd_get_encoding(dbi_conn_t *conn)
 	return NULL;
 }
 
+char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) {
+	/* todo: query db engine for version */
+	*versionstring = '\0';
+	return versionstring;
+}
+
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) 
 {
 	return NULL; 

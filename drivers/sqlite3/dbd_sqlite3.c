@@ -296,6 +296,27 @@ const char* dbd_encoding_from_iana(const char *iana_encoding) {
   return iana_encoding;
 }
 
+char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) {
+  dbi_result_t *dbi_result;
+  const char *versioninfo = NULL;
+
+  /* initialize return string */
+  *versionstring = '\0';
+
+  dbi_result = dbd_query(conn, "SELECT sqlite_version()");
+
+  if (dbi_result) {
+    if (dbi_result_next_row(dbi_result)) {
+      versioninfo = dbi_result_get_string_idx(dbi_result, 1);
+      strncpy(versionstring, versioninfo, VERSIONSTRING_LENGTH-1);
+      versionstring[VERSIONSTRING_LENGTH-1] = '\0';
+    }
+    dbi_result_free(dbi_result);
+  }
+
+  return versionstring;
+}
+
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
   char *sq_errmsg = NULL;
   char old_cwd[_POSIX_PATH_MAX] = "";

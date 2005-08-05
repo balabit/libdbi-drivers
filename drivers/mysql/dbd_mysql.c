@@ -236,6 +236,7 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	const char* iana_enc = NULL;
 	dbi_result dbires = NULL;
 	dbi_result dbires1 = NULL;
+	dbi_result dbires2 = NULL;
 	const char* schemastring;
 	const char* encodingopt;
 	char* sql_cmd;
@@ -256,7 +257,6 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 /* 	  printf("SHOW CREATE DATABASE %s", conn->current_db); */
 
 	  dbires = dbi_conn_query(conn, sql_cmd);
-	  free(sql_cmd);
 
 	  if (dbires && dbi_result_next_row(dbires)) {
 	    schemastring = dbi_result_get_string_idx(dbires, 2);
@@ -276,7 +276,6 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 /* 	  printf("SHOW CREATE DATABASE %s", conn->current_db); */
 
 	  dbires1 = dbi_conn_query(conn, sql_cmd);
-	  free(sql_cmd);
 
 	  if (dbires1 && dbi_result_next_row(dbires1)) {
 	    my_enc = dbi_result_get_string_idx(dbires1, 2);
@@ -285,10 +284,28 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 /* 	  my_enc = mysql_character_set_name(mycon); */
 /*   	  printf("mysql claims enc:%s<<\n", my_enc); */
 	  if (!my_enc) {
+	    /* this may be a pre-4.1 server w/o per-connection encoding */
+	    asprintf(&sql_cmd, "SHOW VARIABLES LIKE '%s'", "character_set");
+/* 	  printf("SHOW CREATE DATABASE %s", conn->current_db); */
+
+	    dbires2 = dbi_conn_query(conn, sql_cmd);
+
+
+	    if (dbires2 && dbi_result_next_row(dbires2)) {
+	      my_enc = dbi_result_get_string_idx(dbires2, 2);
+	    }
+	  }
+
+	  free(sql_cmd);
+
+	  if (!my_enc) {
 	    if (dbires) {
 	      dbi_result_free(dbires);
 	    }
 	    if (dbires1) {
+	      dbi_result_free(dbires1);
+	    }
+	    if (dbires2) {
 	      dbi_result_free(dbires1);
 	    }
 
@@ -305,6 +322,9 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 
 	if (dbires1) {
 	  dbi_result_free(dbires1);
+	}
+	if (dbires2) {
+	  dbi_result_free(dbires2);
 	}
 
 	return iana_enc;

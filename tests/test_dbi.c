@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <dbi/dbi.h>
 #include <time.h>
 

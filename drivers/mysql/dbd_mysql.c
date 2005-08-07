@@ -443,21 +443,21 @@ size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
 	return (size_t)(len+2);
 }
 
-size_t dbd_quote_binary(dbi_conn_t *conn, const char* orig, size_t from_length, char **ptr_dest) {
-  char *temp;
+size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char* orig, size_t from_length, unsigned char **ptr_dest) {
+  unsigned char *temp;
   unsigned long len;
   MYSQL *mycon = (MYSQL*)conn->connection;
 
   /* we allocate what mysql_real_escape_string needs, plus an extra two escape chars and a terminating zero*/
-  temp = (char*)malloc(2*from_length+1+2);
+  temp = malloc(2*from_length+1+2);
 
   if (!temp) {
     return DBI_LENGTH_ERROR;
   }
 
-  strcpy(temp, "'");
-  len = mysql_real_escape_string(mycon, temp+1, orig, from_length);
-  strcpy(temp+len+1, "\'");
+  strcpy((char *)temp, "'");
+  len = mysql_real_escape_string(mycon, (char *)(temp+1), (const char *)orig, from_length);
+  strcpy((char *)(temp+len+1), "\'");
   *ptr_dest = temp;
   return (size_t)len+2;
 }
@@ -492,7 +492,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, s
 	dbi_result_t *result;
 	MYSQL_RES *res;
 	
-	if (mysql_real_query((MYSQL *)conn->connection, statement, st_length)) {
+	if (mysql_real_query((MYSQL *)conn->connection, (const char *)statement, st_length)) {
 		return NULL;
 	}
 	

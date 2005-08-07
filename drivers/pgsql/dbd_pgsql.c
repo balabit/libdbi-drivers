@@ -409,9 +409,9 @@ size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
   return dbd_quote_string(conn->driver, orig, dest);
 }
 
-size_t dbd_quote_binary(dbi_conn_t *conn, const char* orig, size_t from_length, char **ptr_dest) {
-  char *temp = NULL;
-  char *quoted_temp = NULL;
+size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char* orig, size_t from_length, unsigned char **ptr_dest) {
+  unsigned char *temp = NULL;
+  unsigned char *quoted_temp = NULL;
   size_t to_length;
 
   temp = PQescapeBytea(orig, from_length, &to_length);
@@ -420,14 +420,14 @@ size_t dbd_quote_binary(dbi_conn_t *conn, const char* orig, size_t from_length, 
     return 0;
   }
 
-  if ((quoted_temp = (char*)malloc(to_length+2)) == NULL) {
-    PQfreemem(temp);
+  if ((quoted_temp = malloc(to_length+2)) == NULL) {
+    PQfreemem((void *)temp);
     return 0;
   }
   
-  strcpy(quoted_temp, "'");
-  strcat(quoted_temp, temp);
-  strcat(quoted_temp, "'");
+  strcpy((char *)quoted_temp, "'");
+  strcpy((char *)(quoted_temp+1), (char *)temp);
+  strcat((char *)quoted_temp, "'");
 
   PQfreemem((void*)temp);
 
@@ -700,8 +700,8 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				row->field_sizes[curfield] = strsize;
 				break;
 			case DBI_TYPE_BINARY:	
-			  temp = PQunescapeBytea(raw, &unquoted_length);
-			  if ((data->d_string = (char*)malloc(unquoted_length)) == NULL) {
+			  temp = PQunescapeBytea((const unsigned char *)raw, &unquoted_length);
+			  if ((data->d_string = malloc(unquoted_length)) == NULL) {
 			    PQfreemem(temp);
 			    break;
 			  }

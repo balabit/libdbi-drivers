@@ -488,22 +488,22 @@ size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
   return dbd_quote_string(conn->driver, orig, dest);
 }
 
-size_t dbd_quote_binary(dbi_conn_t *conn, const char *orig, size_t from_length, char **ptr_dest) {
+size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char *orig, size_t from_length, unsigned char **ptr_dest) {
   unsigned char *temp;
   size_t len;
 
-  if ((temp = (unsigned char*)malloc(from_length*2)) == NULL) {
+  if ((temp = malloc(from_length*2)) == NULL) {
     return 0;
   }
 
-  strcpy(temp, "\'");
+  strcpy((char *)temp, "\'");
   if (from_length) {
     len = _dbd_encode_binary(orig, from_length, temp+1);
   }
   else {
     len = 0;
   }
-  strcat(temp, "'");
+  strcat((char *)temp, "'");
 
   *ptr_dest = temp;
 

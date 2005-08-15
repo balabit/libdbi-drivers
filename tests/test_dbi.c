@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
   dbi_conn conn;
   const char *errmsg;
   unsigned int dbengine_version;
+  char versionstring[VERSIONSTRING_LENGTH];
 
   struct CONNINFO cinfo;
 
@@ -79,8 +80,9 @@ int main(int argc, char **argv) {
   }
   
   dbengine_version = dbi_conn_get_engine_version(conn);
+  dbi_conn_get_engine_version_string(conn, versionstring);
 
-  printf("\nSuccessfully connected!\n\tUsing database engine version %d\n", dbengine_version);
+  printf("\nSuccessfully connected!\n\tUsing database engine version %d (numeric) and %s (string)\n", dbengine_version, versionstring);
 
   /* Test 1: list available databases */
   printf("\nTest 1: List databases: \n");
@@ -433,7 +435,8 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
   (ptr_cinfo->drivername)[strlen(ptr_cinfo->drivername)-1] = '\0';
 	
   if (!strcmp(ptr_cinfo->drivername, "mysql")
-      || !strcmp(ptr_cinfo->drivername, "pgsql")) {
+      || !strcmp(ptr_cinfo->drivername, "pgsql")
+      || !strcmp(ptr_cinfo->drivername, "firebird")) {
     fprintf(stderr, "\ndatabase administrator name? ");
     fgets(ptr_cinfo->username, 64, stdin);
     if (*(ptr_cinfo->username) == '\n') {

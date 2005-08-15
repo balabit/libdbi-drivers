@@ -465,7 +465,10 @@ if test "$ac_firebird" = "YES"; then
 	AC_MSG_RESULT([yes: libs in $ac_firebird_libdir, headers in $ac_firebird_incdir])
 	AM_CONDITIONAL(HAVE_FIREBIRD_INTERBASE, true)
 	
-	FIREBIRD_LIBS=-lfbclient
+	dnl libfbclient needs pthreads
+	AC_SEARCH_LIBS(pthread_create, pthread c_r,,)
+
+	FIREBIRD_LIBS="-lfbclient"
 	FIREBIRD_INCLUDE="-I$ac_firebird_incdir"
 	FIREBIRD_LDFLAGS=-L$ac_firebird_libdir
 	

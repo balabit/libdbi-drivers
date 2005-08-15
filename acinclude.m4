@@ -440,7 +440,7 @@ AC_ARG_WITH(firebird-dir,
 	[  --with-firebird-dir	  Specifies Firebird directory.],
 	[  ac_firebird_incdir="$withval"/include
 	   ac_firebird_libdir="$withval"/lib ])
-AC_ARG_WITH(oracle-incdir,
+AC_ARG_WITH(firebird-incdir,
 	[  --with-firebird-incdir	  Specifies where the Firebird/Interbase include files are.],
 	[  ac_firebird_incdir="$withval" ])
 AC_ARG_WITH(firebird-libdir,
@@ -449,9 +449,9 @@ AC_ARG_WITH(firebird-libdir,
 
 if test "$ac_firebird" = "YES"; then
 	if test "$ac_firebird_incdir" = "NO" || test "$ac_firebird_libs" = "NO"; then
-		firebird_incdirs="/opt/firebird/include"
+		firebird_incdirs="/opt/firebird/include /usr/include /usr/local/include /usr/include/firebird /usr/local/include/firebird /usr/local/firebird/include /opt/firebird/include"
 		AC_FIND_FILE(ibase.h, $firebird_incdirs, ac_firebird_incdir)
-		firebird_libdirs="/opt/firebird/lib"
+		firebird_libdirs="/opt/firebird/lib /usr/lib /usr/local/lib /usr/lib/firebird /usr/local/lib/firebird /usr/local/firebird/lib /opt/firebird/lib"
 		AC_FIND_FILE(libfbclient.so, $firebird_libdirs, ac_firebird_libdir)
 		if test "$ac_firebird_incdir" = "NO"; then
 			AC_MSG_RESULT(no)

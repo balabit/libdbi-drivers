@@ -53,7 +53,7 @@
 #include "dbd_firebird.h"
 
 static const dbi_info_t driver_info = {
-        "Firebird",
+        "firebird",
 	"Firebird/Interbase database support",
 	"Christian M. Stamgren <christian@stamgren.com>",
 	"http://libdbi-drivers.sourceforge.net",
@@ -70,6 +70,8 @@ static const dbi_info_t driver_info = {
 static const char *custom_functions[] = {NULL}; 
 static const char *reserved_words[] = FIREBIRD_RESERVED_WORDS;
 
+/* the encoding strings */
+static const char firebird_encoding_NONE[] = "NONE";
 
 void _translate_firebird_type(int field_type,  unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
@@ -200,7 +202,19 @@ int dbd_get_socket(dbi_conn_t *conn)
 
 const char *dbd_get_encoding(dbi_conn_t *conn)
 {
-	return NULL;
+	/* this is the default if no encoding is set */
+	/* todo: find out actual encoding */
+	return firebird_encoding_NONE;
+}
+
+const char* dbd_encoding_to_iana(const char *db_encoding) {
+  /* nothing to translate, return original encoding */
+  return db_encoding;
+}
+
+const char* dbd_encoding_from_iana(const char *iana_encoding) {
+  /* nothing to translate, return original encoding */
+  return iana_encoding;
 }
 
 char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) {
@@ -253,6 +267,34 @@ size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 	return j;
 }
 
+
+size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
+  return dbd_quote_string(conn->driver, orig, dest);
+}
+
+size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char *orig, size_t from_length, unsigned char **ptr_dest) {
+  unsigned char *temp;
+  size_t len;
+
+  /* todo: this uses the libdbi builtin encoding routine. firebird may
+     have its own version */
+  if ((temp = malloc(from_length*2)) == NULL) {
+    return 0;
+  }
+
+  strcpy((char *)temp, "\'");
+  if (from_length) {
+    len = _dbd_encode_binary(orig, from_length, temp+1);
+  }
+  else {
+    len = 0;
+  }
+  strcat((char *)temp, "'");
+
+  *ptr_dest = temp;
+
+  return len+2;
+}
 
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, size_t st_length) 
 {	
@@ -374,7 +416,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 }
 
 
-char *dbd_select_db(dbi_conn_t *conn, const char *db) 
+const char *dbd_select_db(dbi_conn_t *conn, const char *db) 
 {
 	ibase_conn_t *iconn = conn->connection;
 
@@ -395,7 +437,7 @@ char *dbd_select_db(dbi_conn_t *conn, const char *db)
 		return NULL;
 	}
 
-	return (char *)db; 
+	return db; 
 }
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) 

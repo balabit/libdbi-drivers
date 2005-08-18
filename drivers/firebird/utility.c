@@ -53,7 +53,7 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 	isc_expand_dpb(&dpb, &dpb_length,
 		       isc_dpb_user_name, username,
 		       isc_dpb_password, password,
-		       isc_dpb_lc_ctype, encoding,
+		       isc_dpb_lc_ctype, dbd_encoding_from_iana(encoding),
 		       NULL);
 
 	if (!dbname) {

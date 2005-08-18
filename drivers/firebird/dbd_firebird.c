@@ -49,6 +49,7 @@
 
 
 #include "dbd_firebird.h"
+#include "firebird_charsets.h"
 #include "utility.h"
 
 
@@ -154,21 +155,44 @@ const char *dbd_get_encoding(dbi_conn_t *conn)
 {
 	ibase_conn_t *iconn = conn->connection;
 	if( iconn != NULL)
-		return iconn->charset;
+		return dbd_encoding_to_iana( iconn->charset );
 
 	return firebird_encoding_NONE;
 }
 
 const char* dbd_encoding_to_iana(const char *db_encoding) 
 {
-  /* nothing to translate, return original encoding */
-  return db_encoding;
+	register int i = 0;
+
+	/* loop over all even entries in hash and compare to menc */
+	while (*firebird_encoding_hash[i]) {
+		if (!strncmp(firebird_encoding_hash[i], db_encoding, 
+			     strlen(firebird_encoding_hash[i]))) {
+			/* return corresponding odd entry */
+			return firebird_encoding_hash[i+1];
+		}
+		i+=2;
+	}
+
+	/* don't know how to translate, return original encoding */
+	return db_encoding;
 }
 
 const char* dbd_encoding_from_iana(const char *iana_encoding) 
 {
-  /* nothing to translate, return original encoding */
-  return iana_encoding;
+	register int i = 0;
+
+	/* loop over all odd entries in hash and compare to ienc */
+	while (*firebird_encoding_hash[i+1]) {
+		if (!strcmp(firebird_encoding_hash[i+1], iana_encoding)) {
+			/* return corresponding even entry */
+			return firebird_encoding_hash[i];
+		}
+		i+=2;
+	}
+
+	/* don't know how to translate, return original encoding */
+	return iana_encoding;
 }
 
 

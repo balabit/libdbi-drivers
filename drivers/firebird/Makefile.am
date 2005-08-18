@@ -22,6 +22,6 @@ libdir = $(driverdir)
 lib_LTLIBRARIES = $(firebird_ltlibs)
 libfirebird_la_LDFLAGS = $(firebird_ldflags) @FIREBIRD_LDFLAGS@ @FIREBIRD_LIBS@
 libfirebird_la_SOURCES = $(firebird_sources)
-libfirebird_la_DEPENDENCIES = dbd_firebird.h utility.h
+libfirebird_la_DEPENDENCIES = dbd_firebird.h utility.h firebird_charsets.h
 
-EXTRA_DIST = dbd_firebird.c utility.c dbd_firebird.h utility.h
+EXTRA_DIST = dbd_firebird.c utility.c dbd_firebird.h utility.h firebird_charsets.h

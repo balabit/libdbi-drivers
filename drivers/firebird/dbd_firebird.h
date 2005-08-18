@@ -1,9 +1,13 @@
+#ifndef __DBD_FIREBIRD_H
+#define __DBD_FIREBIRD_H
+
 	
 typedef struct ibase_conn_s
 {
   isc_db_handle db;             /* database handle */
   isc_tr_handle trans;          /* transaction handle */
   ISC_STATUS_ARRAY status;
+  const char *charset;
 } ibase_conn_t;
 
 typedef struct ibase_stmt_s
@@ -18,6 +22,12 @@ typedef struct vary_s {
   char vary_string[1];
 } vary_t;
 
+
+#define MAXLEN 1024
+
+#ifndef ISC_INT64_FORMAT
+#   define ISC_INT64_FORMAT        "ll"
+#endif
 
 
 #define FIREBIRD_RESERVED_WORDS \
@@ -302,3 +312,5 @@ typedef struct vary_s {
      "YEARDAY", \
      NULL \
 }
+
+#endif /* __DBD_FIREBIRD_H */

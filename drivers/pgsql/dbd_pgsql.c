@@ -345,18 +345,18 @@ char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) {
       dot = strchr(versioninfo, (int)'.');
       if (dot) {
 	start = dot-1;
-	while (start>versioninfo && isdigit((int)(*start))) {
+	while (start>versioninfo && isdigit((int)(*(start-1)))) {
 	  start--;
 	}
 
 	stop = start;
-	while (*stop && (isdigit((int)(*stop)) || *stop=='.')) {
+	while (*(stop+1) && (isdigit((int)(*(stop+1))) || *(stop+1)=='.')) {
 	  stop++;
 	}
 
 	if (stop-start < VERSIONSTRING_LENGTH) {
-	  strncpy(versionstring, start, VERSIONSTRING_LENGTH-1);
-	  versionstring[VERSIONSTRING_LENGTH-1] = '\0';
+	  strncpy(versionstring, start, stop-start+1);
+	  versionstring[stop-start+1] = '\0';
 	}
       }
     }

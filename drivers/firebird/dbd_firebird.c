@@ -199,12 +199,40 @@ const char* dbd_encoding_from_iana(const char *iana_encoding)
 char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) 
 {
 	ibase_conn_t *iconn = conn->connection;
+	char *dot;
+	char *start;
+	char *stop;
 
 	/* Firebird make some easy things hard ... this is one of them ... */
 	isc_version(&(iconn->db), _get_firebird_version, NULL);
 
-	strncpy(versionstring, version, MAXLEN-1);
-	versionstring[MAXLEN-1] = '\0';
+	/* version now contains something like:
+	   Firebird/linux Intel (access method), version "LI-V1.5.1.4500 Firebird 1.5"
+	*/
+
+	/* try to locate the version number. Look for the first dot, go
+	   back where the number before the dot starts, then walk
+	   forward to the last dot or number */
+	dot = strchr(version, (int)'.');
+	if (dot) {
+		start = dot-1;
+		while (start>version && isdigit((int)(*(start-1)))) {
+			start--;
+		}
+
+		stop = start;
+		while (*(stop+1) && (isdigit((int)(*(stop+1))) || *(stop+1)=='.')) {
+			stop++;
+		}
+
+		if (stop-start < VERSIONSTRING_LENGTH) {
+			/* BAD BAD BAD hack: we chop off the last two
+			   digits of the version string as the numeric
+			   form can't handle 3+digit sub-versions */
+			strncpy(versionstring, start, stop-start-1);
+			versionstring[stop-start-1] = '\0';
+		}
+	}
 	return versionstring;
 }
 

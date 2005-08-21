@@ -21,9 +21,10 @@ char string_to_quote[] = "Can \'we\' \"quote\" this properly?";
 unsigned char binary_to_quote[] = {'A', 'B', '\0', 'C', '\'', 'D'};
 size_t binary_to_quote_length = 6;
 
+int init_db(struct CONNINFO* ptr_cinfo);
 int ask_for_conninfo(struct CONNINFO* ptr_cinfo);
 int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding, const char* db);
-int test_list_db(dbi_conn conn);
+int test_list_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_create_db(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding);
 int test_select_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn);
@@ -72,6 +73,12 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
+  /* some drivers need an existing database to connect to */
+  if (init_db(&cinfo)) {
+    dbi_shutdown();
+    exit(1);
+  }
+
   if (dbi_conn_connect(conn) < 0) {
     dbi_conn_error(conn, &errmsg);
     printf("\nUnable to connect! Error message: %s\n", errmsg);
@@ -87,7 +94,7 @@ int main(int argc, char **argv) {
   /* Test 1: list available databases */
   printf("\nTest 1: List databases: \n");
 	
-  if (test_list_db(conn)) {
+  if (test_list_db(&cinfo, conn)) {
     dbi_conn_close(conn);
     dbi_shutdown();
     exit(1);
@@ -391,6 +398,24 @@ int main(int argc, char **argv) {
 /* ******************************************************************* */
 
 /* returns 0 on success, 1 on error */
+int init_db(struct CONNINFO* ptr_cinfo) {
+  char command[1024];
+
+  if (!strcmp(ptr_cinfo->drivername, "firebird")) {
+    /* Debian hack: the interactive client is called isql-fb here */
+    snprintf(command, 1024, "echo \"CREATE DATABASE \'%s:%s/%s\';\"|isql-fb -e -pas %s -u %s -sql_dialect 3", ptr_cinfo->hostname, ptr_cinfo->dbdir, ptr_cinfo->dbname, ptr_cinfo->password, ptr_cinfo->username);
+    if (system(command)) {
+      snprintf(command, 1024, "echo \"CREATE DATABASE \'%s:%s/%s\';\"|isql -e -pas %s -u %s -sql_dialect 3", ptr_cinfo->hostname, ptr_cinfo->dbdir, ptr_cinfo->dbname, ptr_cinfo->password, ptr_cinfo->username);
+      if (system(command)) {
+	fprintf(stderr, "Could not create initial database\n");
+	return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
 int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
   int numdrivers;
   dbi_driver driver;
@@ -456,7 +481,8 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
     }
   }	  
   if(!strcmp(ptr_cinfo->drivername, "sqlite")
-     || !strcmp(ptr_cinfo->drivername, "sqlite3")) {
+     || !strcmp(ptr_cinfo->drivername, "sqlite3")
+     || !strcmp(ptr_cinfo->drivername, "firebird")) {
     fprintf(stderr, "database directory? [.] ");
     fgets(ptr_cinfo->dbdir, 256, stdin);
     if ((ptr_cinfo->dbdir)[0] == '\n') {
@@ -467,7 +493,10 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
       (ptr_cinfo->dbdir)[strlen(ptr_cinfo->dbdir)-1] = '\0';
     }
   }
-  else {
+
+  if (!strcmp(ptr_cinfo->drivername, "firebird")
+      || !strcmp(ptr_cinfo->drivername, "mysql")
+      || !strcmp(ptr_cinfo->drivername, "pgsql")) {
     fprintf(stderr, "\ndatabase hostname? [(blank for local socket if possible)] ");
     fgets(ptr_cinfo->hostname, 256, stdin);
     if (*(ptr_cinfo->hostname) == '\n') {
@@ -518,8 +547,13 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
   else if (!strcmp(ptr_cinfo->drivername, "sqlite3")) { 
     dbi_conn_set_option(conn, "sqlite3_dbdir", ptr_cinfo->dbdir);
   }
-  else { /* sqlite */
+  else  if (!strcmp(ptr_cinfo->drivername, "sqlite")){
     dbi_conn_set_option(conn, "sqlite_dbdir", ptr_cinfo->dbdir);
+  }
+  else  if (!strcmp(ptr_cinfo->drivername, "firebird")){
+    dbi_conn_set_option(conn, "firebird_dbdir", ptr_cinfo->dbdir);
+    dbi_conn_set_option(conn, "username", ptr_cinfo->username);
+    dbi_conn_set_option(conn, "password", ptr_cinfo->password);
   }
 
   if (!strcmp(ptr_cinfo->drivername, "mysql")) {
@@ -542,7 +576,10 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
       dbi_conn_set_option(conn, "encoding", encoding);
     }
   }
-  else { /* msql */
+  else if (!strcmp(ptr_cinfo->drivername, "mysql")){
+    strcpy(ptr_cinfo->initial_dbname, ptr_cinfo->dbname);
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "firebird")){
     strcpy(ptr_cinfo->initial_dbname, ptr_cinfo->dbname);
   }
 	
@@ -557,9 +594,15 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
 }
 
 /* returns 0 on success, 1 on error */
-int test_list_db(dbi_conn conn) {
+int test_list_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   const char *errmsg;
   dbi_result result;
+
+  /* currently not implemented in firebird */
+  if (!strcmp(ptr_cinfo->drivername, "firebird")) {
+    printf("not yet implemented\n");
+    return 0;
+  }
 
   if ((result = dbi_conn_get_db_list(conn, NULL)) == NULL) {
     dbi_conn_error(conn, &errmsg);
@@ -587,6 +630,7 @@ int test_create_db(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encodi
 
   if (!strcmp(ptr_cinfo->drivername, "sqlite")
       || !strcmp(ptr_cinfo->drivername, "sqlite3")
+      || !strcmp(ptr_cinfo->drivername, "firebird")
       || !strcmp(ptr_cinfo->drivername, "msql")) {
     printf("\tThis is a no-op with the sqlite/msql drivers.\n");
   }
@@ -653,9 +697,13 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   else if (!strcmp(ptr_cinfo->drivername, "msql")) {
     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char INT8, the_uchar UINT8, the_short INT16, the_ushort UINT16, the_long INT, the_ulong UINT, the_longlong INT64, the_ulonglong UINT64, the_float REAL, the_driver_string CHAR(255), the_conn_string CHAR(255), the_date DATE, the_time TIME, id INT)");		
   }
-  else { /* sqlite, sqlite3 */
+  else if (!strcmp(ptr_cinfo->drivername, "sqlite")
+	   || !strcmp(ptr_cinfo->drivername, "sqlite3")){
     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_binary_string BLOB, the_datetime DATETIME, the_date DATE, the_time TIME, id INTEGER AUTO INCREMENT)");
   }
+  else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT, the_double DOUBLE PRECISION, the_driver_string CHAR(255), the_conn_string CHAR(255), the_binary_string BLOB, the_datetime TIMESTAMP, the_date DATE, the_time TIME, id INTEGER NOT NULL PRIMARY KEY)");
+  } 
 
   if ((result = dbi_conn_query(conn, query)) == NULL) {
     dbi_conn_error(conn, &errmsg);

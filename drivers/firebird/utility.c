@@ -7,6 +7,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include <dbi/dbi.h>
 #include <dbi/dbi-dev.h>
@@ -361,7 +362,7 @@ unsigned long long return_generator_value(dbi_conn_t *conn, const char *sequence
 void dealocate_iconn( ibase_conn_t *iconn )
 {
 	if( iconn != NULL) {
-		if(iconn->charset) free( iconn->charset );
+		if(iconn->charset) free ( (void *)iconn->charset );
 		free(iconn);
 		iconn = NULL;
 	}

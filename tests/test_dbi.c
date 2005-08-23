@@ -2,6 +2,7 @@
 #include <string.h>
 #include <dbi/dbi.h>
 #include <time.h>
+#include <unistd.h>
 
 #define QUERY_LEN 1024
 
@@ -121,7 +122,7 @@ int main(int argc, char **argv) {
   /* Test 4: get encoding */
   printf("\nTest 4: Get encoding: \n");
 	
-  printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
+  printf("\tThe database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
 
   /* Test 5: create table */
@@ -400,18 +401,21 @@ int main(int argc, char **argv) {
 /* returns 0 on success, 1 on error */
 int init_db(struct CONNINFO* ptr_cinfo) {
   char command[1024];
+    /* Debian hack: the interactive client is called isql-fb here */
+  int boolean = access("/etc/debian-version", F_OK);
 
   if (!strcmp(ptr_cinfo->drivername, "firebird")) {
-    /* Debian hack: the interactive client is called isql-fb here */
-    snprintf(command, 1024, "echo \"CREATE DATABASE \'%s:%s/%s\';\"|isql-fb -e -pas %s -u %s -sql_dialect 3", ptr_cinfo->hostname, ptr_cinfo->dbdir, ptr_cinfo->dbname, ptr_cinfo->password, ptr_cinfo->username);
-    if (system(command)) {
-      snprintf(command, 1024, "echo \"CREATE DATABASE \'%s:%s/%s\';\"|isql -e -pas %s -u %s -sql_dialect 3", ptr_cinfo->hostname, ptr_cinfo->dbdir, ptr_cinfo->dbname, ptr_cinfo->password, ptr_cinfo->username);
+    snprintf(command, 1024, "echo \"CREATE DATABASE \'%s:%s/%s\' user '%s' password '%s';\""
+	                    "| %s -e -pas %s "
+                            "-u %s -sql_dialect 3", ptr_cinfo->hostname, ptr_cinfo->dbdir, 
+	                     ptr_cinfo->dbname, ptr_cinfo->username, ptr_cinfo->password, 
+	                     ( boolean ? "isql" : "isql-fb"), 
+	                     ptr_cinfo->password, ptr_cinfo->username);
       if (system(command)) {
 	fprintf(stderr, "Could not create initial database\n");
 	return 1;
       }
     }
-  }
   return 0;
 }
 
@@ -600,7 +604,7 @@ int test_list_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 
   /* currently not implemented in firebird */
   if (!strcmp(ptr_cinfo->drivername, "firebird")) {
-    printf("not yet implemented\n");
+    printf("\tnot yet implemented\n");
     return 0;
   }
 
@@ -632,7 +636,7 @@ int test_create_db(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encodi
       || !strcmp(ptr_cinfo->drivername, "sqlite3")
       || !strcmp(ptr_cinfo->drivername, "firebird")
       || !strcmp(ptr_cinfo->drivername, "msql")) {
-    printf("\tThis is a no-op with the sqlite/msql drivers.\n");
+    printf("\tThis is a no-op with the sqlite/msql/firebird drivers.\n");
   }
   else {
     if (encoding && *encoding) {
@@ -702,8 +706,9 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_binary_string BLOB, the_datetime DATETIME, the_date DATE, the_time TIME, id INTEGER AUTO INCREMENT)");
   }
   else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
-    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT, the_double DOUBLE PRECISION, the_driver_string CHAR(255), the_conn_string CHAR(255), the_binary_string BLOB, the_datetime TIMESTAMP, the_date DATE, the_time TIME, id INTEGER NOT NULL PRIMARY KEY)");
-  } 
+        snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT, the_double DOUBLE PRECISION, the_driver_string CHAR(255), the_conn_string CHAR(255), the_binary_string BLOB, the_datetime TIMESTAMP, the_date DATE, the_time TIME, id INTEGER NOT NULL PRIMARY KEY)");
+
+} 
 
   if ((result = dbi_conn_query(conn, query)) == NULL) {
     dbi_conn_error(conn, &errmsg);
@@ -1083,6 +1088,17 @@ int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     printf("\tThis is a no-op with the mSQL driver.\n");
 		
   }
+  else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
+    if ((result = dbi_conn_queryf(conn, "DROP DATABASE")) == NULL) {
+      dbi_conn_error(conn, &errmsg);
+      printf("\tAAH! Can't drop database %s<< connected to database %s! Error message: %s\n", ptr_cinfo->dbname, ptr_cinfo->initial_dbname, errmsg);
+      return 1;
+    }
+    else {
+      printf("Ok.\n");
+    }
+
+  }
   else {
     if (dbi_conn_select_db(conn, ptr_cinfo->initial_dbname)) {
       dbi_conn_error(conn, &errmsg);
@@ -1094,7 +1110,8 @@ int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     printf("...hang on a second...\n");
     sleep(3);
 
-    if ((result = dbi_conn_queryf(conn, "DROP DATABASE %s", ptr_cinfo->dbname)) == NULL) {
+    if ((result = dbi_conn_queryf(conn, "DROP DATABASE %s", 
+				  ptr_cinfo->dbname)) == NULL) {
       dbi_conn_error(conn, &errmsg);
       printf("\tAAH! Can't drop database %s<< connected to database %s! Error message: %s\n", ptr_cinfo->dbname, ptr_cinfo->initial_dbname, errmsg);
       return 1;

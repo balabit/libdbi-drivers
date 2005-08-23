@@ -357,14 +357,14 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
        }
        /* Execute a non-select statement.*/
        if (!sqlda->sqld) {
-
-	       if (isc_dsql_execute(iconn->status, &(iconn->trans), &stmt, SQL_DIALECT_V6, NULL)) {
+	       if (isc_dsql_execute(iconn->status, &(iconn->trans), &stmt , SQL_DIALECT_V6, NULL)) {
 		       free(sqlda);
 		       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
 		       return NULL;
 	       }
 	       /* Commit DDL statements if that is what sql_info says */
 	       if (iconn->trans && (statement_type == isc_info_sql_stmt_ddl)) {
+
 		       if (isc_commit_transaction(iconn->status, &(iconn->trans))) {
 			       free(sqlda);
 			       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
@@ -379,7 +379,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	       numrows = 1; /*  Firebird  can't say how many rows there is, in this early stage. 
 				We need to fetch all rows and count them :( */
 	 
-       
+
 	       /* Need more room. */
 	       if (sqlda->sqln < num_cols) {
 		       sqlda = (XSQLDA *) realloc(sqlda, XSQLDA_LENGTH(num_cols));

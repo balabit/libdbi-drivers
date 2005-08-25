@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(drivers/sqlite/dbd_sqlite.c)
 AM_MAINTAINER_MODE
 
-AM_INIT_AUTOMAKE(libdbi-drivers, 0.8.0-pre3)
+AM_INIT_AUTOMAKE(libdbi-drivers, 0.8.0)
 AM_CONFIG_HEADER(config.h)
 
 dnl library versioning currently unnecessary...
@@ -125,6 +125,8 @@ case $host in
 	*-*-win32*)
 		shlib_ext=.dll ;;
 	*-*-cygwin*)
+		shlib_ext=.dll ;;
+	*-*-mingw32*)
 		shlib_ext=.dll ;;
 	*)
 		shlib_ext=.so ;;

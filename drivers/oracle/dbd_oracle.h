@@ -23,6 +23,9 @@
  *
  */
 
+#ifndef __DBD_ORACLE_H__
+#define __DBD_ORACLE_H__
+ 
 typedef struct Oraconn_ 
 {
 	OCIEnv           *env;
@@ -264,7 +267,14 @@ typedef struct Oraconn_
 
 
 
+#ifndef OCI_ATTR_CURRENT_POSITION
+#define MY_OCI_ATTR_CURRENT_POSITION              164 
+#define MY_OCI_STMT_SCROLLABLE_READONLY           0x08  
+#define OCIStmtFetch2(stmt,err,h,orientation,i,j) OCIStmtFetch(stmt,err,i,orientation,j)
+#else
+#define MY_OCI_ATTR_CURRENT_POSITION              OCI_ATTR_CURRENT_POSITION
+#define MY_OCI_STMT_SCROLLABLE_READONLY           OCI_STMT_SCROLLABLE_READONLY
+#endif
 
 
-
-
+#endif	/* __DBD_ORACLE_H__ */

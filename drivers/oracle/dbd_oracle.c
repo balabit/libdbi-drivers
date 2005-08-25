@@ -22,7 +22,7 @@
  * http://libdbi-drivers.sourceforge.net
  *
  */
-
+ 
 #ifdef  HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -51,7 +51,7 @@ int asprintf(char **result, const char *format, ...);
 static const dbi_info_t driver_info = {
 	"Oracle",
 	"Oracle database support (using Oracle Call Interface)",
-	"Christian M. Stamgren <christian@stamgren.com>",
+	"Ashish Ranjan <ashishwave@yahoo.com>", 
 	"http://libdbi-drivers.sourceforge.net",
 	"dbd_Oracle v" VERSION,
 	__DATE__
@@ -66,6 +66,8 @@ void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 unsigned long long _oracle_query_to_longlong(dbi_conn_t *conn, const char *sql_cmd);
 void _checkerr(OCIError * errhp, sword status);
+static size_t oracle_escape_string(char *to, const char *from, size_t length);
+
 
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, 
 			 const char ***_reserved_words) 
@@ -77,6 +79,7 @@ void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_
 
 int dbd_initialize(dbi_driver_t *driver) 
 {
+
 	return OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  
 			     (dvoid * (*)(dvoid *, size_t)) 0,
 			     (dvoid * (*)(dvoid *, dvoid *, size_t))0,
@@ -94,7 +97,7 @@ int dbd_connect(dbi_conn_t *conn)
 	if(! sid ) sid = getenv("ORACLE_SID");
 
 	if(OCIEnvCreate ((OCIEnv **) &(Oconn->env), OCI_DEFAULT, (dvoid *)0, 0, 0, 0, (size_t)0, (dvoid **)0)) {
-		_dbd_internal_error_handler(conn, "Connect::Unable to initialize enviroment", 0);
+		_dbd_internal_error_handler(conn, "Connect::Unable to initialize environment", 0);
 		return 1;
 	}
 	if( (OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &(Oconn->err), OCI_HTYPE_ERROR, 
@@ -237,11 +240,9 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
 {
 	size_t len;
-
-	strcpy(dest, "'");
 	const char *escaped = "\'\"\\";
-	len = _dbd_escape_chars(dest, orig, strlen(orig), escaped);
-	
+	strcpy(dest, "'");
+	len = oracle_escape_string(dest+1, orig, strlen(orig));
 	strcat(dest, "'");
 	
 	return len+2;
@@ -275,7 +276,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
 	OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
 		       (ub4) (stmttype == OCI_STMT_SELECT ? 0 : 1), 
 		       (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
-		       OCI_STMT_SCROLLABLE_READONLY);
+		       MY_OCI_STMT_SCROLLABLE_READONLY);
 
        
 	if( stmttype == OCI_STMT_SELECT) { 
@@ -287,7 +288,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
 		/* 
 		 * To find out how many rows there is in a result set we need to call 
 		 * OCIStmtFetch2() with OCI_FETCH_LAST and then use OCIAttrGet()
-		 * with OCI_ATTR_CURRENT_POSITION, This is really not that great 
+		 * with MY_OCI_ATTR_CURRENT_POSITION, This is really not that great 
 		 * because it might be very very very slow..... But It's the only way I know.
 		 * It would be really great if libdbi didn't have to know how large a result set is
 		 * at this early point.
@@ -305,7 +306,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
 			       (ub4)1, OCI_FETCH_LAST, 0, OCI_DEFAULT);
 
 		status = OCIAttrGet (stmt, OCI_HTYPE_STMT, (dvoid *) &numrows, 
-				     (ub4 *) 0, (ub4) OCI_ATTR_CURRENT_POSITION, Oconn->err); 
+				     (ub4 *) 0, (ub4) MY_OCI_ATTR_CURRENT_POSITION, Oconn->err); 
 		_checkerr(Oconn->err, status);
 		
 		/* cache should be about 20% of all rows. */
@@ -318,7 +319,6 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
 
 		/* howto handle affectedrows? */
 	}
-
 
 	result = _dbd_result_create(conn, (void *)stmt, numrows , affectedrows);
 	_dbd_result_set_numfields(result, numfields);
@@ -364,6 +364,8 @@ unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence)
 	unsigned long long retval = 0;
 	char *sql_cmd = NULL;
 	
+	if( ! sequence) return 0; 
+	
 	asprintf(&sql_cmd, "SELECT %s.currval FROM dual", sequence);
 	
 	retval =  _oracle_query_to_longlong(conn, sql_cmd);
@@ -376,7 +378,9 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence)
 {	
 	unsigned long long retval = 0;
 	char *sql_cmd = NULL;
-
+   
+    if( ! sequence) return 0; 
+   
 	asprintf(&sql_cmd, "SELECT %s.nextval FROM dual", sequence);
 
 	retval =  _oracle_query_to_longlong(conn, sql_cmd);
@@ -471,6 +475,8 @@ void _get_field_info(dbi_result_t *result)
 	sb1  scale;
 	ub4  col_name_len;
 
+	char* col_name_dbi;
+
 	Oraconn *Oconn = (Oraconn *)result->conn->connection;
 	
 	while (idx < result->numfields) {
@@ -492,9 +498,14 @@ void _get_field_info(dbi_result_t *result)
 				   (dvoid**) &scale,(ub4 *) 0, (ub4) OCI_ATTR_SCALE,
 				   (OCIError *) Oconn->err );
 		}
+	  	/*bug fixing , it is necessary to copy it to earlier as in many cases it is not giving a properly terminated string, which gives malformed col name */
+		col_name_dbi = calloc(col_name_len + 1,sizeof(char) );
+		strncpy( col_name_dbi, (char *) col_name,  col_name_len);
 
 		_translate_oracle_type(otype, scale, &fieldtype, &fieldattribs);
-		_dbd_result_add_field(result, idx, (char *)col_name, fieldtype, fieldattribs);
+		_dbd_result_add_field(result, idx, col_name_dbi, fieldtype, fieldattribs);
+
+		free(col_name_dbi);
 		idx++;
 	}
 }
@@ -676,5 +687,77 @@ void _checkerr(OCIError * errhp, sword status)
 	default:
 		break;
 	}
+}
+
+const char *dbd_encoding_from_iana(const char * iana_encoding )
+{
+	return iana_encoding;
+}
+
+const char *dbd_encoding_to_iana(const char * iana_encoding )
+{
+	return iana_encoding;
+}
+
+/* taken from sqlite3 driver */
+size_t dbd_quote_binary (dbi_conn_t *conn, const char *orig, size_t from_length, char **ptr_dest ) {
+  unsigned char *temp;
+  size_t len;
+
+  if ((temp = (unsigned char*)malloc(from_length*2)) == NULL) {
+    return 0;
+  }
+
+  strcpy(temp, "\'");
+  if (from_length) {
+    len = _dbd_encode_binary(orig, from_length, temp+1);
+  }
+  else {
+    len = 0;
+  }
+  strcat(temp, "'");
+
+  *ptr_dest = temp;
+
+  return len+2;
+
+}
+
+size_t dbd_conn_quote_string (dbi_conn_t *conn, const char *orig, char *dest ) {
+	return dbd_quote_string(conn->driver, orig, dest);
+}
+
+
+
+
+/* This function is stolen from MySQL,Sqlite3. The quoting was changed to the
+ SQL standard, i.e. single and double quotes are escaped by doubling,
+ not by a backslash. Newlines and carriage returns are left alone */
+static size_t oracle_escape_string(char *to, const char *from, size_t length)
+{
+  const char *to_start=to;
+  const char *end;
+
+  for (end=from+length; from != end ; from++)
+    {
+      switch (*from) {
+      case 0:                           /* Must be escaped for 'mysql' */
+        *to++= '\\';
+        *to++= '0';
+        break;
+      case '\'':
+        *to++= '\''; /* double single quote */
+        *to++= '\'';
+        break;
+      case '\032':                      /* This gives problems on Win32 */
+        *to++= '\\';
+        *to++= 'Z';
+        break;
+      default:
+        *to++= *from;
+      }
+    }
+  *to=0;
+  return (size_t) (to-to_start);
 }
 

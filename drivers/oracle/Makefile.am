@@ -4,17 +4,21 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_ORACLE
 
-# don't use docdir, doc_DATA. This way we keep the HTML in separate subdirs
-# for each driver
-doc_dir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
-html_subdir = dbd_oracle
-noinst_DATA = dbd_oracle.pdf dbd_oracle/* 
+docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
+htmldir = $(docdir)/dbd_oracle
+doc_DATA = dbd_oracle.pdf
+html_DATA = dbd_oracle/* 
 
 oracle_ltlibs = liboracle.la
 oracle_ldflags = -module -avoid-version
 oracle_sources = dbd_oracle.c
 
 else
+
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
 
 oracle_ltlibs =
 oracle_ldflags =
@@ -49,11 +53,3 @@ dbd_oracle/*: dbd_oracle.sgml
 distclean: clean
 	rm -f dbd_oracle.pdf dbd_oracle/*
 
-# manually install the docs
-install-data-local: 
-if HAVE_ORACLE
-	$(top_srcdir)/mkinstalldirs $(DESTDIR)$(doc_dir) $(DESTDIR)$(doc_dir)/$(html_subdir)
-	@for f in $(noinst_DATA); do \
-		$(INSTALL_DATA) $(srcdir)/$$f $(DESTDIR)$(doc_dir)/$$f; \
-	done
-endif

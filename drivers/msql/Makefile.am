@@ -4,9 +4,10 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_MSQL
 
-doc_dir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
-html_subdir = dbd_msql
-noinst_DATA = dbd_msql.pdf dbd_msql/* 
+docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
+htmldir = $(docdir)/dbd_msql
+doc_data = dbd_msql.pdf
+html_DATA = dbd_msql/* 
 
 
 msql_ltlibs = libmsql.la
@@ -14,6 +15,11 @@ msql_ldflags = -module -avoid-version
 msql_sources = dbd_msql.c
 
 else
+
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
 
 msql_ltlibs =
 msql_ldflags =
@@ -47,12 +53,3 @@ distclean: clean
 	rm -f dbd_msql.pdf dbd_msql/*
 
 
-# manually install the docs
-install-data-local:
-if HAVE_MSQL
-	$(top_srcdir)/mkinstalldirs $(DESTDIR)$(doc_dir) $(DESTDIR)$(doc_dir)/$(html_subdir)
-	@for f in $(noinst_DATA); do \
-		$(INSTALL_DATA) $(srcdir)/$$f $(DESTDIR)$(doc_dir)/$$f; \
-	done
-endif
-#endif /* HAVE_MSQL */

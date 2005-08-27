@@ -4,11 +4,10 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_SQLITE
 
-# don't use docdir, doc_DATA. This way we keep the HTML in separate subdirs
-# for each driver
-doc_dir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
-html_subdir = dbd_sqlite
-noinst_DATA = dbd_sqlite.pdf dbd_sqlite/* 
+docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
+htmldir = $(docdir)/dbd_sqlite
+doc_DATA = dbd_sqlite.pdf
+html_DATA = dbd_sqlite/* 
 
 sqlite_ltlibs = libsqlite.la
 sqlite_ldflags = -module -avoid-version
@@ -16,9 +15,10 @@ sqlite_sources = dbd_sqlite.c
 
 else
 
-doc_dir =
-html_subdir =
-noinst_DATA =
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
 
 sqlite_ltlibs =
 sqlite_ldflags =
@@ -53,11 +53,3 @@ dbd_sqlite/*: dbd_sqlite.sgml
 distclean: clean
 	rm -f dbd_sqlite.pdf dbd_sqlite/*
 
-# manually install the docs
-install-data-local: 
-if HAVE_SQLITE
-	$(top_srcdir)/mkinstalldirs $(DESTDIR)$(doc_dir) $(DESTDIR)$(doc_dir)/$(html_subdir)
-	@for f in $(noinst_DATA); do \
-		$(INSTALL_DATA) $(srcdir)/$$f $(DESTDIR)$(doc_dir)/$$f; \
-	done
-endif

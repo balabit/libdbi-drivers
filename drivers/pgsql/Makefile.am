@@ -2,11 +2,10 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_PGSQL
 
-# don't use docdir, doc_DATA. This way we keep the HTML in separate subdirs
-# for each driver
-doc_dir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
-html_subdir = dbd_pgsql
-noinst_DATA = dbd_pgsql.pdf dbd_pgsql/* 
+docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
+htmldir = $(docdir)/dbd_pgsql
+doc_DATA = dbd_pgsql.pdf
+html_DATA = dbd_pgsql/* 
 
 pgsql_ltlibs = libpgsql.la
 pgsql_ldflags = -module -avoid-version
@@ -14,9 +13,10 @@ pgsql_sources = dbd_pgsql.c
 
 else
 
-doc_dir =
-html_subdir =
-noinst_DATA =
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
 
 pgsql_ltlibs =
 pgsql_ldflags =
@@ -51,11 +51,3 @@ dbd_pgsql/*: dbd_pgsql.sgml
 distclean: clean
 	rm -f dbd_pgsql.pdf dbd_pgsql/*
 
-# manually install the docs
-install-data-local: 
-if HAVE_PGSQL
-	$(top_srcdir)/mkinstalldirs $(DESTDIR)$(doc_dir) $(DESTDIR)$(doc_dir)/$(html_subdir)
-	@for f in $(noinst_DATA); do \
-		$(INSTALL_DATA) $(srcdir)/$$f $(DESTDIR)$(doc_dir)/$$f; \
-	done
-endif

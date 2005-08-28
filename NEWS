@@ -4,9 +4,19 @@ libdbi-drivers NEWS file
 _____________________________________
 0.8.0 (the "Whatsername" release)
 
-- and then there were 7: sqlite3, firebird, and oracle were added
+- and then there were 7: sqlite3, firebird, and oracle were
+  added. However, msql, oracle, and firebird are still experimental in
+  this release and are likely to be broke. We'll do our best to ship
+  working drivers with 0.8.1
 
 - tons of internal fixes to work with libdbi 0.8.0
+
+- the version numbering has changed. Starting with this release, the
+  major and minor numbers ("0.8" in this release) denote the internal
+  API version. Any 0.8.x libdbi-drivers release is guaranteed to work
+  with any 0.8.x libdbi release. The patch level ("0" in the current
+  release) denotes patches and minor changes that do not affect the
+  internal API.
 
 
 _____________________________________

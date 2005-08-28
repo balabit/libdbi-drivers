@@ -39,12 +39,13 @@ If you are building the OSX port, see README.osx.
 AVAILABLE DRIVERS:
 ------------------
 
-* Firebird/Interbase
-* mSQL
+* Firebird/Interbase (experimental)
+* mSQL (experimental)
 * MySQL
-* Oracle
+* Oracle (experimental)
 * PostgreSQL
 * SQLite
+* SQLite3
 
 
 SUPPORTED PLATFORMS:
@@ -55,11 +56,11 @@ mind. To date, chances are it is going to run with:
 
 Linux: Debian, RedHat, Slackware, Gentoo
 Windows: 98, NT4, 2000, XP
-FreeBSD: 4.3 through 4.7
+FreeBSD: 4.3 through 5.4
 SunOS: 2.8
 Solaris: 7
 AIX: 4.2, 4.3 and 5.1
-OSX: 10.2
+OSX: 10.2-10.4
 
 If you are using libdbi on a platform not listed here, please notify the
 mailing list! (see below)

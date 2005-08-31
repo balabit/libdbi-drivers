@@ -700,7 +700,7 @@ const char *dbd_encoding_to_iana(const char * iana_encoding )
 }
 
 /* taken from sqlite3 driver */
-size_t dbd_quote_binary (dbi_conn_t *conn, const char *orig, size_t from_length, char **ptr_dest ) {
+size_t dbd_quote_binary (dbi_conn_t *conn, const unsigned char *orig, size_t from_length, char **ptr_dest ) {
   unsigned char *temp;
   size_t len;
 

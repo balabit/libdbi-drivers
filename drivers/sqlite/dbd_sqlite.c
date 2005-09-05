@@ -124,6 +124,8 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   const char *dbname;
   const char *dbdir;
 
+  int timeout;
+
   /* initialize error stuff */
   conn->error_number = 0;
   conn->error_message = NULL;
@@ -195,7 +197,16 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
       conn->current_db = strdup(dbname);
     }
   }
-	
+
+  /* set the SQLite timeout to timeout milliseconds */
+  timeout = dbi_conn_get_option_numeric(conn, "sqlite_timeout");
+
+  if (timeout == -1) {
+    timeout = 0;
+  }
+
+  sqlite_busy_timeout(sqcon, timeout);	
+  
   return 0;
 }
 

@@ -13,20 +13,8 @@
     </author>
     <revhistory>
       <revision>
-	<revnumber>0.4</revnumber>
-	<date>2005-07-17</date>
-      </revision>
-      <revision>
-	<revnumber>0.3</revnumber>
-	<date>2003-4-12</date>
-      </revision>
-      <revision>
-	<revnumber>0.2</revnumber>
-	<date>2003-2-4</date>
-      </revision>
-      <revision>
-	<revnumber>0.1</revnumber>
-	<date>2002-11-5</date>
+	<revnumber>$Revision$</revnumber>
+	<date>$Date$</date>
       </revision>
     </revhistory>
   </bookinfo>
@@ -112,8 +100,14 @@
 	<listitem>
 	  <para>This is the directory that contains all sqlite databases. Use the full path please.</para>
 	  <note>
-	    <para>It is necessary to keep all sqlite databases in one directory to make it possible to list all existing databases through the libdbi API.</para>
+	    <para>It is necessary to keep all sqlite databases in one directory to make it possible to list all existing databases through the libdbi API. However, you are free to open more than one connection simultaneously, each one using a different setting of <parameter moreinfo="none">sqlite_dbdir</parameter>.</para>
 	  </note>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>sqlite_timeout</term>
+	<listitem>
+	  <para>The design of SQLite does not allow concurrent access by two clients. However, if the timeout is larger than zero, the second client will wait for the given amount of time for the first client to release its lock. If the timeout is set to zero, the second client will return immediately, indicating a busy status. The numerical value of this option specifies the timeout in milliseconds.</para>
 	</listitem>
       </varlistentry>
     </variablelist>

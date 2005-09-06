@@ -13,8 +13,8 @@
     </author>
     <revhistory>
       <revision>
-	<revnumber>0.1</revnumber>
-	<date>2005-05-01</date>
+	<revnumber>$Revision$</revnumber>
+	<date>$Date$</date>
       </revision>
     </revhistory>
   </bookinfo>
@@ -94,16 +94,22 @@
 	<term>dbname</term>
 	<listitem>
 	  <para>The name of the database you want to work with. As a SQLite database corresponds to one file in your filesystem, <varname>dbname</varname> can be any legal filename. If the database/file doesn't exist when you first try to access it, SQLite will create it on the fly.</para>
-	  <para>It is important to understand that the full path of the database is composed of <varname>sqlite_dbdir</varname> and <varname>dbname</varname>. Therefore <varname>dbname</varname> should not contain the full path of a file, but just the name.</para>
+	  <para>It is important to understand that the full path of the database is composed of <varname>sqlite3_dbdir</varname> and <varname>dbname</varname>. Therefore <varname>dbname</varname> should not contain the full path of a file, but just the name.</para>
 	</listitem>
       </varlistentry>
       <varlistentry>
-	<term>sqlite_dbdir</term>
+	<term>sqlite3_dbdir</term>
 	<listitem>
 	  <para>This is the directory that contains all sqlite databases. Use the full path please.</para>
 	  <note>
-	    <para>It is necessary to keep all sqlite databases in one directory to make it possible to list all existing databases through the libdbi API.</para>
+	    <para>It is necessary to keep all sqlite databases in one directory to make it possible to list all existing databases through the libdbi API. However, you are free to open more than one connection simultaneously, each one using a different setting of <parameter moreinfo="none">sqlite3_dbdir</parameter>.</para>
 	  </note>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>sqlite3_timeout</term>
+	<listitem>
+	  <para>The design of SQLite3 does not allow fully concurrent access by two clients. However, if the timeout is larger than zero, the second client will wait for the given amount of time for the first client to release its lock, if necessary. If the timeout is set to zero, the second client will return immediately, indicating a busy status. The numerical value of this option specifies the timeout in milliseconds.</para>
 	</listitem>
       </varlistentry>
     </variablelist>

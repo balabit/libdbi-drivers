@@ -4,10 +4,10 @@ if HAVE_FREETDS
 
 # don't use docdir, doc_DATA. This way we keep the HTML in separate subdirs
 # for each driver
-doc_dir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
-html_subdir = dbd_freetds
-#noinst_DATA = dbd_freetds.pdf dbd_freetds/* 
-noinst_DATA = 
+docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
+htmldir = $(docdir)dbd_freetds
+#doc_DATA = dbd_freetds.pdf
+#html_DATA =  dbd_freetds/* 
 
 freetds_ltlibs = libfreetds.la
 freetds_ldflags = -module -avoid-version
@@ -15,9 +15,10 @@ freetds_sources = dbd_freetds.c
 
 else
 
-doc_dir =
-html_subdir =
-noinst_DATA =
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
 
 freetds_ltlibs =
 freetds_ldflags =
@@ -33,29 +34,25 @@ libfreetds_la_LDFLAGS = $(freetds_ldflags) @FREETDS_LDFLAGS@ @FREETDS_LIBS@
 libfreetds_la_SOURCES = $(freetds_sources)
 libfreetds_la_DEPENDENCIES = dbd_freetds.h
 
-#EXTRA_DIST = dbd_freetds.c dbd_freetds.h AUTHORS TODO README dbd_freetds.pdf dbd_freetds/*
+#EXTRA_DIST = dbd_freetds.c dbd_freetds.h AUTHORS TODO README dbd_freetds.pdf $(html_DATA)
 EXTRA_DIST = dbd_freetds.c dbd_freetds.h
 
 # jadetex spews out tons of useless crap. shut it up:
-#dbd_freetds.pdf:
-#	@echo "Converting dbd_freetds.sgml to PostScript...";
-#	sgmltools -b ps -s $(top_srcdir)/doc/include/doc-print.dsl dbd_freetds.sgml > /dev/null 2>&1
-#	@echo "Converting dbd_freetds.ps to PDF...";
-#	ps2pdf dbd_freetds.ps
+#dbd_freetds.pdf: dbd_freetds.sgml
+#	@echo "Converting dbd_freetds.sgml to PDF...";
+#	openjade -t tex -V tex-backend -d $(top_srcdir)/doc/include/doc-print.dsl dbd_freetds.sgml
+# run jadetex three times to get the references right
+#	pdftex "&pdfjadetex" dbd_freetds.tex
+#	pdftex "&pdfjadetex" dbd_freetds.tex
+#	pdftex "&pdfjadetex" dbd_freetds.tex
 
-#dbd_freetds/*:
+#dbd_freetds/*: dbd_freetds.sgml
 #	@echo "Converting dbd_freetds.sgml to HTML...";
-#	sgmltools -b html -s $(top_srcdir)/doc/include/doc-html.dsl dbd_freetds.sgml
+#	mkdir -p dbd_mysql && cd dbd_freetds && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_freetds.sgml
+
+
 
 
 distclean: clean
-#	rm -f dbd_mysql.ps dbd_mysql.pdf dbd_mysql/*
+#	rm -f dbd_mysql.pdf dbd_mysql/*
 
-# manually install the docs
-install-data-local: 
-if HAVE_FREETDS
-	$(top_srcdir)/mkinstalldirs $(DESTDIR)$(doc_dir) $(DESTDIR)$(doc_dir)/$(html_subdir)
-	@for f in $(noinst_DATA); do \
-		$(INSTALL_DATA) $(srcdir)/$$f $(DESTDIR)$(doc_dir)/$$f; \
-	done
-endif

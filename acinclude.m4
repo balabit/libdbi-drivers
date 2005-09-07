@@ -479,3 +479,63 @@ else
 	AC_MSG_RESULT(no)
 fi
 ])
+
+## Freetds
+
+AC_DEFUN(AC_CHECK_FREETDS,
+[
+AM_CONDITIONAL(HAVE_FREETDS, false)
+ac_freetds="NO"
+ac_freetds_incdir="NO"
+ac_freetds_libdir="NO"
+
+# exported variables
+FREETDS_LIBS=""
+FREETDS_LDFLAGS=""
+FREETDS_INCLUDE=""
+
+AC_MSG_CHECKING(for Freetds support)
+
+AC_ARG_WITH(freetds,
+	[  --with-freetds		  Include Freetds support.],
+	[  ac_freetds="YES" ])
+AC_ARG_WITH(freetds-dir,
+	[  --with-freetds-dir	  Specifies FREETDS_HOME.],
+	[  ac_freetds_incdir="$withval"/include
+	   ac_freetds_libdir="$withval"/lib ])
+AC_ARG_WITH(freetds-incdir,
+	[  --with-freetds-incdir	  Specifies where the Freetds include files are.],
+	[  ac_freetds_incdir="$withval" ])
+AC_ARG_WITH(freetds-libdir,
+	[  --with-freetds-libdir	  Specifies where the Freetds libraries are.],
+	[  ac_freetds_libdir="$withval" ])
+
+if test "$ac_freetds" = "YES"; then
+	if test "$ac_freetds_incdir" = "NO" || test "$ac_freetds_libs" = "NO"; then
+		freetds_incdirs="/usr/include /usr/local/include"
+		AC_FIND_FILE(tds.h, $freetds_incdirs, ac_freetds_incdir)
+		freetds_libdirs="/usr/lib /usr/local/lib"
+		AC_FIND_FILE(libtds.so, $freetds_libdirs, ac_freetds_libdir)
+		if test "$ac_freetds_incdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid Freetds directory - include files not found.])
+		fi
+		if test "$ac_freetds_libdir" = "NO"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid Freetds directory - libraries not found.])
+		fi
+	fi
+	AC_MSG_RESULT([yes: libs in $ac_freetds_libdir, headers in $ac_freetds_incdir])
+	AM_CONDITIONAL(HAVE_FREETDS, true)
+	
+	FREETDS_LIBS=-lct
+	FREETDS_INCLUDE=-I$ac_freetds_incdir
+	FREETDS_LDFLAGS=-L$ac_freetds_libdir
+	
+	AC_SUBST(FREETDS_LIBS)
+	AC_SUBST(FREETDS_INCLUDE)
+	AC_SUBST(FREETDS_LDFLAGS)
+else
+	AC_MSG_RESULT(no)
+fi
+])

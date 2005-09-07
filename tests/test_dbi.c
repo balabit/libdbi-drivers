@@ -465,7 +465,9 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
 	
   if (!strcmp(ptr_cinfo->drivername, "mysql")
       || !strcmp(ptr_cinfo->drivername, "pgsql")
-      || !strcmp(ptr_cinfo->drivername, "firebird")) {
+      || !strcmp(ptr_cinfo->drivername, "firebird")
+      || !strcmp(ptr_cinfo->drivername, "freetds")
+     ) {
     fprintf(stderr, "\ndatabase administrator name? ");
     fgets(ptr_cinfo->username, 64, stdin);
     if (*(ptr_cinfo->username) == '\n') {
@@ -500,7 +502,9 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
 
   if (!strcmp(ptr_cinfo->drivername, "firebird")
       || !strcmp(ptr_cinfo->drivername, "mysql")
-      || !strcmp(ptr_cinfo->drivername, "pgsql")) {
+      || !strcmp(ptr_cinfo->drivername, "pgsql")
+      || !strcmp(ptr_cinfo->drivername, "freetds")
+     ) {
     fprintf(stderr, "\ndatabase hostname? [(blank for local socket if possible)] ");
     fgets(ptr_cinfo->hostname, 256, stdin);
     if (*(ptr_cinfo->hostname) == '\n') {
@@ -537,7 +541,9 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
 /* always returns 0 */
 int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding, const char* db) {
   if (!strcmp(ptr_cinfo->drivername, "mysql")
-      || !strcmp(ptr_cinfo->drivername, "pgsql")) {
+      || !strcmp(ptr_cinfo->drivername, "pgsql")
+      || !strcmp(ptr_cinfo->drivername, "freetds")
+     ) {
     dbi_conn_set_option(conn, "host", ptr_cinfo->hostname);
     dbi_conn_set_option(conn, "username", ptr_cinfo->username);
     dbi_conn_set_option(conn, "password", ptr_cinfo->password);
@@ -585,6 +591,12 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
   }
   else if (!strcmp(ptr_cinfo->drivername, "firebird")){
     strcpy(ptr_cinfo->initial_dbname, ptr_cinfo->dbname);
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "freetds")) {
+    strcpy(ptr_cinfo->initial_dbname, "master");
+    if (encoding && *encoding) {
+      dbi_conn_set_option(conn, "encoding", encoding);
+    }
   }
 	
   if (db && *db) {
@@ -708,7 +720,11 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
         snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT, the_double DOUBLE PRECISION, the_driver_string CHAR(255), the_conn_string CHAR(255), the_binary_string BLOB, the_datetime TIMESTAMP, the_date DATE, the_time TIME, id INTEGER NOT NULL PRIMARY KEY)");
 
-} 
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "freetds")) {
+     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float REAL, the_double FLOAT, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_binary_string IMAGE, the_datetime DATETIME, the_date DATETIME, the_time DATETIME, id INT IDENTITY, CONSTRAINT tr_test_datatypes PRIMARY KEY (id))");
+  } 
+
 
   if ((result = dbi_conn_query(conn, query)) == NULL) {
     dbi_conn_error(conn, &errmsg);
@@ -761,8 +777,14 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   quoted_binary_length = dbi_conn_quote_binary_copy(conn, binary_to_quote, binary_to_quote_length, &quoted_binary);
   if(!strcmp(ptr_cinfo->drivername, "msql")) {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32767, 32767, -2147483647, 2147483647, -9223372036854775807,9223372036854775807, 3.402823466E+38, %s, %s, '11-jul-1977', '23:59:59', NULL)", driver_quoted_string, conn_quoted_string);
-  }
-  else {
+  } else if (!strcmp(ptr_cinfo->drivername, "freetds")){
+  /* 
+   * For test one byte data type use TINYINT
+   * this is unsigned type and by insert replace 
+   * -127 to binary equivalent 129
+   */
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_driver_string, the_conn_string, the_binary_string, the_datetime, the_date, the_time) VALUES (129, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, %s, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
+  } else {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_driver_string, the_conn_string, the_binary_string, the_datetime, the_date, the_time) VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, %s, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
   }
 

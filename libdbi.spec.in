@@ -48,11 +48,31 @@ This driver provides connectivity to PostgreSQL database servers through the
 libdbi database independent abstraction layer. Switching a program's driver
 does not require recompilation or rewriting source code.
 
+%package dbd-sqlite
+Summary: SQLite driver for libdbi
+Group: Development/Libraries
+Requires:	%{name} = %{version}-%{release}, sqlite
+
+%description dbd-sqlite
+This driver provides connectivity to SQLite database servers through the
+libdbi database independent abstraction layer. Switching a program's driver
+does not require recompilation or rewriting source code.
+
+%package dbd-freetds
+Summary: SQLite driver for libdbi
+Group: Development/Libraries
+Requires:	%{name} = %{version}-%{release}, sqlite
+
+%description dbd-freetds
+This driver provides connectivity to MSSQL database servers through the
+libdbi database independent abstraction layer. Switching a program's driver
+does not require recompilation or rewriting source code.
+
 %prep
 %setup -q -n %{name}-%{version}
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=/usr --with-mysql --with-pgsql
+CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=/usr --with-mysql --with-pgsql --with-sqlite --with-freetds
 make
 
 %install
@@ -66,6 +86,28 @@ make DESTDIR=$RPM_BUILD_ROOT install
 %files dbd-pgsql
 /usr/lib/dbd/libpgsql.so
 /usr/lib/dbd/libpgsql.la
+
+%files dbd-sqlite
+/usr/lib/dbd/libsqlite.so
+/usr/lib/dbd/libsqlite.la
+
+%files dbd-freetds
+/usr/lib/dbd/libfreetds.so
+/usr/lib/dbd/libfreetds.la
+
+#%files devel
+#%doc README
+#%doc TODO
+#%doc doc/programmers-guide.pdf
+#%doc doc/programmers-guide/
+#%doc doc/driver-guide.pdf
+#%doc doc/driver-guide/
+#/usr/include/dbi/dbi.h
+#/usr/include/dbi/dbi-dev.h
+#/usr/include/dbi/dbd.h
+#/usr/lib/libdbi.a
+#/usr/lib/libdbi.la
+#/usr/lib/libdbi.so
 
 %clean 
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT

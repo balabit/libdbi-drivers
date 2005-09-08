@@ -17,9 +17,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * 
- * dbd_tds.c: FreeTDS library 
- * database support (using libfreetds)
- * Copyright (C) <qwerty@qwerty.com>
+ * dbd_freetds.c: MS SQL database support (using libct of FreeTDS library)
+ * Copyright (C) Vadym Kononenko <konan_v@users.sourceforge.net>.
  * http://libdbi.sourceforge.net
  * 
  * 
@@ -121,8 +120,7 @@ static const char freetds_encoding_hash[][16] = {
 };
 void _dbd_free_row(dbi_result_t * result, dbi_row_t * row);
 
-void _translate_freetds_type(unsigned int fieldtype,	/*unsigned int fieldsize, */
-			     unsigned short *type, unsigned int *attribs);
+void _translate_freetds_type(CS_DATAFMT * datafmt, unsigned short *type, unsigned int *attribs);
 
 size_t _dbd_freetds_escape_chars(char *dest, const char *orig, size_t orig_size,
 				 const char *toescape);
@@ -209,14 +207,46 @@ int dbd_connect(dbi_conn_t * conn)
 	return -1;
     }
 */
-    /* Last VERSION supported by ctlib is 7.0 */
-    num = CS_TDS_70;
-    ret = ct_con_props(tdscon->conn, CS_SET, CS_TDS_VERSION, &num, CS_NULLTERM, NULL);
-    if (ret != CS_SUCCEED) {
-	// fprintf(stderr, "ct_con_props() SET VERSION failed!\n");
-	return -1;
-    }
+    if ((str = (char *) dbi_conn_get_option(conn, "freetds_version"))) {
+    	/* Last VERSION supported by ctlib is 7.0 */
+	// Format = X.XX.XX
+	switch (str[0]) {
+//      We can use it if "CS_TDS_80" will be add to ct_con_props() by CS_SET action
+	case '8':
+	    num = CS_TDS_80;
+	    break;
+	case '7':
+	    num = CS_TDS_70;
+	    break;
+	case '5':
+	    num = CS_TDS_50;
+	    break;
+	case '4':
+	    {
+		switch (str[2]) {
+		case '6':
+		    num = CS_TDS_46;
+		    break;
+		case '9':
+		    num = CS_TDS_495;
+		    break;
+		case '0':
+		case '2':
+		default:
+		    num = CS_TDS_40;
+		}
+	    }
+	    break;
+	default:
+	    num = CS_TDS_40;
+	}
 
+	ret = ct_con_props(tdscon->conn, CS_SET, CS_TDS_VERSION, &num, CS_NULLTERM, NULL);
+	if (ret != CS_SUCCEED) {
+	    // fprintf(stderr, "ct_con_props() SET VERSION failed!\n");
+	    return -1;
+	}
+    }
 
     /* Connect to CLI */
     ret = ct_connect(tdscon->conn,
@@ -601,7 +631,7 @@ dbi_result_t *dbd_query(dbi_conn_t * conn, const char *statement)
 		unsigned short type = 0;
 		unsigned int attribs = 0;
 
-		_translate_freetds_type(datafmt[idx]->datatype, &type, &attribs);
+		_translate_freetds_type(datafmt[idx], &type, &attribs);
 		/* Fill fields value in result */
 		_dbd_result_add_field(result, idx, datafmt[idx]->name, type, attribs);
 	    }
@@ -641,6 +671,10 @@ dbi_result_t *dbd_query(dbi_conn_t * conn, const char *statement)
 	    case CS_END_DATA:
 		/* Last row is reserved - free it */
 		_dbd_free_row(result, row);
+
+		for (idx = 0; idx < result->numfields; ++idx)
+		    free(datafmt[idx]);
+		free(datafmt);
 		break;
 	    case CS_FAIL:
 		// fprintf(stderr, "ct_fetch() returned CS_FAIL.\n");
@@ -742,12 +776,13 @@ int dbd_ping(dbi_conn_t * conn)
     return res;
 }
 
-void _translate_freetds_type(unsigned int fieldtype, unsigned short *type, unsigned int *attribs)
+void _translate_freetds_type(CS_DATAFMT * datafmt, unsigned short *type, unsigned int *attribs)
 {
     unsigned int _type = 0;
     unsigned int _attribs = 0;
+    datafmt->format = CS_FMT_UNUSED;
 
-    switch (fieldtype) {
+    switch (datafmt->datatype /* field type */ ) {
 
     case CS_LONG_TYPE:		/* 8 */
 	_type = DBI_TYPE_INTEGER;
@@ -788,6 +823,7 @@ void _translate_freetds_type(unsigned int fieldtype, unsigned short *type, unsig
     case CS_TEXT_TYPE:
     case CS_VARCHAR_TYPE:
 	_type = DBI_TYPE_STRING;
+	datafmt->format = CS_FMT_NULLTERM;
 	break;
     case CS_MONEY_TYPE:	/* 8 */
     case CS_MONEY4_TYPE:	/* 4 */
@@ -801,8 +837,8 @@ void _translate_freetds_type(unsigned int fieldtype, unsigned short *type, unsig
 
     default:
 	_type = DBI_TYPE_BINARY;
-	break;
     }
+
     *type = _type;
     *attribs = _attribs;
 }
@@ -856,6 +892,7 @@ dbi_row_t *_dbd_freetds_buffers_binding(dbi_conn_t * conn, dbi_result_t * result
 	/* Out of memory */
 	return NULL;
     for (idx = 0; idx < result->numfields; ++idx) {
+	/* Processing data from previous row */
 	if (result->numrows_matched > 0) {
 	    /* 
 	     * We should convert data from previous row 
@@ -915,6 +952,7 @@ dbi_row_t *_dbd_freetds_buffers_binding(dbi_conn_t * conn, dbi_result_t * result
 
 		addr = result->rows[result->numrows_matched];
 
+
 		((dbi_row_t *) addr)->field_sizes[idx] =
 		    _dbd_decode_binary(((dbi_row_t *) addr)->field_values[idx].d_string,
 				       ((dbi_row_t *) addr)->field_values[idx].d_string);
@@ -922,7 +960,6 @@ dbi_row_t *_dbd_freetds_buffers_binding(dbi_conn_t * conn, dbi_result_t * result
 	    case CS_CHAR_TYPE:
 	    case CS_TEXT_TYPE:
 	    case CS_VARCHAR_TYPE:
-
 		addr = result->rows[result->numrows_matched];
 
 		((dbi_row_t *) addr)->field_sizes[idx] =
@@ -933,8 +970,6 @@ dbi_row_t *_dbd_freetds_buffers_binding(dbi_conn_t * conn, dbi_result_t * result
 
 	/* Bind all columns buffer for current row */
 	row->field_sizes[idx] = datafmt[idx]->maxlength;
-
-	datafmt[idx]->format = CS_FMT_UNUSED;
 
 	switch (result->field_types[idx]) {
 	case DBI_TYPE_BINARY:
@@ -947,8 +982,7 @@ dbi_row_t *_dbd_freetds_buffers_binding(dbi_conn_t * conn, dbi_result_t * result
 	    break;
 	default:
 	    /* Prepare union to data copy */
-	    bzero(&row->field_values[idx], sizeof(dbi_data_t));
-	    addr = &row->field_values[idx];
+	    bzero((addr = &row->field_values[idx]), sizeof(dbi_data_t));
 	}
 	*ret = ct_bind(tdscon->cmd, idx + 1, datafmt[idx], addr, datalength, ind);
 	if (*ret != CS_SUCCEED) {

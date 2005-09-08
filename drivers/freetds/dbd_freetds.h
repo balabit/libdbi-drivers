@@ -3,8 +3,7 @@
  * Copyright (C) Vadym Kononenko
  * http://libdbi.sourceforge.net
  * 
- * dbd_freetds.c: FreeTDS library support 
- * database support (using libtds)
+ * dbd_freetds.c: MS SQL database support (using libct of FreeTDS library)
  * Copyright (C) Vadym Kononenko <konan_v@users.sourceforge.net>.
  * http://libdbi.sourceforge.net
  * 

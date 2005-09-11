@@ -529,6 +529,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 
   /* assign types to result */
   while (idx < numcols) {
+/*     printf("idx: %d<< numcols:%d\n", idx, numcols); */
     int type;
     char *item;
     
@@ -620,14 +621,12 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     }
 
     /* table now points to the table name; find the end of table */
-    item = strchr(table, ' ');
-    if (!item) {
-      strcpy(curr_table, table);
+    item = table;
+    while (*item && *item != ' ' && *item != ',') {
+      item++;
     }
-    else {
-      strncpy(curr_table, table, item-table);
-      curr_table[item-table] = '\0'; /* terminate just in case */
-    }
+    strncpy(curr_table, table, item-table);
+    curr_table[item-table] = '\0'; /* terminate just in case */
 
     /* for obvious reasons, the internal tables do not contain the
        commands how they were created themselves. We have to use known
@@ -651,7 +650,6 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   }
 
 /*   printf("curr_table went to %s<<\ncurr_field_name went to %s<<\n", curr_table, curr_field_name); */
-
   /* check for known functions which may appear here instead
      of field names. There is some overlap, i.e. some function work
      both on strings and numbers. These cases would have to be
@@ -726,6 +724,8 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
      the table containing the current field */
   /*  parse the sql statement to find the type of the current field */
 /*   printf("table_result_table[3]=%s<<\ncurr_field_name=%s<<\n", table_result_table[3], curr_field_name); */
+
+  /* curr_type will point to an allocated string */
   curr_type = get_field_type(table_result_table[3], curr_field_name);
 
   /* free memory */
@@ -812,9 +812,9 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   else {
     type = FIELD_TYPE_STRING; /* most reasonable default */
   }
-  
   free(curr_type);
 
+/*   printf("type went to %d<<\n", type); */
   return type;
 }
 

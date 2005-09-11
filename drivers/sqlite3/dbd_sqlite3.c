@@ -653,14 +653,12 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     }
 
     /* table now points to the table name; find the end of table */
-    item = strchr(table, ' ');
-    if (!item) {
-      strcpy(curr_table, table);
+    item = table;
+    while (*item && *item != ' ' && *item != ',') {
+      item++;
     }
-    else {
-      strncpy(curr_table, table, item-table);
-      curr_table[item-table] = '\0'; /* terminate just in case */
-    }
+    strncpy(curr_table, table, item-table);
+    curr_table[item-table] = '\0'; /* terminate just in case */
 
     /* for obvious reasons, the internal tables do not contain the
        commands how they were created themselves. We have to use known

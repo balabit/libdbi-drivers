@@ -466,7 +466,7 @@ if test "$ac_firebird" = "YES"; then
 	AM_CONDITIONAL(HAVE_FIREBIRD_INTERBASE, true)
 	
 	dnl libfbclient needs pthreads
-	AC_SEARCH_LIBS(pthread_create, pthread c_r,,)
+	AC_SEARCH_LIBS(pthread_create, c_r pthread,,)
 
 	FIREBIRD_LIBS="-lfbclient"
 	FIREBIRD_INCLUDE="-I$ac_firebird_incdir"

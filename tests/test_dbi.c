@@ -807,7 +807,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	                       "the_driver_string, the_conn_string, the_binary_string,  "
 	                       "the_datetime, id) "
 	                       "VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, "
-	                       "3.402823466E+38, 1.7976931348623157E+307, %s, %s, %s, "
+	                       "3.4e+37, 1.7e+307, %s, %s, %s, "
 	                       "'2001-12-31 23:59:59',1)", driver_quoted_string, 
 	                       conn_quoted_string, quoted_binary);
   }
@@ -837,6 +837,9 @@ else {
   if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
     n_last_id = dbi_conn_sequence_last(conn, "test_datatypes_id_seq");
     n_next_id = dbi_conn_sequence_next(conn, "test_datatypes_id_seq");
+  } else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
+    //We have not setup any sequences yet?!?
+    return 0;
   }
   else {
     n_last_id = dbi_conn_sequence_last(conn, NULL);
@@ -939,18 +942,26 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       printf("the_ulong errflag=%d\n", errflag);
     }
 
-    the_longlong = dbi_result_get_longlong(result, "the_longlong");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-    if (errflag) {
-      printf("the_longlong errflag=%d\n", errflag);
+
+    if( !strcmp(ptr_cinfo->drivername, "firebird")) {
+      printf("the_ulonlong: test skipped for this driver.\n");
+    } else {
+      the_longlong = dbi_result_get_longlong(result, "the_longlong");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_longlong errflag=%d\n", errflag);
+      }
     }
 
-    the_ulonglong = dbi_result_get_ulonglong(result, "the_ulonglong");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-    if (errflag) {
-      printf("the_ulonglong errflag=%d\n", errflag);
+    if( !strcmp(ptr_cinfo->drivername, "firebird")) {
+      printf("the_ulonlong: test skipped for this driver.\n");
+    } else {
+      the_ulonglong = dbi_result_get_ulonglong(result, "the_ulonglong");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_ulonglong errflag=%d\n", errflag);
+      }
     }
-
     the_float = dbi_result_get_float(result, "the_float");
     errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
     if (errflag) {
@@ -1133,21 +1144,11 @@ int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     }
     printf("\tOk.\n");
   }
-  else if (!strcmp(ptr_cinfo->drivername, "msql")) {
-    printf("\tThis is a no-op with the mSQL driver.\n");
+  else if (!strcmp(ptr_cinfo->drivername, "msql") || !strcmp(ptr_cinfo->drivername, "firebird")) {
+    printf("\tThis is a no-op with the mSQL/Firebird driver.\n");
 		
   }
-  else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
-    if ((result = dbi_conn_queryf(conn, "DROP DATABASE")) == NULL) {
-      dbi_conn_error(conn, &errmsg);
-      printf("\tAAH! Can't drop database %s<< connected to database %s! Error message: %s\n", ptr_cinfo->dbname, ptr_cinfo->initial_dbname, errmsg);
-      return 1;
-    }
-    else {
-      printf("Ok.\n");
-    }
-
-  }
+  
   else {
     if (dbi_conn_select_db(conn, ptr_cinfo->initial_dbname)) {
       dbi_conn_error(conn, &errmsg);
@@ -1185,7 +1186,7 @@ int test_convert_encoding(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     strcpy(dbencoding, "LATIN1");
   }
 
-  printf("IANA encoding UTF-8 is known to the engine as %s\n", dbi_driver_encoding_from_iana(dbi_conn_get_driver(conn), "UTF-8"));
+  printf("\tIANA encoding UTF-8 is known to the engine as %s\n", dbi_driver_encoding_from_iana(dbi_conn_get_driver(conn), "UTF-8"));
 
   if (*dbencoding) {
     printf("Engine encoding %s is known at IANA as %s\n", dbencoding, dbi_driver_encoding_to_iana(dbi_conn_get_driver(conn), dbencoding));

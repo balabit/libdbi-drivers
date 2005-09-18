@@ -263,10 +263,11 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) 
 {
 	const char *worker = orig;
-	register int i = 0, j = 0;
+	register int i = 0, j = 1;
 	size_t length = strlen(orig);
 
-	for(i = 0; i < length; i++) {
+	strcpy(dest, "'");
+	for(i = 0; i <= length; i++) {
 		
 		switch(worker[i]) {
 		case '\'': 
@@ -276,7 +277,7 @@ size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest)
 		}
 		dest[j++] = worker[i];
 	}
-
+	strcat(dest, "'");
 	return j;
 }
 
@@ -370,6 +371,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 			       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
 			       return NULL;
 		       }
+		       isc_start_transaction(iconn->status, &(iconn->trans), 1, &(iconn->db), 0, NULL);
 	       }
        } else {
 	       

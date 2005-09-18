@@ -728,7 +728,13 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_binary_string BLOB, the_datetime DATETIME, the_date DATE, the_time TIME, id INTEGER AUTO INCREMENT)");
   }
   else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
-        snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT, the_double DOUBLE PRECISION, the_driver_string CHAR(255), the_conn_string CHAR(255), the_binary_string BLOB, the_datetime TIMESTAMP, the_date DATE, the_time TIME, id INTEGER NOT NULL PRIMARY KEY)");
+        snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
+		                   "the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, "
+		                   "the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, "
+		                   "the_float FLOAT, the_double DOUBLE PRECISION, "
+		                   "the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), "
+		                   "the_binary_string BLOB, the_datetime TIMESTAMP, "
+                                   "id INTEGER NOT NULL PRIMARY KEY)");
 
   }
   else if (!strcmp(ptr_cinfo->drivername, "freetds")) {
@@ -794,7 +800,18 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
    * -127 to binary equivalent 129
    */
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_driver_string, the_conn_string, the_binary_string, the_datetime, the_date, the_time) VALUES (129, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, %s, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
-  } else {
+  } 
+  else if(!strcmp(ptr_cinfo->drivername, "firebird")) {
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, "
+	                       "the_ushort, the_long, the_ulong, the_float, the_double, "
+	                       "the_driver_string, the_conn_string, the_binary_string,  "
+	                       "the_datetime, id) "
+	                       "VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, "
+	                       "3.402823466E+38, 1.7976931348623157E+307, %s, %s, %s, "
+	                       "'2001-12-31 23:59:59',1)", driver_quoted_string, 
+	                       conn_quoted_string, quoted_binary);
+  }
+else {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_driver_string, the_conn_string, the_binary_string, the_datetime, the_date, the_time) VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, %s, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
   }
 

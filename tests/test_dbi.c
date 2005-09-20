@@ -406,17 +406,24 @@ int init_db(struct CONNINFO* ptr_cinfo) {
   int boolean = access("/etc/debian-version", F_OK);
 
   if (!strcmp(ptr_cinfo->drivername, "firebird")) {
-    snprintf(command, 1024, "echo \"CREATE DATABASE \'%s:%s/%s\' user '%s' password '%s';\""
-	                    "| %s -e -pas %s "
-                            "-u %s -sql_dialect 3", ptr_cinfo->hostname, ptr_cinfo->dbdir, 
-	                     ptr_cinfo->dbname, ptr_cinfo->username, ptr_cinfo->password, 
-	                     ( boolean ? "isql" : "isql-fb"), 
-	                     ptr_cinfo->password, ptr_cinfo->username);
-      if (system(command)) {
-	fprintf(stderr, "Could not create initial database\n");
-	return 1;
-      }
+    snprintf(command, 1024, 
+	     "echo \"CREATE DATABASE \'%s:%s/%s\' user '%s' password '%s';\""
+	     "| %s -e -pas %s "
+	     "-u %s -sql_dialect 3", ptr_cinfo->hostname, ptr_cinfo->dbdir, 
+	     ptr_cinfo->dbname, ptr_cinfo->username, ptr_cinfo->password, 
+	     ( boolean ? "isql" : "isql-fb"), 
+	     ptr_cinfo->password, ptr_cinfo->username);
+    if (system(command)) {
+      fprintf(stderr, "Could not create initial database\n");
+      return 1;
     }
+    snprintf(command, 1024, "sudo chmod 666 %s/%s", ptr_cinfo->dbdir, ptr_cinfo->dbname);
+    if (system(command)) {
+      fprintf(stderr, "Could not set database permissions\n");
+      return 1;
+    }
+  }
+  
   return 0;
 }
 
@@ -729,12 +736,14 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   }
   else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
         snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
-		                   "the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, "
-		                   "the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, "
-		                   "the_float FLOAT, the_double DOUBLE PRECISION, "
-		                   "the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), "
-		                   "the_binary_string BLOB, the_datetime TIMESTAMP, "
-                                   "id INTEGER NOT NULL PRIMARY KEY)");
+		 "the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, "
+		 "the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, "
+		 "the_float FLOAT, the_double DOUBLE PRECISION, "
+		 "the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), "
+		 "the_binary_string BLOB, the_datetime TIMESTAMP, "
+/* 		 "the_date DATE," */
+/* 		 "the_time TIME," */
+		 "id INTEGER NOT NULL PRIMARY KEY)");
 
   }
   else if (!strcmp(ptr_cinfo->drivername, "freetds")) {
@@ -803,13 +812,17 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   } 
   else if(!strcmp(ptr_cinfo->drivername, "firebird")) {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, "
-	                       "the_ushort, the_long, the_ulong, the_float, the_double, "
-	                       "the_driver_string, the_conn_string, the_binary_string,  "
-	                       "the_datetime, id) "
-	                       "VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, "
-	                       "3.4e+37, 1.7e+307, %s, %s, %s, "
-	                       "'2001-12-31 23:59:59',1)", driver_quoted_string, 
-	                       conn_quoted_string, quoted_binary);
+	     "the_ushort, the_long, the_ulong, the_float, the_double, "
+	     "the_driver_string, the_conn_string, the_binary_string,  "
+	     "the_datetime,"
+/* 	     "the_date, the_time," */
+	     "id) "
+	     "VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, "
+	     "3.4e+37, 1.7e+307, %s, %s, %s, "
+ 	     "'2001-12-31 23:59:59',"
+/* 	     "'2001-12-31','23:59:59'," */
+	     "1)", driver_quoted_string, 
+	     conn_quoted_string, quoted_binary);
   }
 else {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_driver_string, the_conn_string, the_binary_string, the_datetime, the_date, the_time) VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, %s, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
@@ -865,16 +878,16 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   printf("\tGot result, try to access rows\n");
 
   while (dbi_result_next_row(result)) {
-    signed char the_char;
-    unsigned char the_uchar;
-    short the_short;
-    unsigned short the_ushort;
-    long the_long;
-    unsigned long the_ulong;
-    long long the_longlong;
-    unsigned long long the_ulonglong;
-    float the_float;
-    double the_double;
+    signed char the_char = 0;
+    unsigned char the_uchar = 0;
+    short the_short = 0;
+    unsigned short the_ushort = 0;
+    long the_long = 0;
+    unsigned long the_ulong = 0;
+    long long the_longlong = 0;
+    unsigned long long the_ulonglong = 0;
+    float the_float = 0;
+    double the_double = 0;
     const char* the_driver_string;
     const char* the_conn_string;
     const unsigned char* the_binary_string;
@@ -886,18 +899,18 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     struct tm* ptr_tm_time;
     const char *the_date;
     const char *the_time;
-    int year_dt;
-    int mon_dt;
-    int day_dt;
-    int hour_dt;
-    int min_dt;
-    int sec_dt;
-    int year;
-    int mon;
-    int day;
-    int hour;
-    int min;
-    int sec;
+    int year_dt = 0;
+    int mon_dt = 0;
+    int day_dt = 0;
+    int hour_dt = 0;
+    int min_dt = 0;
+    int sec_dt = 0;
+    int year = 0;
+    int mon = 0;
+    int day = 0;
+    int hour = 0;
+    int min = 0;
+    int sec = 0;
     int i;
     unsigned int the_driver_string_length = 0;
     unsigned int the_conn_string_length = 0;
@@ -1044,18 +1057,6 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     }
     else {
 
-      the_date_dt = dbi_result_get_datetime(result, "the_date");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-      if (errflag) {
-	printf("the_date errflag=%d\n", errflag);
-      }
-			
-      the_time_dt = dbi_result_get_datetime(result, "the_time");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-      if (errflag) {
-	printf("the_time errflag=%d\n", errflag);
-      }
-			
       ptr_tm = gmtime(&the_datetime);
       year_dt = ptr_tm->tm_year+1900;
       mon_dt = ptr_tm->tm_mon+1;
@@ -1063,19 +1064,36 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       hour_dt = ptr_tm->tm_hour;
       min_dt = ptr_tm->tm_min;
       sec_dt = ptr_tm->tm_sec;
-
-      ptr_tm_date = gmtime(&the_date_dt);
-      year = ptr_tm_date->tm_year+1900;
-      mon = ptr_tm_date->tm_mon+1;
-      day = ptr_tm_date->tm_mday;
-
-      ptr_tm_time = gmtime(&the_time_dt);
-      hour = ptr_tm_time->tm_hour;
-      min = ptr_tm_time->tm_min;
-      sec = ptr_tm_time->tm_sec;
-
-      printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_driver_string: in:\'%s\' out:\'%s\'<<\nthe_conn_string: in:\'%s\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
-
+	
+      if (!strcmp(ptr_cinfo->drivername, "firebird")) {
+	printf("the_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_float: in:3.4E+37 out:%e<<\nthe_double: in:1.7E+307 out:%e\nthe_driver_string: in:\'%s\' out:\'%s\'<<\nthe_conn_string: in:\'%s\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\n"
+/* 	       "the_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n" */
+	       , the_short, the_ushort, the_long, the_ulong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt/*,  year, mon, day, hour, min, sec */);
+      }
+      else {
+	the_date_dt = dbi_result_get_datetime(result, "the_date");
+	errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+	if (errflag) {
+	  printf("the_date errflag=%d\n", errflag);
+	}
+			
+	the_time_dt = dbi_result_get_datetime(result, "the_time");
+	errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+	if (errflag) {
+	  printf("the_time errflag=%d\n", errflag);
+	}
+			
+	ptr_tm_date = gmtime(&the_date_dt);
+	year = ptr_tm_date->tm_year+1900;
+	mon = ptr_tm_date->tm_mon+1;
+	day = ptr_tm_date->tm_mday;
+	
+	ptr_tm_time = gmtime(&the_time_dt);
+	hour = ptr_tm_time->tm_hour;
+	min = ptr_tm_time->tm_min;
+	sec = ptr_tm_time->tm_sec;
+	printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_driver_string: in:\'%s\' out:\'%s\'<<\nthe_conn_string: in:\'%s\' out:\'%s\'<<\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
+      }
     }
     
     printf("the_binary_string: in: ");

@@ -79,7 +79,6 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 
         if (dbase) conn->current_db = strdup(dbase);
 	
-	
 	return 0;
 }
 
@@ -150,6 +149,8 @@ void _translate_firebird_type(int fieldtype, unsigned short *type, unsigned int 
 		break;
 	case SQL_TIMESTAMP:
 		_type = DBI_TYPE_DATETIME;
+	        _attribs |= DBI_DATETIME_TIME;
+		_attribs |= DBI_DATETIME_DATE;
 		break;
 	case SQL_TYPE_TIME:
 	        _type = DBI_TYPE_DATETIME;
@@ -267,11 +268,15 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 			switch(sizeattrib) {
 			case DBI_DATETIME_TIME: 
 				isc_decode_sql_time((ISC_TIME *)var.sqldata, &times);
-				sprintf(date_s, "%02d:%02d:%02d.%04d",
+/* 				sprintf(date_s, "%02d:%02d:%02d.%04d", */
+/* 					times.tm_hour, */
+/* 					times.tm_min, */
+/* 					times.tm_sec, */
+/* 					(*((ISC_TIME *)var.sqldata)) % 10000); */
+				sprintf(date_s, "%02d:%02d:%02d",
 					times.tm_hour,
 					times.tm_min,
-					times.tm_sec,
-					(*((ISC_TIME *)var.sqldata)) % 10000);
+					times.tm_sec);
 				break;
 				
 			case DBI_DATETIME_DATE:
@@ -282,15 +287,22 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 					times.tm_mday);
 				break;
 			default:
-				isc_decode_timestamp((ISC_TIMESTAMP *)var.sqldata, &times);
-				sprintf(date_s, "%04d-%02d-%02d %02d:%02d:%02d.%04d",
+ 				isc_decode_timestamp((ISC_TIMESTAMP *)var.sqldata, &times);
+/* 				sprintf(date_s, "%04d-%02d-%02d %02d:%02d:%02d.%04d", */
+/* 					times.tm_year + 1900, */
+/* 					times.tm_mon+1, */
+/* 					times.tm_mday, */
+/* 					times.tm_hour, */
+/* 					times.tm_min, */
+/* 					times.tm_sec, */
+/* 					((ISC_TIMESTAMP *)var.sqldata)->timestamp_time % 10000); */
+				sprintf(date_s, "%04d-%02d-%02d %02d:%02d:%02d",
 					times.tm_year + 1900,
 					times.tm_mon+1,
 					times.tm_mday,
 					times.tm_hour,
 					times.tm_min,
-					times.tm_sec,
-					((ISC_TIMESTAMP *)var.sqldata)->timestamp_time % 10000);
+					times.tm_sec);
 				break;	
 			}
 			data->d_datetime = _dbd_parse_datetime(date_s, sizeattrib);		
@@ -320,6 +332,7 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 				row->field_sizes[curfield] += actual_seg_len;
 			} 
 			isc_close_blob(iconn->status, &blob_handle);
+			row->field_sizes[curfield] = _dbd_decode_binary(data->d_string, data->d_string);
 			break;
 				
 		default:

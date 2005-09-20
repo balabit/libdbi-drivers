@@ -99,6 +99,7 @@
 	</para>
 	<para>
 	More information can be found from the <ulink url="&www-upstream;">&proper-name; website</ulink>.
+    </para>
 </chapter>
 
 <chapter id="install"><title>Installation</title>
@@ -139,7 +140,7 @@
 					</para>
 					<para>
 						The current version of the dbd_pgsql driver was
-						written and tested with libpq3 from PostgreSQL 7.3.3.
+						written and tested with libpq3 from PostgreSQL 8.0.1.</para>
 				</listitem>
 			</varlistentry>
 		</variablelist>
@@ -149,16 +150,16 @@
 			First you have to unpack the libdbi-drivers archive in a suitable
 			directory. Unpacking will create a new subdirectory with the
 			version number, such as <filename
-			class="directory">libdbi-drivers-0.7.0</filename>
+			class="directory">libdbi-drivers-0.8.0</filename>
 		</para>
-		<screen><prompt>$ </prompt><userinput>tar xfvz libdbi-drivers-0.7.0.tar.gz</userinput></screen>
+		<screen><prompt>$ </prompt><userinput>tar xfvz libdbi-drivers-0.8.0.tar.gz</userinput></screen>
 		<para>
 			The libdbi-drivers project consists of several drivers that use a
 			common build system. Therefore you <emphasis>must</emphasis> explicitly tell
 			the configuration script that you want to build the &dbd-name; driver (you
 			can list as many drivers as you want to build):
 		</para>
-		<screen><prompt>$ </prompt><userinput>cd libdbi-drivers-0.7.0</userinput></screen>
+		<screen><prompt>$ </prompt><userinput>cd libdbi-drivers-0.8.0</userinput></screen>
 		<screen><prompt>$ </prompt><userinput>./configure --with-&dbd-name;</userinput></screen>
 		<para>
 			Run <command>./configure --help</command> to find out about

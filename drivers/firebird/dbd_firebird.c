@@ -345,7 +345,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
        sqlda->sqln = 1;
        sqlda->version = 1;
 
-       if (isc_dsql_prepare(iconn->status, &(iconn->trans), &stmt, 0, (char *)statement, 1, sqlda)) {
+       if (isc_dsql_prepare(iconn->status, &(iconn->trans), &stmt, 0, (char *)statement, 3, sqlda)) {
 	       free(sqlda);
 	       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
 	       return NULL;

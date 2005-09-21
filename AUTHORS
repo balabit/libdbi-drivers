@@ -10,6 +10,9 @@ Driver developers/maintainers:
 * Firebird/Interbase
   developed by Christian M. Stamgren <christian at centiongroup.com>
 
+* FreeTDS
+  developed by Vadym Kononenko <vkononenko@atlantic-link.com.ua>
+
 * mSQL
   developed by Christian M. Stamgren <christian at centiongroup.com>
 
@@ -32,7 +35,7 @@ Driver developers/maintainers:
   developed by Markus Hoenicka <markus at mhoenicka.de>
 
 
-Those who helped one way or the other:
+Those who helped one way or another:
 * Peter O'Gorman <pogma at opendarwin.org>
   - configure/Makefile/libtool fixes, OSX guru
 

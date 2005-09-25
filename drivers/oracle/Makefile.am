@@ -9,7 +9,7 @@ htmldir = $(docdir)/dbd_oracle
 doc_DATA = dbd_oracle.pdf
 html_DATA = dbd_oracle/* 
 
-oracle_ltlibs = liboracle.la
+oracle_ltlibs = libdbdoracle.la
 oracle_ldflags = -module -avoid-version
 oracle_sources = dbd_oracle.c
 
@@ -30,9 +30,9 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @ORACLE_INCLUDE
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(oracle_ltlibs)
-liboracle_la_LDFLAGS = $(oracle_ldflags) @ORACLE_LDFLAGS@ @ORACLE_LIBS@
-liboracle_la_SOURCES = $(oracle_sources)
-liboracle_la_DEPENDENCIES = dbd_oracle.h
+libdbdoracle_la_LDFLAGS = $(oracle_ldflags) @ORACLE_LDFLAGS@ @ORACLE_LIBS@
+libdbdoracle_la_SOURCES = $(oracle_sources)
+libdbdoracle_la_DEPENDENCIES = dbd_oracle.h
 
 EXTRA_DIST = dbd_oracle.c dbd_oracle.h oracle_charsets.h AUTHORS TODO README dbd_oracle.sgml dbd_oracle.pdf dbd_oracle/*
 

@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_FIREBIRD_INTERBASE
 
-firebird_ltlibs = libfirebird.la
+firebird_ltlibs = libdbdfirebird.la
 firebird_ldflags = -module -avoid-version
 firebird_sources = dbd_firebird.c utility.c 
 
@@ -20,8 +20,8 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @FIREBIRD_INCLU
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(firebird_ltlibs)
-libfirebird_la_LDFLAGS = $(firebird_ldflags) @FIREBIRD_LDFLAGS@ @FIREBIRD_LIBS@
-libfirebird_la_SOURCES = $(firebird_sources)
-libfirebird_la_DEPENDENCIES = dbd_firebird.h utility.h firebird_charsets.h
+libdbdfirebird_la_LDFLAGS = $(firebird_ldflags) @FIREBIRD_LDFLAGS@ @FIREBIRD_LIBS@
+libdbdfirebird_la_SOURCES = $(firebird_sources)
+libdbdfirebird_la_DEPENDENCIES = dbd_firebird.h utility.h firebird_charsets.h
 
 EXTRA_DIST = dbd_firebird.c utility.c dbd_firebird.h utility.h firebird_charsets.h

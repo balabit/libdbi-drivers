@@ -9,7 +9,7 @@ htmldir = $(docdir)/dbd_sqlite3
 doc_DATA = dbd_sqlite3.pdf
 html_DATA = dbd_sqlite3/* 
 
-sqlite3_ltlibs = libsqlite3.la
+sqlite3_ltlibs = libdbdsqlite3.la
 sqlite3_ldflags = -module -avoid-version
 sqlite3_sources = dbd_sqlite3.c
 
@@ -30,9 +30,9 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @SQLITE3_INCLUD
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(sqlite3_ltlibs)
-libsqlite3_la_LDFLAGS = $(sqlite3_ldflags) @SQLITE3_LDFLAGS@ @SQLITE3_LIBS@
-libsqlite3_la_SOURCES = $(sqlite3_sources)
-libsqlite3_la_DEPENDENCIES = dbd_sqlite3.h
+libdbdsqlite3_la_LDFLAGS = $(sqlite3_ldflags) @SQLITE3_LDFLAGS@ @SQLITE3_LIBS@
+libdbdsqlite3_la_SOURCES = $(sqlite3_sources)
+libdbdsqlite3_la_DEPENDENCIES = dbd_sqlite3.h
 
 EXTRA_DIST = dbd_sqlite3.c dbd_sqlite3.h AUTHORS TODO README dbd_sqlite3.sgml dbd_sqlite3.pdf dbd_sqlite3/*
 

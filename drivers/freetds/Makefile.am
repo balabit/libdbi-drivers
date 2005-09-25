@@ -9,7 +9,7 @@ htmldir = $(docdir)dbd_freetds
 #doc_DATA = dbd_freetds.pdf
 #html_DATA =  dbd_freetds/* 
 
-freetds_ltlibs = libfreetds.la
+freetds_ltlibs = libdbdfreetds.la
 freetds_ldflags = -module -avoid-version
 freetds_sources = dbd_freetds.c
 
@@ -30,9 +30,9 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @FREETDS_INCLUD
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(freetds_ltlibs)
-libfreetds_la_LDFLAGS = $(freetds_ldflags) @FREETDS_LDFLAGS@ @FREETDS_LIBS@
-libfreetds_la_SOURCES = $(freetds_sources)
-libfreetds_la_DEPENDENCIES = dbd_freetds.h
+libdbdfreetds_la_LDFLAGS = $(freetds_ldflags) @FREETDS_LDFLAGS@ @FREETDS_LIBS@
+libdbdfreetds_la_SOURCES = $(freetds_sources)
+libdbdfreetds_la_DEPENDENCIES = dbd_freetds.h
 
 #EXTRA_DIST = dbd_freetds.c dbd_freetds.h AUTHORS TODO README dbd_freetds.pdf $(html_DATA)
 EXTRA_DIST = dbd_freetds.c dbd_freetds.h

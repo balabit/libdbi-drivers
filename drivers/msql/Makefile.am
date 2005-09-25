@@ -10,7 +10,7 @@ doc_data = dbd_msql.pdf
 html_DATA = dbd_msql/* 
 
 
-msql_ltlibs = libmsql.la
+msql_ltlibs = libdbdmsql.la
 msql_ldflags = -module -avoid-version
 msql_sources = dbd_msql.c
 
@@ -31,9 +31,9 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @MSQL_INCLUDE@
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(msql_ltlibs)
-libmsql_la_LDFLAGS = $(msql_ldflags) @MSQL_LDFLAGS@ @MSQL_LIBS@
-libmsql_la_SOURCES = $(msql_sources)
-libmsql_la_DEPENDENCIES = dbd_msql.h
+libdbdmsql_la_LDFLAGS = $(msql_ldflags) @MSQL_LDFLAGS@ @MSQL_LIBS@
+libdbdmsql_la_SOURCES = $(msql_sources)
+libdbdmsql_la_DEPENDENCIES = dbd_msql.h
 
 EXTRA_DIST = dbd_msql.c dbd_msql.h dbd_msql.sgml dbd_msql.pdf dbd_msql/*
 

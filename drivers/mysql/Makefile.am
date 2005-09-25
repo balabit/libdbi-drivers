@@ -9,7 +9,7 @@ htmldir = $(docdir)/dbd_mysql
 doc_DATA = dbd_mysql.pdf
 html_DATA = dbd_mysql/* 
 
-mysql_ltlibs = libmysql.la
+mysql_ltlibs = libdbdmysql.la
 mysql_ldflags = -module -avoid-version
 mysql_sources = dbd_mysql.c
 
@@ -30,9 +30,9 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @MYSQL_INCLUDE@
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(mysql_ltlibs)
-libmysql_la_LDFLAGS = $(mysql_ldflags) @MYSQL_LDFLAGS@ @MYSQL_LIBS@
-libmysql_la_SOURCES = $(mysql_sources)
-libmysql_la_DEPENDENCIES = dbd_mysql.h
+libdbdmysql_la_LDFLAGS = $(mysql_ldflags) @MYSQL_LDFLAGS@ @MYSQL_LIBS@
+libdbdmysql_la_SOURCES = $(mysql_sources)
+libdbdmysql_la_DEPENDENCIES = dbd_mysql.h
 
 EXTRA_DIST = dbd_mysql.c dbd_mysql.h AUTHORS TODO README dbd_mysql.sgml dbd_mysql.pdf $(html_DATA)
 

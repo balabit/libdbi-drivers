@@ -98,19 +98,19 @@ int dbd_connect(dbi_conn_t *conn)
 
 	if(OCIEnvCreate ((OCIEnv **) &(Oconn->env), OCI_DEFAULT, (dvoid *)0, 0, 0, 0, (size_t)0, (dvoid **)0)) {
 		_dbd_internal_error_handler(conn, "Connect::Unable to initialize environment", 0);
-		return 1;
+		return -2;
 	}
 	if( (OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &(Oconn->err), OCI_HTYPE_ERROR, 
 			     (size_t) 0, (dvoid **) 0))  ||
 	    (OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &(Oconn->svc), OCI_HTYPE_SVCCTX,
 			     (size_t) 0, (dvoid **) 0))) {
 		_dbd_internal_error_handler(conn, "Connect::Unable to allocate handlers.", 0);
-		return 1;
+		return -2;
 	}
-	if( OCILogon(Oconn->env, Oconn->err, &(Oconn->svc), username, 
-		     strlen(username), password, strlen(password), sid, strlen(sid))) {
+	if( OCILogon(Oconn->env, Oconn->err, &(Oconn->svc), (CONST OraText*) username, 
+		     strlen(username),(CONST OraText*) password, strlen(password), sid, strlen(sid))) {
 		_dbd_internal_error_handler(conn, "Connect::Unable to login to the database.", 0);
-		return 1;
+		return -2;
 	}
 
 	conn->connection = (void *)Oconn;
@@ -128,9 +128,9 @@ int dbd_disconnect(dbi_conn_t *conn)
 			  Oconn->err); 
 		OCIHandleFree((dvoid *) Oconn->svc, OCI_HTYPE_SVCCTX);
 		OCIHandleFree((dvoid *) Oconn->err, OCI_HTYPE_ERROR); 
+		free(conn->connection);
 	}
     
-	free(conn->connection);
 	conn->connection = NULL;
 	return 0;
 }
@@ -700,7 +700,7 @@ const char *dbd_encoding_to_iana(const char * iana_encoding )
 }
 
 /* taken from sqlite3 driver */
-size_t dbd_quote_binary (dbi_conn_t *conn, const unsigned char *orig, size_t from_length, char **ptr_dest ) {
+size_t dbd_quote_binary (dbi_conn_t *conn, const unsigned char *orig, size_t from_length, unsigned char **ptr_dest ) {
   unsigned char *temp;
   size_t len;
 

@@ -154,6 +154,8 @@ AC_CHECK_HEADERS(string.h strings.h)
 AC_OUTPUT([
 	libdbi.spec
 	Makefile
+	doc/Makefile
+	doc/include/Makefile
 	drivers/Makefile
 	drivers/mysql/Makefile
 	drivers/pgsql/Makefile

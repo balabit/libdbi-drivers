@@ -23,6 +23,7 @@
  *
  */
  
+
 #ifdef  HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -67,6 +68,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 unsigned long long _oracle_query_to_longlong(dbi_conn_t *conn, const char *sql_cmd);
 void _checkerr(OCIError * errhp, sword status);
 static size_t oracle_escape_string(char *to, const char *from, size_t length);
+time_t _oradate_to_time_t (char *obuff);
 
 
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, 
@@ -96,15 +98,25 @@ int dbd_connect(dbi_conn_t *conn)
   
 	if(! sid ) sid = getenv("ORACLE_SID");
 
-	if(OCIEnvCreate ((OCIEnv **) &(Oconn->env), OCI_DEFAULT, (dvoid *)0, 0, 0, 0, (size_t)0, (dvoid **)0)) {
+	/* OCI Environment Allocation */
+
+	if(OCIEnvCreate ((OCIEnv **) &(Oconn->env), OCI_OBJECT, (dvoid *)0, 0, 0, 0, (size_t)0, (dvoid **)0)) {
 		_dbd_internal_error_handler(conn, "Connect::Unable to initialize environment", 0);
 		return -2;
 	}
+
+	/* OCI ERROR HANDLE */
 	if( (OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &(Oconn->err), OCI_HTYPE_ERROR, 
-			     (size_t) 0, (dvoid **) 0))  ||
-	    (OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &(Oconn->svc), OCI_HTYPE_SVCCTX,
+			     (size_t) 0, (dvoid **) 0)))
+ 	{
+		_dbd_internal_error_handler(conn, "Connect::Unable to allocate ERROR handlers.", 0);
+		return -2;
+	}
+ 
+	/* OCI SERVICE HANDLE */
+	if( (OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &(Oconn->svc), OCI_HTYPE_SVCCTX,
 			     (size_t) 0, (dvoid **) 0))) {
-		_dbd_internal_error_handler(conn, "Connect::Unable to allocate handlers.", 0);
+		_dbd_internal_error_handler(conn, "Connect::Unable to allocate SERVICE handlers.", 0);
 		return -2;
 	}
 	if( OCILogon(Oconn->env, Oconn->err, &(Oconn->svc), (CONST OraText*) username, 
@@ -262,6 +274,17 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
 	ub4 cache_rows = 0;
 	char *notused;
 
+	unsigned int idx = 0;
+        unsigned short fieldtype;
+        unsigned int fieldattribs;
+        OCIParam *param;
+        ub4 otype;
+        text *col_name;
+        sb1  scale;
+        ub4  col_name_len;
+        char* col_name_dbi;
+
+
 	OCIHandleAlloc( (dvoid *) Oconn->env, (dvoid **) &stmt,
 			OCI_HTYPE_STMT, (size_t) 0, (dvoid **) 0);
 	
@@ -322,7 +345,38 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
 
 	result = _dbd_result_create(conn, (void *)stmt, numrows , affectedrows);
 	_dbd_result_set_numfields(result, numfields);
-	_get_field_info(result);
+
+	while (idx < result->numfields) {
+                scale = 0;
+
+                OCIParamGet(stmt, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
+                            (ub4) idx+1);
+
+                OCIAttrGet(param, (ub4) OCI_DTYPE_PARAM,
+                           &otype,(ub4 *) 0, (ub4) OCI_ATTR_DATA_TYPE,
+                           (OCIError *) Oconn->err  );
+fprintf(stderr, "***%s()->%d\n", __func__, otype);
+
+                OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
+                           (dvoid**) &col_name,(ub4 *) &col_name_len, (ub4) OCI_ATTR_NAME,
+                           (OCIError *) Oconn->err );
+
+                if(otype == 2) { /* we got SQLT_NUM */
+                        OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
+                                   (dvoid**) &scale,(ub4 *) 0, (ub4) OCI_ATTR_SCALE,
+                                   (OCIError *) Oconn->err );
+                }
+                /*bug fixing , it is necessary to copy it to earlier as in many cases it is not giving a properly terminated string, which gives malformed col name */
+                col_name_dbi = calloc(col_name_len + 1,sizeof(char) );
+                strncpy( col_name_dbi, (char *) col_name,  col_name_len);
+
+                _translate_oracle_type(otype, scale, &fieldtype, &fieldattribs);
+                _dbd_result_add_field(result, idx, col_name_dbi, fieldtype, fieldattribs);
+
+                free(col_name_dbi);
+                idx++;
+        }
+        //end-code block1
 	
 	return result;
 }
@@ -447,8 +501,9 @@ void _translate_oracle_type(int fieldtype, ub1 scale, unsigned short *type, unsi
 		_type = DBI_TYPE_BINARY;
 		break;
 	  
-
 	case SQLT_DAT:
+		 _type = DBI_TYPE_DATETIME;
+                 break;
 	case SQLT_AFC:
 	case SQLT_STR:
 	case SQLT_CHR:
@@ -469,7 +524,7 @@ void _get_field_info(dbi_result_t *result)
 	unsigned int idx = 0;
 	unsigned short fieldtype;
 	unsigned int fieldattribs;
-	OCIParam *param;
+	OCIParam *param = NULL;
 	ub4 otype;
 	text *col_name;
 	sb1  scale;
@@ -478,11 +533,12 @@ void _get_field_info(dbi_result_t *result)
 	char* col_name_dbi;
 
 	Oraconn *Oconn = (Oraconn *)result->conn->connection;
+        OCIStmt *stmt  = (OCIStmt *) result->result_handle;
 	
 	while (idx < result->numfields) {
 		scale = 0;
-
-		OCIParamGet((dvoid *)result->result_handle, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
+		
+		OCIParamGet((dvoid *)stmt, OCI_HTYPE_STMT, Oconn->err, (dvoid **)&param,
 			    (ub4) idx+1);
 		
 		OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
@@ -523,7 +579,8 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 	unsigned int sizeattrib;
 	dbi_data_t *data;
 	char *ptr, *cols[result->numfields];
-	dword status;
+
+	sword status;
 
 	/* 
 	 * Prefetch all cols as char *'s 
@@ -540,9 +597,16 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 			   (OCIError *) Oconn->err  );
 		cols[curfield] = (char *)malloc(length+1);
 
-		OCIDefineByPos(stmt, &defnp, Oconn->err, curfield+1, cols[curfield],
+		if (result->field_types[curfield] == DBI_TYPE_DATETIME){
+
+                        OCIDefineByPos(stmt, &defnp, Oconn->err, curfield+1, cols[curfield], (sword) length+1, SQLT_DAT, (dvoid *) 0, (ub2 *)0 , (ub2 *)0, OCI_DEFAULT);
+
+                }
+		else {
+			OCIDefineByPos(stmt, &defnp, Oconn->err, curfield+1, cols[curfield],
 			       (sword) length+1, SQLT_STR, (dvoid *) 0, (ub2 *)0, 
 			       (ub2 *)0, OCI_DEFAULT);
+		}
 
 		if(length < 0 ) _set_field_flag( row, curfield, DBI_VALUE_NULL, 1);
 
@@ -616,6 +680,9 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		case DBI_TYPE_BINARY:
 			data->d_string = malloc(row->field_sizes[curfield]);
 			memcpy(data->d_string, cols[curfield],row->field_sizes[curfield]);
+			break;
+		 case DBI_TYPE_DATETIME:
+			data->d_datetime = _oradate_to_time_t (cols[curfield]);
 			break;
 		}
 		if (cols[curfield]) free(cols[curfield]);
@@ -761,3 +828,27 @@ static size_t oracle_escape_string(char *to, const char *from, size_t length)
   return (size_t) (to-to_start);
 }
 
+
+
+time_t _oradate_to_time_t (char *obuff)
+{
+ struct  tm tmt;
+ char    stime[101], *cp = NULL;
+ time_t  loct = 0L;
+
+   memset(stime, 0, sizeof(stime));
+   
+   sprintf(stime, "%04d%02d%02d%02d%02d%02d", 
+   //             |         YYYY           |                  
+                (obuff[0]-100)*100 + (obuff[1]-100),
+   //                 | month |   day   |
+                      obuff[2], obuff[3], 
+   //            |  HH     |   MM      |   SS       |
+		 obuff[4]-1, obuff[5]-1, obuff[6]-1);   
+
+   cp = strptime(stime, "%Y%m%d%H%M%S", &tmt);
+
+   loct = mktime(&tmt);
+   
+   return(loct);
+}

@@ -41,15 +41,15 @@ PGSQL_LIBS = -L /usr/local/lib -ldbi -ldbi -lpq -liberty
 SQLITE_LIBS = -L /usr/local/lib -ldbi -ldbi -lsqlite -liberty
 driverdir = ${exec_prefix}/lib/dbd
 
-LIBMSQL_DLL_NAME = libmsql.dll
-LIBMYSQL_DLL_NAME = libmysql.dll
-LIBPGSQL_DLL_NAME = libpgsql.dll
-LIBSQLITE_DLL_NAME = libsqlite.dll
+LIBMSQL_DLL_NAME = libdbdmsql.dll
+LIBMYSQL_DLL_NAME = libdbdmysql.dll
+LIBPGSQL_DLL_NAME = libdbdpgsql.dll
+LIBSQLITE_DLL_NAME = libdbdsqlite.dll
 
-LIBMSQL_DLL_EXP_LIB = libmsql.dll.a
-LIBMYSQL_DLL_EXP_LIB = libmysql.dll.a
-LIBPGSQL_DLL_EXP_LIB = libpgsql.dll.a
-LIBSQLITE_DLL_EXP_LIB = libsqlite.dll.a
+LIBMSQL_DLL_EXP_LIB = libdbdmsql.dll.a
+LIBMYSQL_DLL_EXP_LIB = libdbdmysql.dll.a
+LIBPGSQL_DLL_EXP_LIB = libdbdpgsql.dll.a
+LIBSQLITE_DLL_EXP_LIB = libdbdsqlite.dll.a
 
 all: libmysql-dll libpgsql-dll libsqlite-dll libmsql-dll
 
@@ -84,7 +84,7 @@ install-libsqlite:
 	cp $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) $(driverdir)
 
 
-.PHONY: libmysql.dll libpgsql.dll libsqlite.dll install install-libmysql install-libpgsql install-libsqlite
+.PHONY: libdbdmysql.dll libdbdpgsql.dll libdbdsqlite.dll libdbdmsql.dll install install-libmysql install-libpgsql install-libsqlite
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

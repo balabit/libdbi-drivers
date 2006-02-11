@@ -48,6 +48,6 @@ dbd_pgsql/*: dbd_pgsql.sgml
 	mkdir -p dbd_pgsql && cd dbd_pgsql && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_pgsql.sgml
 
 
-distclean: clean
+maintainer-clean: clean
 	rm -f dbd_pgsql.pdf dbd_pgsql/*
 

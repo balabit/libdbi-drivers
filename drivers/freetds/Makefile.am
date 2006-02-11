@@ -53,6 +53,6 @@ EXTRA_DIST = dbd_freetds.c dbd_freetds.h
 
 
 
-distclean: clean
+maintainer-clean: clean
 #	rm -f dbd_mysql.pdf dbd_mysql/*
 

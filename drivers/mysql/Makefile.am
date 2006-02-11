@@ -50,6 +50,6 @@ dbd_mysql/*: dbd_mysql.sgml
 	mkdir -p dbd_mysql && cd dbd_mysql && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_mysql.sgml
 
 
-distclean: clean
+maintainer-clean: clean
 	rm -f dbd_mysql.pdf dbd_mysql/*
 

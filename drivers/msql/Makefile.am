@@ -49,7 +49,7 @@ dbd_msql/*: dbd_msql.sgml
 	@echo "Converting dbd_msql.sgml to HTML...";
 	mkdir -p dbd_msql && cd dbd_msql && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_msql.sgml
 
-distclean: clean
+maintainer-clean: clean
 	rm -f dbd_msql.pdf dbd_msql/*
 
 

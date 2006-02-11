@@ -50,6 +50,6 @@ dbd_sqlite3/*: dbd_sqlite3.sgml
 	mkdir -p dbd_sqlite3 && cd dbd_sqlite3 && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_sqlite3.sgml
 
 
-distclean: clean
+maintainer-clean: clean
 	rm -f dbd_sqlite3.pdf dbd_sqlite3/*
 

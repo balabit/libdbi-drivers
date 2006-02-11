@@ -50,6 +50,6 @@ dbd_oracle/*: dbd_oracle.sgml
 	mkdir -p dbd_oracle && cd dbd_oracle && openjade -t sgml -d $(top_srcdir)/../doc/include/doc-html.dsl ../dbd_oracle.sgml
 
 
-distclean: clean
+maintainer-clean: clean
 	rm -f dbd_oracle.pdf dbd_oracle/*
 

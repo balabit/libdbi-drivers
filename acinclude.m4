@@ -32,7 +32,7 @@ DBI_INCLUDE=""
 AC_MSG_CHECKING(for libdbi framework)
 
 AC_ARG_WITH(dbi-incdir,
-	[  --with-dbi-incdir	  Specifies where the libdbi include files are.],
+	[  --with-dbi-incdir       Specifies where the libdbi include files are.],
 	[  ac_dbi_incdir="$withval" ])
 
 if test "$ac_dbi_incdir" = "no"; then
@@ -68,17 +68,17 @@ MYSQL_INCLUDE=""
 AC_MSG_CHECKING(for MySQL support)
 
 AC_ARG_WITH(mysql,
-	[  --with-mysql		  Include MySQL support.],
+	[  --with-mysql            Include MySQL support.],
 	[  ac_mysql="$withval" ])
 AC_ARG_WITH(mysql-dir,
-	[  --with-mysql-dir	  Specifies the MySQL root directory.],
+	[  --with-mysql-dir        Specifies the MySQL root directory.],
 	[  ac_mysql_incdir="$withval"/include
 	   ac_mysql_libdir="$withval"/lib ])
 AC_ARG_WITH(mysql-incdir,
-	[  --with-mysql-incdir	  Specifies where the MySQL include files are.],
+	[  --with-mysql-incdir     Specifies where the MySQL include files are.],
 	[  ac_mysql_incdir="$withval" ])
 AC_ARG_WITH(mysql-libdir,
-	[  --with-mysql-libdir	  Specifies where the MySQL libraries are.],
+	[  --with-mysql-libdir     Specifies where the MySQL libraries are.],
 	[  ac_mysql_libdir="$withval" ])
 
 if test "$ac_mysql" = "yes"; then
@@ -129,17 +129,17 @@ PGSQL_INCLUDE=""
 AC_MSG_CHECKING(for PostgreSQL support)
 
 AC_ARG_WITH(pgsql,
-	[  --with-pgsql		  Include PostgreSQL support.],
+	[  --with-pgsql            Include PostgreSQL support.],
 	[  ac_pgsql="$withval" ])
 AC_ARG_WITH(pgsql-dir,
-	[  --with-pgsql-dir	  Specifies the PostgreSQL root directory.],
+	[  --with-pgsql-dir        Specifies the PostgreSQL root directory.],
 	[  ac_pgsql_incdir="$withval"/include
 	   ac_pgsql_libdir="$withval"/lib ])
 AC_ARG_WITH(pgsql-incdir,
-	[  --with-pgsql-incdir	  Specifies where the PostgreSQL include files are.],
+	[  --with-pgsql-incdir     Specifies where the PostgreSQL include files are.],
 	[  ac_pgsql_incdir="$withval" ])
 AC_ARG_WITH(pgsql-libdir,
-	[  --with-pgsql-libdir	  Specifies where the PostgreSQL libraries are.],
+	[  --with-pgsql-libdir     Specifies where the PostgreSQL libraries are.],
 	[  ac_pgsql_libdir="$withval" ])
 
 if test "$ac_pgsql" = "yes"; then
@@ -190,17 +190,17 @@ SQLITE_INCLUDE=""
 AC_MSG_CHECKING(for SQLite support)
 
 AC_ARG_WITH(sqlite,
-	[  --with-sqlite		  Include SQLite support.],
+	[  --with-sqlite           Include SQLite support.],
 	[  ac_sqlite="$withval" ])
 AC_ARG_WITH(sqlite-dir,
-	[  --with-sqlite-dir	  Specifies the SQLite root directory.],
+	[  --with-sqlite-dir       Specifies the SQLite root directory.],
 	[  ac_sqlite_incdir="$withval"/include
 	   ac_sqlite_libdir="$withval"/lib ])
 AC_ARG_WITH(sqlite-incdir,
-	[  --with-sqlite-incdir	  Specifies where the SQLite include files are.],
+	[  --with-sqlite-incdir    Specifies where the SQLite include files are.],
 	[  ac_sqlite_incdir="$withval" ])
 AC_ARG_WITH(sqlite-libdir,
-	[  --with-sqlite-libdir	  Specifies where the SQLite libraries are.],
+	[  --with-sqlite-libdir    Specifies where the SQLite libraries are.],
 	[  ac_sqlite_libdir="$withval" ])
 
 if test "$ac_sqlite" = "yes"; then
@@ -251,17 +251,17 @@ SQLITE3_INCLUDE=""
 AC_MSG_CHECKING(for SQLite3 support)
 
 AC_ARG_WITH(sqlite3,
-	[  --with-sqlite3		  Include SQLite3 support.],
+	[  --with-sqlite3          Include SQLite3 support.],
 	[  ac_sqlite3="$withval" ])
 AC_ARG_WITH(sqlite3-dir,
-	[  --with-sqlite3-dir	  Specifies the SQLite3 root directory.],
+	[  --with-sqlite3-dir      Specifies the SQLite3 root directory.],
 	[  ac_sqlite3_incdir="$withval"/include
 	   ac_sqlite3_libdir="$withval"/lib ])
 AC_ARG_WITH(sqlite3-incdir,
-	[  --with-sqlite3-incdir  Specifies where the SQLite3 include files are.],
+	[  --with-sqlite3-incdir   Specifies where the SQLite3 include files are.],
 	[  ac_sqlite3_incdir="$withval" ])
 AC_ARG_WITH(sqlite3-libdir,
-	[  --with-sqlite3-libdir  Specifies where the SQLite3 libraries are.],
+	[  --with-sqlite3-libdir   Specifies where the SQLite3 libraries are.],
 	[  ac_sqlite3_libdir="$withval" ])
 
 if test "$ac_sqlite3" = "yes"; then
@@ -312,17 +312,17 @@ MSQL_INCLUDE=""
 AC_MSG_CHECKING(for MiniSQL (mSQL) support)
 
 AC_ARG_WITH(msql,
-	[  --with-msql		  Include mSQL support.],
+	[  --with-msql             Include mSQL support.],
 	[  ac_msql="$withval" ])
 AC_ARG_WITH(msql-dir,
-	[  --with-msql-dir	  Specifies the mSQL root directory.],
+	[  --with-msql-dir         Specifies the mSQL root directory.],
 	[  ac_msql_incdir="$withval"/include
 	   ac_msql_libdir="$withval"/lib ])
 AC_ARG_WITH(msql-incdir,
-	[  --with-msql-incdir	  Specifies where the mSQL include files are.],
+	[  --with-msql-incdir      Specifies where the mSQL include files are.],
 	[  ac_msql_incdir="$withval" ])
 AC_ARG_WITH(msql-libdir,
-	[  --with-msql-libdir	  Specifies where the mSQL libraries are.],
+	[  --with-msql-libdir      Specifies where the mSQL libraries are.],
 	[  ac_msql_libdir="$withval" ])
 
 if test "$ac_msql" = "yes"; then
@@ -372,17 +372,17 @@ ORACLE_INCLUDE=""
 AC_MSG_CHECKING(for Oracle support)
 
 AC_ARG_WITH(oracle,
-	[  --with-oracle		  Include Oracle support.],
+	[  --with-oracle           Include Oracle support.],
 	[  ac_oracle="$withval" ])
 AC_ARG_WITH(oracle-dir,
-	[  --with-oracle-dir	  Specifies ORACLE_HOME.],
+	[  --with-oracle-dir       Specifies ORACLE_HOME.],
 	[  ac_oracle_incdir="$withval"/rdbms/demo
 	   ac_oracle_libdir="$withval"/lib ])
 AC_ARG_WITH(oracle-incdir,
-	[  --with-oracle-incdir	  Specifies where the Oracle include files are.],
+	[  --with-oracle-incdir    Specifies where the Oracle include files are.],
 	[  ac_oracle_incdir="$withval" ])
 AC_ARG_WITH(oracle-libdir,
-	[  --with-oracle-libdir	  Specifies where the Oracle libraries are.],
+	[  --with-oracle-libdir    Specifies where the Oracle libraries are.],
 	[  ac_oracle_libdir="$withval" ])
 
 if test "$ac_oracle" = "yes"; then
@@ -415,10 +415,8 @@ else
 fi
 ])
 
-
-
-
 ## Firebird
+
 AC_DEFUN([AC_CHECK_FIREBIRD_INTERBASE],
 [
 AM_CONDITIONAL(HAVE_FIREBIRD_INTERBASE, false)
@@ -434,17 +432,17 @@ FIREBIRD_INCLUDE=""
 AC_MSG_CHECKING(for Firebird/Interbase support)
 
 AC_ARG_WITH(firebird,
-	[  --with-firebird		  Include Firebird support.],
+	[  --with-firebird         Include Firebird support.],
 	[  ac_firebird="$withval" ])
 AC_ARG_WITH(firebird-dir,
-	[  --with-firebird-dir	  Specifies Firebird directory.],
+	[  --with-firebird-dir     Specifies Firebird directory.],
 	[  ac_firebird_incdir="$withval"/include
 	   ac_firebird_libdir="$withval"/lib ])
 AC_ARG_WITH(firebird-incdir,
-	[  --with-firebird-incdir	  Specifies where the Firebird/Interbase include files are.],
+	[  --with-firebird-incdir  Specifies where Firebird/Interbase include files are.],
 	[  ac_firebird_incdir="$withval" ])
 AC_ARG_WITH(firebird-libdir,
-	[  --with-firebird-libdir	  Specifies where the Firebird/Interbase libraries are.],
+	[  --with-firebird-libdir  Specifies where Firebird/Interbase libraries are.],
 	[  ac_firebird_libdir="$withval" ])
 
 if test "$ac_firebird" = "yes"; then
@@ -497,17 +495,17 @@ FREETDS_INCLUDE=""
 AC_MSG_CHECKING(for Freetds support)
 
 AC_ARG_WITH(freetds,
-	[  --with-freetds		  Include Freetds support.],
+	[  --with-freetds          Include Freetds support.],
 	[  ac_freetds="$withval" ])
 AC_ARG_WITH(freetds-dir,
-	[  --with-freetds-dir	  Specifies FREETDS_HOME.],
+	[  --with-freetds-dir      Specifies FREETDS_HOME.],
 	[  ac_freetds_incdir="$withval"/include
 	   ac_freetds_libdir="$withval"/lib ])
 AC_ARG_WITH(freetds-incdir,
-	[  --with-freetds-incdir	  Specifies where the Freetds include files are.],
+	[  --with-freetds-incdir   Specifies where the Freetds include files are.],
 	[  ac_freetds_incdir="$withval" ])
 AC_ARG_WITH(freetds-libdir,
-	[  --with-freetds-libdir	  Specifies where the Freetds libraries are.],
+	[  --with-freetds-libdir   Specifies where the Freetds libraries are.],
 	[  ac_freetds_libdir="$withval" ])
 
 if test "$ac_freetds" = "yes"; then

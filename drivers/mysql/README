@@ -28,6 +28,16 @@ Whether or not a trailing \0 value will be added to Binary string can be
 configured using:
   dbi_set_option_numeric("mysql_include_trailing_null",1); //include
   dbi_set_option_numeric("mysql_include_trailing_null",0); //don't include
+(For convenience, a trailing zero byte always follows the data, so that string
+casts can work. The above option just determines whether that byte is counted.)
+
+The function implementing dbi_conn_sequence_last() returns "the value generated
+for an AUTO_INCREMENT column by the previous INSERT or UPDATE statement".
+Any sequence name passed as a parameter is ignored. (See the MySQL API function 
+mysql_insert_id(), http://dev.mysql.com/doc/refman/5.0/en/mysql-insert-id.html )
+
+The function implementing dbi_conn_sequence_next() does nothing; 
+MySQL does not use named sequences.
 
 
 CONTACT INFO:

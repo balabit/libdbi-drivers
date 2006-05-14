@@ -104,7 +104,7 @@ static const char mysql_encoding_hash[][16] = {
 };
 
 /* forward declarations of local functions */
-void _translate_mysql_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
+void _translate_mysql_type(MYSQL_FIELD *field, unsigned short *type, unsigned int *attribs);
 void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 
@@ -478,7 +478,8 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	res = mysql_store_result((MYSQL *)conn->connection);
 	
 	/* if res is null, the query was something that doesn't return rows (like an INSERT) */
-	result = _dbd_result_create(conn, (void *)res, (res ? mysql_num_rows(res) : 0), mysql_affected_rows((MYSQL *)conn->connection));
+	result = _dbd_result_create(conn, (void *)res, (res ? mysql_num_rows(res) : 0), 
+								mysql_affected_rows((MYSQL *)conn->connection));
 
 	if (res) {
 	  _dbd_result_set_numfields(result, mysql_num_fields((MYSQL_RES *)result->result_handle));
@@ -499,7 +500,8 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, s
 	res = mysql_store_result((MYSQL *)conn->connection);
 	
 	/* if res is null, the query was something that doesn't return rows (like an INSERT) */
-	result = _dbd_result_create(conn, (void *)res, (res ? mysql_num_rows(res) : 0), mysql_affected_rows((MYSQL *)conn->connection));
+	result = _dbd_result_create(conn, (void *)res, (res ? mysql_num_rows(res) : 0), 
+								mysql_affected_rows((MYSQL *)conn->connection));
 
 	if (res) {
 	  _dbd_result_set_numfields(result, mysql_num_fields((MYSQL_RES *)result->result_handle));
@@ -556,11 +558,11 @@ int dbd_ping(dbi_conn_t *conn) {
 
 /* CORE MYSQL DATA FETCHING STUFF */
 
-void _translate_mysql_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs) {
+void _translate_mysql_type(MYSQL_FIELD *field, unsigned short *type, unsigned int *attribs) {
 	unsigned int _type = 0;
 	unsigned int _attribs = 0;
 
-	switch (fieldtype) {
+	switch (field->type) {
 		case FIELD_TYPE_TINY:
 			_type = DBI_TYPE_INTEGER;
 			_attribs |= DBI_INTEGER_SIZE1;
@@ -604,26 +606,25 @@ void _translate_mysql_type(enum enum_field_types fieldtype, unsigned short *type
 		case FIELD_TYPE_DATETIME:
 		case FIELD_TYPE_TIMESTAMP:
 			_type = DBI_TYPE_DATETIME;
-			_attribs |= DBI_DATETIME_DATE;
-			_attribs |= DBI_DATETIME_TIME;
+			_attribs |= DBI_DATETIME_DATE | DBI_DATETIME_TIME;
 			break;
 			
-		case FIELD_TYPE_DECIMAL: /* decimal is actually a string, has arbitrary precision, no floating point rounding */
-		case FIELD_TYPE_ENUM:
-		case FIELD_TYPE_SET:
 		case FIELD_TYPE_VAR_STRING:
 		case FIELD_TYPE_STRING:
-			_type = DBI_TYPE_STRING;
-			break;
-			
 		case FIELD_TYPE_TINY_BLOB:
 		case FIELD_TYPE_MEDIUM_BLOB:
 		case FIELD_TYPE_LONG_BLOB:
 		case FIELD_TYPE_BLOB:
-			_type = DBI_TYPE_BINARY;
-			break;
-			
 		default:
+			// see MySQL reference manual 22.2.1 on detecting binary flavour
+			// http://dev.mysql.com/doc/refman/5.0/en/c-api-datatypes.html
+			if(field->charsetnr == 63){
+				_type = DBI_TYPE_BINARY;
+				break;
+			}
+		case FIELD_TYPE_DECIMAL: /* decimal is actually a string, has arbitrary precision, no floating point rounding */
+		case FIELD_TYPE_ENUM:
+		case FIELD_TYPE_SET:
 			_type = DBI_TYPE_STRING;
 			break;
 	}
@@ -641,8 +642,9 @@ void _get_field_info(dbi_result_t *result) {
 	field = mysql_fetch_fields((MYSQL_RES *)result->result_handle);
 	
 	while (idx < result->numfields) {
-		_translate_mysql_type(field[idx].type, &fieldtype, &fieldattribs);
-		if ((fieldtype == DBI_TYPE_INTEGER) && (field[idx].flags & UNSIGNED_FLAG)) fieldattribs |= DBI_INTEGER_UNSIGNED;
+		_translate_mysql_type(&field[idx], &fieldtype, &fieldattribs);
+		if ((fieldtype == DBI_TYPE_INTEGER) && (field[idx].flags & UNSIGNED_FLAG)) 
+			fieldattribs |= DBI_INTEGER_UNSIGNED;
 		_dbd_result_add_field(result, idx, field[idx].name, fieldtype, fieldattribs);
 		idx++;
 	}
@@ -676,7 +678,8 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		
 		switch (result->field_types[curfield]) {
 			case DBI_TYPE_INTEGER:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_INTEGER_SIZE1, DBI_INTEGER_SIZE8);
+				sizeattrib = _isolate_attrib(result->field_attribs[curfield], 
+										DBI_INTEGER_SIZE1, DBI_INTEGER_SIZE8);
 				switch (sizeattrib) {
 					case DBI_INTEGER_SIZE1:
 						data->d_char = (char) atol(raw); break;
@@ -692,7 +695,8 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				}
 				break;
 			case DBI_TYPE_DECIMAL:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DECIMAL_SIZE4, DBI_DECIMAL_SIZE8);
+				sizeattrib = _isolate_attrib(result->field_attribs[curfield], 
+										DBI_DECIMAL_SIZE4, DBI_DECIMAL_SIZE8);
 				switch (sizeattrib) {
 					case DBI_DECIMAL_SIZE4:
 						data->d_float = (float) strtod(raw, NULL); break;
@@ -702,6 +706,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 						break;
 				}
 				break;
+			default:
 			case DBI_TYPE_STRING:
 				data->d_string = strdup(raw);
 				row->field_sizes[curfield] = strsizes[curfield];
@@ -720,13 +725,9 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				}
 				break;
 			case DBI_TYPE_DATETIME:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DATETIME_DATE, DBI_DATETIME_TIME);
+				sizeattrib = _isolate_attrib(result->field_attribs[curfield], 
+										DBI_DATETIME_DATE, DBI_DATETIME_TIME);
 				data->d_datetime = _dbd_parse_datetime(raw, sizeattrib);
-				break;
-				
-			default:
-				data->d_string = strdup(raw);
-				row->field_sizes[curfield] = strsizes[curfield];
 				break;
 		}
 		

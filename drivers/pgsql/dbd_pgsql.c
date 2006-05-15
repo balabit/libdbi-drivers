@@ -559,6 +559,7 @@ void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned
 	unsigned int _type = 0;
 	unsigned int _attribs = 0;
 
+/* 	  fprintf(stderr, "oid went to %d\n", oid); */
 	switch (oid) {
 		case PG_TYPE_CHAR:
 			_type = DBI_TYPE_INTEGER;
@@ -595,11 +596,12 @@ void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned
                        _attribs |= DBI_DATETIME_DATE;
                        break;
 	        case PG_TYPE_TIME:
+	        case PG_TYPE_TIMETZ:
                        _type = DBI_TYPE_DATETIME;
                        _attribs |= DBI_DATETIME_TIME;
                        break;
-	case PG_TYPE_DATETIME:
-	case PG_TYPE_TIMESTAMP:
+	        case PG_TYPE_TIMESTAMP:
+	        case PG_TYPE_TIMESTAMPTZ:
 			_type = DBI_TYPE_DATETIME;
 			_attribs |= DBI_DATETIME_DATE;
 			_attribs |= DBI_DATETIME_TIME;

@@ -224,10 +224,7 @@ int dbd_goto_row(dbi_result_t *result, unsigned long long rowidx) {
 
 int dbd_get_socket(dbi_conn_t *conn){
 	MYSQL *mycon = (MYSQL*)conn->connection;
-
-	if (!mycon) return -1;
-
-	return (int)mycon->net.fd;
+	return mycon ? mycon->net.fd : -1;
 }
 
 const char *dbd_get_encoding(dbi_conn_t *conn){
@@ -339,7 +336,7 @@ const char* dbd_encoding_to_iana(const char *db_encoding) {
       /* return corresponding odd entry */
       return mysql_encoding_hash[i+1];
     }
-    i+=2;
+    i += 2;
   }
 
   /* don't know how to translate, return original encoding */
@@ -355,7 +352,7 @@ const char* dbd_encoding_from_iana(const char *iana_encoding) {
       /* return corresponding even entry */
       return mysql_encoding_hash[i];
     }
-    i+=2;
+    i += 2;
   }
 
   /* don't know how to translate, return original encoding */
@@ -581,6 +578,10 @@ void _translate_mysql_type(MYSQL_FIELD *field, unsigned short *type, unsigned in
 			_type = DBI_TYPE_INTEGER;
 			_attribs |= DBI_INTEGER_SIZE4;
 			break;
+#ifdef FIELD_TYPE_BIT
+		case FIELD_TYPE_BIT: // BIT field (MySQL 5.0.3 and up)
+			_attribs |= DBI_INTEGER_UNSIGNED;
+#endif
 		case FIELD_TYPE_LONGLONG:
 			_type = DBI_TYPE_INTEGER;
 			_attribs |= DBI_INTEGER_SIZE8;
@@ -622,6 +623,9 @@ void _translate_mysql_type(MYSQL_FIELD *field, unsigned short *type, unsigned in
 				_type = DBI_TYPE_BINARY;
 				break;
 			}
+#ifdef FIELD_TYPE_NEWDECIMAL
+		case FIELD_TYPE_NEWDECIMAL: // Precision math DECIMAL or NUMERIC field (MySQL 5.0.3 and up)
+#endif
 		case FIELD_TYPE_DECIMAL: /* decimal is actually a string, has arbitrary precision, no floating point rounding */
 		case FIELD_TYPE_ENUM:
 		case FIELD_TYPE_SET:

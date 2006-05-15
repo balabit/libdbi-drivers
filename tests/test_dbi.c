@@ -720,35 +720,146 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   dbi_result result;
 
   if (!strcmp(ptr_cinfo->drivername, "mysql")) {
-    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_empty_string VARCHAR(255), the_null_string VARCHAR(255), the_binary_string BLOB, the_datetime DATETIME, the_date DATE, the_time TIME, id INT AUTO_INCREMENT, PRIMARY KEY (id))");
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
+	     "the_char TINYINT,"
+	     "the_uchar TINYINT,"
+	     "the_short SMALLINT,"
+	     "the_ushort SMALLINT,"
+	     "the_long INT,"
+	     "the_ulong INT,"
+	     "the_longlong BIGINT,"
+	     "the_ulonglong BIGINT,"
+	     "the_float FLOAT4,"
+	     "the_double FLOAT8,"
+	     "the_driver_string VARCHAR(255),"
+	     "the_conn_string VARCHAR(255),"
+	     "the_empty_string VARCHAR(255),"
+	     "the_null_string VARCHAR(255),"
+	     "the_binary_string BLOB,"
+	     "the_datetime DATETIME,"
+	     "the_datetime_tz DATETIME,"
+	     "the_date DATE,"
+	     "the_time TIME,"
+	     "the_time_tz TIME,"
+	     "id INT AUTO_INCREMENT,"
+	     "PRIMARY KEY (id))");
   }
   else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
     /* PostgreSQL does not have a 1-byte integer, use smallint
        instead. This will raise a warning when retrieving the value */
-    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_empty_string VARCHAR(255), the_null_string VARCHAR(255), the_binary_string BYTEA, the_datetime TIMESTAMP, the_date DATE, the_time TIME, id SERIAL PRIMARY KEY)");
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
+	     "the_char SMALLINT,"
+	     "the_uchar SMALLINT,"
+	     "the_short SMALLINT,"
+	     "the_ushort SMALLINT,"
+	     "the_long INT,"
+	     "the_ulong INT,"
+	     "the_longlong BIGINT,"
+	     "the_ulonglong BIGINT,"
+	     "the_float FLOAT4,"
+	     "the_double FLOAT8,"
+	     "the_driver_string VARCHAR(255),"
+	     "the_conn_string VARCHAR(255),"
+	     "the_empty_string VARCHAR(255),"
+	     "the_null_string VARCHAR(255),"
+	     "the_binary_string BYTEA,"
+	     "the_datetime TIMESTAMP,"
+	     "the_datetime_tz TIMESTAMP WITH TIME ZONE,"
+	     "the_date DATE,"
+	     "the_time TIME,"
+	     "the_time_tz TIME WITH TIME ZONE,"
+	     "id SERIAL PRIMARY KEY)");
   } 
   else if (!strcmp(ptr_cinfo->drivername, "msql")) {
-    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char INT8, the_uchar UINT8, the_short INT16, the_ushort UINT16, the_long INT, the_ulong UINT, the_longlong INT64, the_ulonglong UINT64, the_float REAL, the_driver_string CHAR(255), the_conn_string CHAR(255), the_empty_string VARCHAR(255), the_null_string VARCHAR(255), the_date DATE, the_time TIME, id INT)");		
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
+	     "the_char INT8,"
+	     "the_uchar UINT8,"
+	     "the_short INT16,"
+	     "the_ushort UINT16,"
+	     "the_long INT,"
+	     "the_ulong UINT,"
+	     "the_longlong INT64,"
+	     "the_ulonglong UINT64,"
+	     "the_float REAL,"
+	     "the_driver_string CHAR(255),"
+	     "the_conn_string CHAR(255),"
+	     "the_empty_string VARCHAR(255),"
+	     "the_null_string VARCHAR(255),"
+	     "the_date DATE,"
+	     "the_time TIME,"
+	     "the_time_tz TIME,"
+	     "id INT)");		
   }
   else if (!strcmp(ptr_cinfo->drivername, "sqlite")
 	   || !strcmp(ptr_cinfo->drivername, "sqlite3")){
-    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char CHAR, the_uchar CHAR, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float FLOAT4, the_double FLOAT8, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_empty_string VARCHAR(255), the_null_string VARCHAR(255), the_binary_string BLOB, the_datetime DATETIME, the_date DATE, the_time TIME, id INTEGER AUTO INCREMENT)");
+    snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
+	     "the_char CHAR,"
+	     "the_uchar CHAR,"
+	     "the_short SMALLINT,"
+	     "the_ushort SMALLINT,"
+	     "the_long INT,"
+	     "the_ulong INT,"
+	     "the_longlong BIGINT,"
+	     "the_ulonglong BIGINT,"
+	     "the_float FLOAT4,"
+	     "the_double FLOAT8,"
+	     "the_driver_string VARCHAR(255),"
+	     "the_conn_string VARCHAR(255),"
+	     "the_empty_string VARCHAR(255),"
+	     "the_null_string VARCHAR(255),"
+	     "the_binary_string BLOB,"
+	     "the_datetime DATETIME,"
+	     "the_datetime_tz DATETIME,"
+	     "the_date DATE,"
+	     "the_time TIME,"
+	     "the_time_tz TIME,"
+	     "id INTEGER AUTO INCREMENT)");
   }
   else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
         snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
-		 "the_char SMALLINT, the_uchar SMALLINT, the_short SMALLINT, "
-		 "the_ushort SMALLINT, the_long INTEGER, the_ulong INTEGER, "
-		 "the_float FLOAT, the_double DOUBLE PRECISION, "
-		 "the_driver_string VARCHAR(255), the_conn_string VARCHAR(255),"
-		 "the_empty_string VARCHAR(255), the_null_string VARCHAR(255), "
-		 "the_binary_string BLOB, the_datetime TIMESTAMP, "
+		 "the_char SMALLINT,"
+		 "the_uchar SMALLINT,"
+		 "the_short SMALLINT, "
+		 "the_ushort SMALLINT,"
+		 "the_long INTEGER,"
+		 "the_ulong INTEGER, "
+		 "the_float FLOAT,"
+		 "the_double DOUBLE PRECISION, "
+		 "the_driver_string VARCHAR(255),"
+		 "the_conn_string VARCHAR(255),"
+		 "the_empty_string VARCHAR(255),"
+		 "the_null_string VARCHAR(255), "
+		 "the_binary_string BLOB,"
+		 "the_datetime TIMESTAMP, "
+		 "the_datetime_tz TIMESTAMP, "
 		 "the_date DATE,"
 		 "the_time TIME,"
+		 "the_time_tz TIME,"
 		 "id INTEGER NOT NULL PRIMARY KEY)");
 
   }
   else if (!strcmp(ptr_cinfo->drivername, "freetds")) {
-     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( the_char TINYINT, the_uchar TINYINT, the_short SMALLINT, the_ushort SMALLINT, the_long INT, the_ulong INT, the_longlong BIGINT, the_ulonglong BIGINT, the_float REAL, the_double FLOAT, the_driver_string VARCHAR(255), the_conn_string VARCHAR(255), the_empty_string VARCHAR(255), the_null_string VARCHAR(255), the_binary_string IMAGE, the_datetime DATETIME, the_date DATETIME, the_time DATETIME, id INT IDENTITY, CONSTRAINT tr_test_datatypes PRIMARY KEY (id))");
+     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
+	      "the_char TINYINT,"
+	      "the_uchar TINYINT,"
+	      "the_short SMALLINT,"
+	      "the_ushort SMALLINT,"
+	      "the_long INT,"
+	      "the_ulong INT,"
+	      "the_longlong BIGINT,"
+	      "the_ulonglong BIGINT,"
+	      "the_float REAL,"
+	      "the_double FLOAT,"
+	      "the_driver_string VARCHAR(255),"
+	      "the_conn_string VARCHAR(255),"
+	      "the_empty_string VARCHAR(255),"
+	      "the_null_string VARCHAR(255),"
+	      "the_binary_string IMAGE,"
+	      "the_datetime DATETIME,"
+	      "the_date DATETIME,"
+	      "the_time DATETIME,"
+	      "id INT IDENTITY,"
+	      "CONSTRAINT tr_test_datatypes PRIMARY KEY (id))");
   } 
 
 
@@ -802,31 +913,147 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   dbi_conn_quote_string_copy(conn, string_to_quote, &conn_quoted_string);
   quoted_binary_length = dbi_conn_quote_binary_copy(conn, binary_to_quote, binary_to_quote_length, &quoted_binary);
   if(!strcmp(ptr_cinfo->drivername, "msql")) {
-    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES (-127, 127, -32767, 32767, -2147483647, 2147483647, -9223372036854775807,9223372036854775807, 3.402823466E+38, %s, %s, '', NULL, '11-jul-1977', '23:59:59', NULL)", driver_quoted_string, conn_quoted_string);
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES ("
+	     "-127,"
+	     "127,"
+	     "-32767,"
+	     "32767,"
+	     "-2147483647,"
+	     "2147483647,"
+	     "-9223372036854775807,"
+	     "9223372036854775807,"
+	     "3.402823466E+38,"
+	     "%s,"
+	     "%s,"
+	     "'',"
+	     "NULL,"
+	     "'11-jul-1977',"
+	     "'23:59:59',"
+	     "NULL)", driver_quoted_string, conn_quoted_string);
   } else if (!strcmp(ptr_cinfo->drivername, "freetds")){
   /* 
    * For test one byte data type use TINYINT
    * this is unsigned type and by insert replace 
    * -127 to binary equivalent 129
    */
-    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_driver_string, the_conn_string, the_empty_string, the_null_string, the_binary_string, the_datetime, the_date, the_time) VALUES (129, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, %s, '', NULL, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes ("
+	     "the_char,"
+	     "the_uchar,"
+	     "the_short,"
+	     "the_ushort,"
+	     "the_long,"
+	     "the_ulong,"
+	     "the_longlong,"
+	     "the_ulonglong,"
+	     "the_float,"
+	     "the_double,"
+	     "the_driver_string,"
+	     "the_conn_string,"
+	     "the_empty_string,"
+	     "the_null_string,"
+	     "the_binary_string,"
+	     "the_datetime,"
+	     "the_date,"
+	     "the_time) VALUES ("
+	     "127,"
+	     "127,"
+	     "-32768,"
+	     "32767,"
+	     "-2147483648,"
+	     "2147483647,"
+	     "-9223372036854775807,"
+	     "9223372036854775807,"
+	     "3.402823466E+38,"
+	     "1.7976931348623157E+307,"
+	     "%s,"
+	     "%s,"
+	     "'',"
+	     "NULL,"
+	     "%s,"
+	     "'2001-12-31 23:59:59',"
+	     "'2001-12-31',"
+	     "'23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
   } 
   else if(!strcmp(ptr_cinfo->drivername, "firebird")) {
-    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, "
-	     "the_ushort, the_long, the_ulong, the_float, the_double, "
-	     "the_driver_string, the_conn_string, the_empty_string, the_null_string, the_binary_string,  "
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes ("
+	     "the_char,"
+	     "the_uchar,"
+	     "the_short, "
+	     "the_ushort,"
+	     "the_long,"
+	     "the_ulong,"
+	     "the_float,"
+	     "the_double, "
+	     "the_driver_string,"
+	     "the_conn_string,"
+	     "the_empty_string,"
+	     "the_null_string,"
+	     "the_binary_string,  "
 	     "the_datetime,"
 	     "the_date, the_time,"
 	     "id) "
-	     "VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, "
-	     "3.4e+37, 1.7e+307, %s, %s, '', NULL, %s, "
+	     "VALUES ("
+	     "-127,"
+	     "127,"
+	     "-32768,"
+	     "32767,"
+	     "-2147483648,"
+	     "2147483647, "
+	     "3.4e+37,"
+	     "1.7e+307,"
+	     "%s,"
+	     "%s,"
+	     "'',"
+	     "NULL,"
+	     "%s, "
  	     "'2001-12-31 23:59:59',"
-	     "'2001-12-31','23:59:59',"
+	     "'2001-12-31',"
+	     "'23:59:59',"
 	     "1)", driver_quoted_string, 
 	     conn_quoted_string, quoted_binary);
   }
 else {
-    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes (the_char, the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, the_driver_string, the_conn_string, the_empty_string, the_null_string, the_binary_string, the_datetime, the_date, the_time) VALUES (-127, 127, -32768, 32767, -2147483648, 2147483647, -9223372036854775807, 9223372036854775807, 3.402823466E+38, 1.7976931348623157E+307, %s, %s, '', NULL, %s, '2001-12-31 23:59:59', '2001-12-31', '23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes ("
+	     "the_char,"
+	     "the_uchar,"
+	     "the_short,"
+	     "the_ushort,"
+	     "the_long,"
+	     "the_ulong,"
+	     "the_longlong,"
+	     "the_ulonglong,"
+	     "the_float,"
+	     "the_double,"
+	     "the_driver_string,"
+	     "the_conn_string,"
+	     "the_empty_string,"
+	     "the_null_string,"
+	     "the_binary_string,"
+	     "the_datetime,"
+	     "the_datetime_tz,"
+	     "the_date,"
+	     "the_time,"
+	     "the_time_tz) VALUES ("
+	     "-127,"
+	     "127,"
+	     "-32768,"
+	     "32767,"
+	     "-2147483648,"
+	     "2147483647,"
+	     "-9223372036854775807,"
+	     "9223372036854775807,"
+	     "3.402823466E+38,"
+	     "1.7976931348623157E+307,"
+	     "%s,"
+	     "%s,"
+	     "'',"
+	     "NULL,"
+	     "%s,"
+	     "'2001-12-31 23:59:59',"
+	     "'2001-12-31 23:59:59 -10:00',"
+	     "'2001-12-31',"
+	     "'23:59:59',"
+	     "'23:59:59-10:00')", driver_quoted_string, conn_quoted_string, quoted_binary);
   }
 
   if (driver_quoted_string) {
@@ -895,8 +1122,11 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     const char* the_null_string;
     const unsigned char* the_binary_string;
     time_t the_datetime;
+    time_t the_datetime_tz;
     time_t the_date_dt;
+    time_t the_date_dt_tz;
     time_t the_time_dt;
+    time_t the_time_dt_tz;
     struct tm* ptr_tm;
     struct tm* ptr_tm_date;
     struct tm* ptr_tm_time;
@@ -908,12 +1138,21 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     int hour_dt = 0;
     int min_dt = 0;
     int sec_dt = 0;
+    int year_dt_tz = 0;
+    int mon_dt_tz = 0;
+    int day_dt_tz = 0;
+    int hour_dt_tz = 0;
+    int min_dt_tz = 0;
+    int sec_dt_tz = 0;
     int year = 0;
     int mon = 0;
     int day = 0;
     int hour = 0;
     int min = 0;
     int sec = 0;
+    int hour_tz = 0;
+    int min_tz = 0;
+    int sec_tz = 0;
     int i;
     unsigned int the_driver_string_length = 0;
     unsigned int the_conn_string_length = 0;
@@ -1034,6 +1273,12 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       if (errflag) {
 	printf("the_datetime errflag=%d\n", errflag);
       }
+
+      the_datetime_tz = dbi_result_get_datetime(result, "the_datetime_tz");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_datetime_tz errflag=%d\n", errflag);
+      }
     }
 
     /* then retrieve the field lengths */
@@ -1088,6 +1333,14 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       min_dt = ptr_tm->tm_min;
       sec_dt = ptr_tm->tm_sec;
 	
+      ptr_tm = gmtime(&the_datetime_tz);
+      year_dt_tz = ptr_tm->tm_year+1900;
+      mon_dt_tz = ptr_tm->tm_mon+1;
+      day_dt_tz = ptr_tm->tm_mday;
+      hour_dt_tz = ptr_tm->tm_hour;
+      min_dt_tz = ptr_tm->tm_min;
+      sec_dt_tz = ptr_tm->tm_sec;
+	
       the_date_dt = dbi_result_get_datetime(result, "the_date");
       errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
       if (errflag) {
@@ -1100,6 +1353,13 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	printf("the_time errflag=%d\n", errflag);
       }
 			
+      the_time_dt_tz = dbi_result_get_datetime(result, "the_time_tz");
+      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      if (errflag) {
+	printf("the_time_tz errflag=%d\n", errflag);
+/* 	printf("type went to %d, attribs went to %d\n", dbi_result_get_field_type(result, "the_time_tz"), dbi_result_get_field_attribs(result, "the_time_tz")); */
+      }
+			
       ptr_tm_date = gmtime(&the_date_dt);
       year = ptr_tm_date->tm_year+1900;
       mon = ptr_tm_date->tm_mon+1;
@@ -1110,12 +1370,48 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       min = ptr_tm_time->tm_min;
       sec = ptr_tm_time->tm_sec;
 
+      ptr_tm_time = gmtime(&the_time_dt_tz);
+      hour_tz = ptr_tm_time->tm_hour;
+      min_tz = ptr_tm_time->tm_min;
+      sec_tz = ptr_tm_time->tm_sec;
+
       if (!strcmp(ptr_cinfo->drivername, "firebird")) {
-	printf("the_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_float: in:3.4E+37 out:%e<<\nthe_double: in:1.7E+307 out:%e\nthe_driver_string: in:\'%s\' out:\'%s\'<<\nthe_conn_string: in:\'%s\' out:\'%s\'<<\nthe_empty_string: out:\'%s\'<<\nthe_null_string: out:\'%s\'\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n"
-	       , the_short, the_ushort, the_long, the_ulong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, the_empty_string, the_null_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
+	printf("the_short: in:-32768 out:%hd<<\n"
+	       "the_ushort: in:32767 out:%hu<<\n"
+	       "the_long: in:-2147483648 out:%ld<<\n"
+	       "the_ulong: in:2147483647 out:%lu<<\n"
+	       "the_float: in:3.4E+37 out:%e<<\n"
+	       "the_double: in:1.7E+307 out:%e\n"
+	       "the_driver_string: in:\'%s\' out:\'%s\'<<\n"
+	       "the_conn_string: in:\'%s\' out:\'%s\'<<\n"
+	       "the_empty_string: out:\'%s\'<<\n"
+	       "the_null_string: out:\'%s\'\n"
+	       "the_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\n"
+	       "the_date: in:\'2001-12-31\' out:%d-%d-%d\n"
+	       "the_time: in:\'23:59:59\' out:%d:%d:%d\n",
+	       the_short, the_ushort, the_long, the_ulong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, the_empty_string, the_null_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
       }
       else {
-	printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32768 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483648 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_double: in:1.7976931348623157E+307 out:%e\nthe_driver_string: in:\'%s\' out:\'%s\'<<\nthe_conn_string: in:\'%s\' out:\'%s\'<<\nthe_empty_string: out:\'%s\'<<\nthe_null_string: out:\'%s\'\nthe_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\nthe_date: in:\'2001-12-31\' out:%d-%d-%d\nthe_time: in:\'23:59:59\' out:%d:%d:%d\n", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, the_empty_string, the_null_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
+	printf("the_char: in:-127 out:%d<<\n"
+	       "the_uchar: in:127 out:%u<<\n"
+	       "the_short: in:-32768 out:%hd<<\n"
+	       "the_ushort: in:32767 out:%hu<<\n"
+	       "the_long: in:-2147483648 out:%ld<<\n"
+	       "the_ulong: in:2147483647 out:%lu<<\n"
+	       "the_longlong: in:-9223372036854775807 out:%lld<<\n"
+	       "the_ulonglong: in:9223372036854775807 out:%llu<<\n"
+	       "the_float: in:3.402823466E+38 out:%e<<\n"
+	       "the_double: in:1.7976931348623157E+307 out:%e\n"
+	       "the_driver_string: in:\'%s\' out:\'%s\'<<\n"
+	       "the_conn_string: in:\'%s\' out:\'%s\'<<\n"
+	       "the_empty_string: out:\'%s\'<<\n"
+	       "the_null_string: out:\'%s\'\n"
+	       "the_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\n"
+	       "the_datetime_tz: in:\'2001-12-31 23:59:59 -10:00\' out:%d-%d-%d %d:%d:%d\n"
+	       "the_date: in:\'2001-12-31\' out:%d-%d-%d\n"
+	       "the_time: in:\'23:59:59\' out:%d:%d:%d\n"
+	       "the_time_tz: in:\'23:59:59-10:00\' out:%d:%d:%d\n",
+	       (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, the_empty_string, the_null_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year_dt_tz, mon_dt_tz, day_dt_tz, hour_dt_tz, min_dt_tz, sec_dt_tz, year, mon, day, hour, min, sec, hour_tz, min_tz, sec_tz);
       }
     }
     

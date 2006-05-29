@@ -241,8 +241,7 @@ int dbd_get_socket(dbi_conn_t *conn)
 }
 
 const char *dbd_get_encoding(dbi_conn_t *conn){
-
-        char* my_enc;
+	char* my_enc;
 	int n_encoding;
 	const char* encodingopt;
 	char* sql_cmd;
@@ -591,21 +590,23 @@ void _translate_postgresql_type(unsigned int oid, unsigned short *type, unsigned
 			_type = DBI_TYPE_DECIMAL;
 			_attribs |= DBI_DECIMAL_SIZE8;
 			break;
-	        case PG_TYPE_DATE:
-		       _type = DBI_TYPE_DATETIME;
-                       _attribs |= DBI_DATETIME_DATE;
-                       break;
-	        case PG_TYPE_TIME:
-	        case PG_TYPE_TIMETZ:
-                       _type = DBI_TYPE_DATETIME;
-                       _attribs |= DBI_DATETIME_TIME;
-                       break;
-	        case PG_TYPE_TIMESTAMP:
-	        case PG_TYPE_TIMESTAMPTZ:
+
+        case PG_TYPE_DATE:
+	        _type = DBI_TYPE_DATETIME;
+            _attribs |= DBI_DATETIME_DATE;
+            break;
+        case PG_TYPE_TIME:
+        case PG_TYPE_TIMETZ:
+            _type = DBI_TYPE_DATETIME;
+            _attribs |= DBI_DATETIME_TIME;
+            break;
+        case PG_TYPE_TIMESTAMP:
+        case PG_TYPE_TIMESTAMPTZ:
 			_type = DBI_TYPE_DATETIME;
 			_attribs |= DBI_DATETIME_DATE;
 			_attribs |= DBI_DATETIME_TIME;
 			break;
+
 		case PG_TYPE_NAME:
 		case PG_TYPE_TEXT:
 		case PG_TYPE_CHAR2:
@@ -670,8 +671,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		
 		switch (result->field_types[curfield]) {
 			case DBI_TYPE_INTEGER:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_INTEGER_SIZE1, DBI_INTEGER_SIZE8);
-				switch (sizeattrib) {
+				switch (result->field_attribs[curfield] & DBI_INTEGER_SIZEMASK) {
 					case DBI_INTEGER_SIZE1:
 						data->d_char = (char) atol(raw); break;
 					case DBI_INTEGER_SIZE2:
@@ -686,8 +686,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				}
 				break;
 			case DBI_TYPE_DECIMAL:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DECIMAL_SIZE4, DBI_DECIMAL_SIZE8);
-				switch (sizeattrib) {
+				switch (result->field_attribs[curfield] & DBI_DECIMAL_SIZEMASK) {
 					case DBI_DECIMAL_SIZE4:
 						data->d_float = (float) strtod(raw, NULL); break;
 					case DBI_DECIMAL_SIZE8:
@@ -697,7 +696,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				}
 				break;
 			case DBI_TYPE_STRING:
-			        strsize = (size_t)PQgetlength((PGresult *)result->result_handle, rowidx, curfield);
+			    strsize = (size_t)PQgetlength((PGresult *)result->result_handle, rowidx, curfield);
 				data->d_string = strdup(raw);
 				row->field_sizes[curfield] = strsize;
 				break;
@@ -718,7 +717,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				break;
 				
 			case DBI_TYPE_DATETIME:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DATETIME_DATE, DBI_DATETIME_TIME);
+				sizeattrib = result->field_attribs[curfield] & (DBI_DATETIME_DATE|DBI_DATETIME_TIME);
 				data->d_datetime = _dbd_parse_datetime(raw, sizeattrib);
 				break;
 				

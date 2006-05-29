@@ -682,9 +682,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 		
 		switch (result->field_types[curfield]) {
 			case DBI_TYPE_INTEGER:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], 
-										DBI_INTEGER_SIZE1, DBI_INTEGER_SIZE8);
-				switch (sizeattrib) {
+				switch (result->field_attribs[curfield] & DBI_INTEGER_SIZEMASK) {
 					case DBI_INTEGER_SIZE1:
 						data->d_char = (char) atol(raw); break;
 					case DBI_INTEGER_SIZE2:
@@ -699,9 +697,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				}
 				break;
 			case DBI_TYPE_DECIMAL:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], 
-										DBI_DECIMAL_SIZE4, DBI_DECIMAL_SIZE8);
-				switch (sizeattrib) {
+				switch (result->field_attribs[curfield] & DBI_DECIMAL_SIZEMASK) {
 					case DBI_DECIMAL_SIZE4:
 						data->d_float = (float) strtod(raw, NULL); break;
 					case DBI_DECIMAL_SIZE8:
@@ -729,8 +725,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 				}
 				break;
 			case DBI_TYPE_DATETIME:
-				sizeattrib = _isolate_attrib(result->field_attribs[curfield], 
-										DBI_DATETIME_DATE, DBI_DATETIME_TIME);
+				sizeattrib = result->field_attribs[curfield] & (DBI_DATETIME_DATE|DBI_DATETIME_TIME);
 				data->d_datetime = _dbd_parse_datetime(raw, sizeattrib);
 				break;
 		}

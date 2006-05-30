@@ -1,0 +1,261 @@
+<!DOCTYPE Book PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
+
+<!ENTITY freedoc-license SYSTEM "../../doc/include/copying-fdl.sgml">
+<!ENTITY www 'http://libdbi-drivers.sourceforge.net'>
+<!ENTITY www-libdbi 'http://libdbi.sourceforge.net'>
+
+<!-- customize these and the bookinfo section -->
+<!ENTITY author-email 'qu1j0t3@sourceforge.net'>
+<!ENTITY author-name 'Toby Thain'>
+<!ENTITY dbd-name 'ingres'>
+<!ENTITY proper-name 'Ingres'>
+<!ENTITY www-upstream 'http://www.ingres.com/'>
+
+]>
+
+<!-- $Id$ -->
+
+<book id="dbd-&dbd-name;">
+
+<bookinfo>
+	<title>&proper-name; Driver Notes</title>
+	<subtitle>Details about the libdbi driver providing support for &proper-name; backends</subtitle>
+	<author>
+		<firstname>Toby</firstname>
+		<surname>Thain</surname>
+		<affiliation>
+			<address><email>qu1j0t3@sourceforge.net</email></address>
+		</affiliation>
+	</author>
+	<edition>Document revision: $Id$</edition>
+	<pubdate>$Date$</pubdate>
+	<revhistory>
+      <revision>
+	<revnumber>0.1</revnumber>
+	<date>2006-05-28</date>
+      </revision>
+	</revhistory>
+	<copyright>
+		<year>2006</year>
+		<holder>Toby Thain</holder>
+	</copyright>
+	<legalnotice>
+		<para>
+			Permission is granted to copy, distribute and/or modify this
+			document under the terms of the <link linkend="copying-FDL">
+			<citetitle>GNU Free Documentation License</citetitle></link>,
+			Version 1.1 or any later version published by the Free Software
+			Foundation; with no Invariant Sections, with no	Front-Cover Texts,
+			and with no Back-Cover Texts.  A copy of the license is included in
+			<xref linkend="copying-FDL">.
+		</para>
+	</legalnotice>
+</bookinfo>
+
+<preface><title>Preface</title>
+	<para>
+		<ulink url="&www-libdbi;">libdbi</ulink> is a database abstraction
+		layer written in C. It implements a framework that can utilize
+		separate driver libraries for specific database servers. The <ulink
+		url="&www;">libdbi-drivers</ulink> project provides the drivers
+		necessary to talk to the supported database servers.
+	</para>
+	<para>
+		This manual provides information about the &dbd-name; driver, which
+		provides support for &proper-name; databases. The manual is
+		intended for programmers who write applications linked against libdbi
+		and who want their applications to use this database backend.
+	</para>
+	<para>
+		Questions and comments about this driver should be sent to the
+		libdbi-drivers-devel mailing list (see the <ulink
+		url="&www;">website</ulink>). Questions and comments about the libdbi
+		library should be sent to the appropriate libdbi mailing list.
+	</para>
+	<para>
+		This driver is maintained by <ulink url="mailto:&author-email;">&author-name;</ulink>.
+	</para>
+</preface>
+
+<chapter id="intro"><title>Introduction</title>
+	<para>
+		Ingres is ...
+	</para>
+	<para>
+	More information can be found from the <ulink url="&www-upstream;">&proper-name; website</ulink>.
+    </para>
+</chapter>
+
+<chapter id="install"><title>Installation</title>
+	<para>
+		This chapter describes the prerequisites and the procedures to build
+		and install this driver from source code.
+	</para>
+	<section id="install-prereq"><title>Prerequisites</title>
+		<para>
+			The following packages must be installed on your system:
+		</para>
+		<variablelist>
+			<varlistentry>
+				<term>libdbi</term>
+				<listitem>
+					<para>
+						This library implements the core database abstraction
+						layer, which provides your application with database
+						backend functionality when paired with this driver.
+						More information about libdbi, including mailing
+						lists, documentation, bug reports, and downloads, is
+						available from the <ulink url="&www-libdbi;">libdbi
+						website</ulink>.
+					</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>libpq</term>
+				<listitem>
+					<para>
+						This is the C shared library to enable user programs
+						to communicate with the Ingres database ...
+					</para>
+					<para>
+						The current version of the dbd_ingres driver was
+						written and tested with ...</para>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+	</section>
+	<section id="install-build"><title>Build and install the driver</title>
+		<para>
+			First you have to unpack the libdbi-drivers archive in a suitable
+			directory. Unpacking will create a new subdirectory with the
+			version number, such as <filename
+			class="directory">libdbi-drivers-0.8.0</filename>
+		</para>
+		<screen><prompt>$ </prompt><userinput>tar xfvz libdbi-drivers-0.8.0.tar.gz</userinput></screen>
+		<para>
+			The libdbi-drivers project consists of several drivers that use a
+			common build system. Therefore you <emphasis>must</emphasis> explicitly tell
+			the configuration script that you want to build the &dbd-name; driver (you
+			can list as many drivers as you want to build):
+		</para>
+		<screen><prompt>$ </prompt><userinput>cd libdbi-drivers-0.8.0</userinput></screen>
+		<screen><prompt>$ </prompt><userinput>./configure --with-&dbd-name;</userinput></screen>
+		<para>
+			Run <command>./configure --help</command> to find out about
+			additional options and other available drivers.
+		</para>
+		<para>
+			Then build the driver with the command:
+		</para>
+		<screen><prompt>$ </prompt><userinput>make</userinput></screen>
+		<note>
+			<para>
+				Please note that you may have to invoke
+				<command>gmake</command>, the GNU version of make, on some
+				systems.
+			</para>
+		</note>
+		<para>
+			Then install the driver with the command (you'll need root
+			permissions to do this):
+		</para>
+		<screen><prompt>$ </prompt><userinput>make install</userinput></screen>
+		<para>
+			To test the operation of the newly installed driver, use the
+			command:
+		</para>
+		<screen><prompt>$ </prompt><userinput>make check</userinput></screen>
+		<para>
+			This command creates and runs a test program that performs a few
+			basic input and output tests.
+		</para>
+		<note>
+			<para>
+				If for some reason you need to re-create the
+				autoconf/automake-related files, try running <command
+				moreinfo="none">./autogen.sh</command>. In some situations,
+				the current stable autoconf/automake/libtool versions (as
+				found in FreeBSD 4.7 and Debian 3.0) do not cooperate well, so
+				it may be necessary to run the older autoconf 2.13. If
+				necessary, edit <filename
+				moreinfo="none">autogen.sh</filename> so that it will catch
+				the older autoconf version on your system.
+			</para>
+		</note>
+	</section>
+</chapter>
+
+<chapter id="options"><title>Driver options</title>
+	<para>
+		Before you can initiate a connection, you must usually specify options
+		that tell the database driver what to connect to. This driver supports
+		the standard options of <varname>host</varname>,
+		<varname>username</varname>, <varname>password</varname>,
+		<varname>dbname</varname>, and <varname>port</varname>. You only need
+		to set options that are specific to your application -- sensible
+		defaults will be used for all unspecified options.
+	</para>
+	<para>
+		This driver also offers the following non-standard options, and/or
+		redefines the meaning of the following standard options:
+	</para>
+	<variablelist>
+		<varlistentry>
+			<term>host</term>
+			<listitem>
+				<para>
+					If this begins with a slash, it specifies Unix-domain
+					communication rather than TCP/IP communication; the value
+					is the name of the directory in which the socket file is
+					stored.
+				</para>
+			</listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>port</term>
+			<listitem>
+				<para>
+					Port number to connect to at the server host, or socket
+					file name extension for Unix-domain connections.
+				</para>
+			</listitem>
+		</varlistentry>
+      <varlistentry>
+	<term>encoding</term>
+	<listitem>
+	  <para>The IANA name of a character encoding which is to be used as the connection encoding. Input and output data will be silently converted from and to this character encoding, respectively. The list of available character encodings depends on your local PostgreSQL installation. If you set this option to "auto", the connection encoding will be the same as the database encoding.</para>
+	</listitem>
+      </varlistentry>
+		<varlistentry>
+			<term>pgsql_options</term>
+			<listitem>
+				<para>
+					Trace/debug options to be sent to the server.
+				</para>
+			</listitem>
+		</varlistentry>
+		<varlistentry>
+			<term>pgsql_tty</term>
+			<listitem>
+				<para>
+					A file or tty for optional debug output from the backend.
+				</para>
+			</listitem>
+      </varlistentry>
+	</variablelist>
+</chapter>
+
+<chapter id="specific"><title>&proper-name;-specific Peculiarities</title>
+	<para>
+		This chapter lists known peculiarities of the &dbd-name; driver.
+		Wherever possible, nonstandard driver behavior is hidden by libdbi's
+		abstractions, but occasionally special considerations must be taken or
+		extra functionality may be utilized for particular drivers.
+	</para>
+	<para>...</para>
+</chapter>
+
+&freedoc-license;
+
+</book>
+

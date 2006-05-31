@@ -19,7 +19,6 @@ drivers that the libdbi framework utilizes to talk to the supported
 database servers.
 
 
-
 INSTALLATION:
 -------------
 
@@ -36,6 +35,7 @@ more libdbi-drivers configuration options.
 If you are building the Win32 port, see README.win32.
 If you are building the OSX port, see README.osx.
 
+
 AVAILABLE DRIVERS:
 ------------------
 
@@ -46,6 +46,7 @@ AVAILABLE DRIVERS:
 * PostgreSQL
 * SQLite
 * SQLite3
+* Ingres 2006 (experimental)
 
 
 SUPPORTED PLATFORMS:

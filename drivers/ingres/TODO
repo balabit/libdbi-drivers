@@ -1,11 +1,12 @@
-30-May-2006
+31-May-2006
 
 TODO:
-* result set handling
+* (DONE) result set handling
+* resolve date retrieval issue
 * documentation
 * error string retrieval
-* connection option for API level?
 * encodings
 * support for UTF-16 column types
 * querying system catalogs (e.g. for version number, database list, table lists)
+* quieten the debug logging
 * whatever else is missing

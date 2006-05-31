@@ -31,8 +31,8 @@
 	<pubdate>$Date$</pubdate>
 	<revhistory>
       <revision>
-	<revnumber>0.1</revnumber>
-	<date>2006-05-28</date>
+	<revnumber>0.2</revnumber>
+	<date>2006-05-31</date>
       </revision>
 	</revhistory>
 	<copyright>
@@ -79,7 +79,12 @@
 
 <chapter id="intro"><title>Introduction</title>
 	<para>
-		Ingres is ...
+		<ulink url="http://ingres.com/products/Prod_Ingres_2006.html">Ingres(R)</ulink>
+		is an advanced relational database management system
+		from Ingres Corporation. Notable features include C2 security certification,
+		clustering, partitioning, transaction journaling, query optimisation, 
+		diverse programming bindings and flexible licensing from GPL community 
+		through to 24/7 enterprise level support.
 	</para>
 	<para>
 	More information can be found from the <ulink url="&www-upstream;">&proper-name; website</ulink>.
@@ -115,11 +120,15 @@
 				<listitem>
 					<para>
 						This is the C shared library to enable user programs
-						to communicate with the Ingres database ...
+						to communicate with the Ingres(R) 2006 Community Edition
+						RDBMS.
 					</para>
 					<para>
 						The current version of the dbd_ingres driver was
-						written and tested with ...</para>
+						written and tested with the 32-bit NPTL version II 9.0.4
+						for Linux/x86, running on Gentoo 
+						(see <ulink url="http://slashdot.org/~toby/journal/136300">my installation notes</ulink>).
+					</para>
 				</listitem>
 			</varlistentry>
 		</variablelist>
@@ -189,11 +198,13 @@
 	<para>
 		Before you can initiate a connection, you must usually specify options
 		that tell the database driver what to connect to. This driver supports
-		the standard options of <varname>host</varname>,
-		<varname>username</varname>, <varname>password</varname>,
-		<varname>dbname</varname>, and <varname>port</varname>. You only need
-		to set options that are specific to your application -- sensible
-		defaults will be used for all unspecified options.
+		the standard options of
+		<varname>username</varname>, <varname>password</varname> and
+		<varname>dbname</varname>. The latter parameter is in Ingres syntax,
+		[node_id::]dbname[/svr_class] - see Ingres documentation for details.
+		(When running as the Ingres admin user on the same host as the DBMS,
+		only the dbname is normally required.)
+		Sensible defaults will be used for all unspecified options.
 	</para>
 	<para>
 		This driver also offers the following non-standard options, and/or
@@ -201,47 +212,19 @@
 	</para>
 	<variablelist>
 		<varlistentry>
-			<term>host</term>
+			<term>ingres_autocommit</term>
 			<listitem>
 				<para>
-					If this begins with a slash, it specifies Unix-domain
-					communication rather than TCP/IP communication; the value
-					is the name of the directory in which the socket file is
-					stored.
+					'Autocommit' mode
+					is enabled by default for the Ingres DBMS connection.
+					In this mode, every query is committed as an individual transaction.
+					With autocommit disabled (0), a transaction is begun at
+					connection, and must be committed or rolled back
+					explicitly (see Ingres OpenAPI and SQL references for more
+					information).
 				</para>
 			</listitem>
 		</varlistentry>
-		<varlistentry>
-			<term>port</term>
-			<listitem>
-				<para>
-					Port number to connect to at the server host, or socket
-					file name extension for Unix-domain connections.
-				</para>
-			</listitem>
-		</varlistentry>
-      <varlistentry>
-	<term>encoding</term>
-	<listitem>
-	  <para>The IANA name of a character encoding which is to be used as the connection encoding. Input and output data will be silently converted from and to this character encoding, respectively. The list of available character encodings depends on your local PostgreSQL installation. If you set this option to "auto", the connection encoding will be the same as the database encoding.</para>
-	</listitem>
-      </varlistentry>
-		<varlistentry>
-			<term>pgsql_options</term>
-			<listitem>
-				<para>
-					Trace/debug options to be sent to the server.
-				</para>
-			</listitem>
-		</varlistentry>
-		<varlistentry>
-			<term>pgsql_tty</term>
-			<listitem>
-				<para>
-					A file or tty for optional debug output from the backend.
-				</para>
-			</listitem>
-      </varlistentry>
 	</variablelist>
 </chapter>
 
@@ -252,10 +235,11 @@
 		abstractions, but occasionally special considerations must be taken or
 		extra functionality may be utilized for particular drivers.
 	</para>
-	<para>...</para>
+	<para>
+		
+	</para>
 </chapter>
 
 &freedoc-license;
 
 </book>
-

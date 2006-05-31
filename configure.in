@@ -118,6 +118,8 @@ AC_CHECK_MSQL
 AC_CHECK_ORACLE
 AC_CHECK_FIREBIRD_INTERBASE
 AC_CHECK_FREETDS
+AC_CHECK_INGRES
+
 dnl ==============================
 dnl Check for functions
 dnl ==============================
@@ -165,15 +167,19 @@ AC_OUTPUT([
 	drivers/oracle/Makefile
 	drivers/firebird/Makefile
 	drivers/freetds/Makefile
+	drivers/ingres/Makefile
 	tests/Makefile
 	])
 dnl doc/Makefile
 
 echo "If make check fails with a linker error, reconfigure with --with-ltdl"
 
-if test "$ac_mysql" = "NO" && test "$ac_pgsql" = "NO" && test "$ac_sqlite" = "NO" && test "$ac_sqlite3" = "NO" && test "$ac_msql" = "NO" && test "$ac_oracle" = "NO" && test "$ac_firebird" = "NO" && test "$ac_freetds" = "NO"; then
-   echo ""
+if test "$ac_mysql" = "NO" && test "$ac_pgsql" = "NO" && test "$ac_sqlite" = "NO" \
+	&& test "$ac_sqlite3" = "NO" && test "$ac_msql" = "NO" && test "$ac_oracle" = "NO" \
+	&& test "$ac_firebird" = "NO" && test "$ac_freetds" = "NO" && test "$ac_ingres" = "NO"; then
+   echo
    echo "***WARNING***"
-   echo "You did not request any drivers to be built. This is most likely not what you want. Please run ./configure --help for a list of switches and select at least one driver."
+   echo "You did not request any drivers to be built. This is most likely not what you want."
+   echo "Please run ./configure --help for a list of switches and select at least one driver."
 fi
 

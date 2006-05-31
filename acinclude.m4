@@ -480,7 +480,7 @@ fi
 
 ## Freetds
 
-AC_DEFUN(AC_CHECK_FREETDS,
+AC_DEFUN([AC_CHECK_FREETDS],
 [
 AM_CONDITIONAL(HAVE_FREETDS, false)
 ac_freetds="no"
@@ -533,6 +533,66 @@ if test "$ac_freetds" = "yes"; then
 	AC_SUBST(FREETDS_LIBS)
 	AC_SUBST(FREETDS_INCLUDE)
 	AC_SUBST(FREETDS_LDFLAGS)
+else
+	AC_MSG_RESULT(no)
+fi
+])
+
+## Ingres
+
+AC_DEFUN([AC_CHECK_INGRES],
+[
+AM_CONDITIONAL(HAVE_INGRES, false)
+ac_ingres="no"
+ac_ingres_incdir="no"
+ac_ingres_libdir="no"
+
+# exported variables
+INGRES_LIBS=""
+INGRES_LDFLAGS=""
+INGRES_INCLUDE=""
+
+AC_MSG_CHECKING(for Ingres support)
+
+AC_ARG_WITH(ingres,
+	[  --with-ingres           Include Ingres support.],
+	[  ac_ingres="$withval" ])
+AC_ARG_WITH(ingres-dir,
+	[  --with-ingres-dir       Specifies II_SYSTEM.],
+	[  ac_ingres_incdir="$withval"/ingres/files
+	   ac_ingres_libdir="$withval"/ingres/lib ])
+AC_ARG_WITH(ingres-incdir,
+	[  --with-ingres-incdir    Specifies where the Ingres include files are.],
+	[  ac_ingres_incdir="$withval" ])
+AC_ARG_WITH(ingres-libdir,
+	[  --with-ingres-libdir    Specifies where the Ingres libraries are.],
+	[  ac_ingres_libdir="$withval" ])
+
+if test "$ac_ingres" = "yes"; then
+	if test "$ac_ingres_incdir" = "no" || test "$ac_ingres_libs" = "no"; then
+		ingres_incdirs="/usr/include /usr/local/include /opt/Ingres/IngresII/ingres/files"
+		AC_FIND_FILE(iiapi.h, $ingres_incdirs, ac_ingres_incdir)
+		ingres_libdirs="/usr/lib /usr/local/lib /opt/Ingres/IngresII/ingres/lib"
+		AC_FIND_FILE(libingres.a, $ingres_libdirs, ac_ingres_libdir)
+		if test "$ac_ingres_incdir" = "no"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid Ingres directory - include files not found.])
+		fi
+		if test "$ac_ingres_libdir" = "no"; then
+			AC_MSG_RESULT(no)
+			AC_MSG_ERROR([Invalid Ingres directory - libraries not found.])
+		fi
+	fi
+	AC_MSG_RESULT([yes: libs in $ac_ingres_libdir, headers in $ac_ingres_incdir])
+	AM_CONDITIONAL(HAVE_INGRES, true)
+	
+	INGRES_LIBS="-lingres -lpthread -ldl -lm -lcrypt"
+	INGRES_INCLUDE=-I$ac_ingres_incdir
+	INGRES_LDFLAGS=-L$ac_ingres_libdir
+	
+	AC_SUBST(INGRES_LIBS)
+	AC_SUBST(INGRES_INCLUDE)
+	AC_SUBST(INGRES_LDFLAGS)
 else
 	AC_MSG_RESULT(no)
 fi

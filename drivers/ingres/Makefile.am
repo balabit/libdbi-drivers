@@ -9,7 +9,7 @@ html_DATA = dbd_ingres/*
 
 ingres_ltlibs = libdbdingres.la
 ingres_ldflags = -module -avoid-version
-ingres_sources = dbd_ingres.c
+ingres_sources = dbd_ingres.c months.gperf.c
 
 else
 
@@ -33,7 +33,12 @@ libdbdingres_la_LIBADD = @INGRES_LIBS@
 libdbdingres_la_SOURCES = $(ingres_sources)
 libdbdingres_la_DEPENDENCIES = dbd_ingres.h
 
-EXTRA_DIST = dbd_ingres.c dbd_ingres.h AUTHORS TODO README dbd_ingres.sgml dbd_ingres.pdf dbd_ingres/*
+# FIXME: make complains about a circular dependency (due to implicit rules??)
+.INTERMEDIATE : months.gperf.c
+months.gperf.c : months.gperf
+	gperf --output-file=$@ $<
+
+EXTRA_DIST = dbd_ingres.c dbd_ingres.h months.gperf AUTHORS TODO README dbd_ingres.sgml dbd_ingres.pdf dbd_ingres/*
 
 # jadetex spews out tons of useless crap. shut it up:
 dbd_ingres.pdf: dbd_ingres.sgml

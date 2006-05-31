@@ -37,6 +37,7 @@ long long strtoll(const char *nptr, char **endptr, int base);
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <ctype.h> /* for isdigit() */
 
 #include <dbi/dbi.h>
@@ -87,6 +88,9 @@ void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned 
 int _dbd_real_connect(dbi_conn_t *conn, const char *db);
 void _dbd_geterror(dbi_conn_t *conn, II_PTR errorHandle);
 
+// months.gperf.c
+struct month *in_word_set (register const char *str, register unsigned int len);
+
 static IIAPI_STATUS ingres_wait(dbi_conn_t *conn, IIAPI_GENPARM *pgp){
 	IIAPI_WAITPARM waitParm;
 
@@ -110,38 +114,82 @@ static void ingres_close(II_PTR hdl) {
 	}
 }
 
-static time_t ingres_date(IIAPI_DESCRIPTOR *pdesc, IIAPI_DATAVALUE *pval){
-	IIAPI_FORMATPARM formParm;
-	int len, attr;
-	time_t t = 0;
-	char *val;
+static time_t ingres_date(char *raw){
+	struct tm unixtime;
+	char *p = raw, *q, sep;
+
+	int check_time = 1;
+
+	//_verbose_handler(NULL,"date: '%s'\n",raw);
 	
-	// TODO: must set II_DATE_FORMAT = SWEDEN/FINLAND for date helper func to work (yyyy-mm-dd)
-	// the theory here is that we don't want to set connection date format,
-	// because that will affect the way dates are interpreted in SQL input.
-	// however, if we fiddle with environment parameters we will affect any
-	// subsequent connections. What we really need is a way to crack apart
-	// the Ingres date value directly...
-	formParm.fd_envHandle = envHandle;
-	formParm.fd_srcDesc = *pdesc;
-	formParm.fd_srcValue = *pval;
-	formParm.fd_dstDesc.ds_dataType;
-	formParm.fd_dstDesc.ds_nullable = FALSE;
-	formParm.fd_dstDesc.ds_length = len = 32;
-	formParm.fd_dstDesc.ds_precision =
-	formParm.fd_dstDesc.ds_scale = 0;
-	formParm.fd_dstDesc.ds_columnType = IIAPI_COL_TUPLE;
-	formParm.fd_dstValue.dv_null = FALSE;
-	formParm.fd_dstValue.dv_length = len;
-	formParm.fd_dstValue.dv_value = val = malloc(len+1);
-	if(formParm.fd_status == IIAPI_ST_SUCCESS){
-		val[formParm.fd_dstValue.dv_length-1] = 0;
-		attr = strchr(val,'-') ? DBI_DATETIME_DATE : 0;  // is a date present?
-		if(strchr(val,':')) attr |= DBI_DATETIME_TIME;  // is a time present?
-		t = _dbd_parse_datetime(val, attr);
-	}
-	free(val);
-	return t;
+	unixtime.tm_sec = unixtime.tm_min = unixtime.tm_hour = 0;
+	//unixtime.tm_mday = 1; /* days are 1 through 31 */
+	//unixtime.tm_mon = 0;
+	//unixtime.tm_year = 70; /* can't start before Unix epoch */
+	unixtime.tm_isdst = -1;
+	
+	// Ingres default (US) date format: dd-mmm-yyyy [hh:mm:ss]
+	//for(p = raw; *p && !isdigit(*p); ++p)
+	//	;
+	if(isdigit(*p)){
+		// process day
+		unixtime.tm_mday = atoi(p); //_verbose_handler(NULL,"day: %d ",unixtime.tm_mday);
+		while(*p && isdigit(*p))
+			++p;
+		if(!*p){ _verbose_handler(NULL,"date ended after day??",raw); return 0; }
+		sep = *p++; // skip separator
+
+		// process month
+		if(isdigit(*p)){
+			unixtime.tm_mon = atoi(p)-1; /* months are 0 through 11 */
+			 //_verbose_handler(NULL,"month: %d ",unixtime.tm_mon);
+			while(*p && *p != sep)
+				++p;
+		}else{
+			q = p; // point to start of month name
+			while(*p && *p != sep)
+				++p;
+			if(*p){
+				*p = 0;
+				unixtime.tm_mon = in_word_set(q,p-q)->index;
+				 //_verbose_handler(NULL,"month: %s -> %d ",q,unixtime.tm_mon);
+				++p;
+			}
+		}
+		if(!*p){ _verbose_handler(NULL,"date ended after month??",raw); return 0; }
+		
+		// process year
+		unixtime.tm_year = atoi(p)-1900; //_verbose_handler(NULL,"year: %d\n",unixtime.tm_year);
+		while(isdigit(*p))
+			++p;
+		// skip space following date
+		while(isspace(*p))
+			++p;
+
+		// Ingres does not generate a time by itself, it's always preceded by a date.
+		if(*p){ // time is present
+		    unixtime.tm_hour = atoi(p); //_verbose_handler(NULL,"hour: %d ",unixtime.tm_hour);
+		    while(isdigit(*p))
+		    	++p;
+		    if(!*p){ _verbose_handler(NULL,"time ended after hour??",raw); return 0; }
+		    ++p; // skip separator
+		    unixtime.tm_min = atoi(p); //_verbose_handler(NULL,"min: %d ",unixtime.tm_min);
+		    while(isdigit(*p))
+		    	++p;
+		    if(!*p){ _verbose_handler(NULL,"time ended after minute??",raw); return 0; }
+		    ++p; // skip separator
+		    unixtime.tm_sec = atoi(p); //_verbose_handler(NULL,"sec: %d\n",unixtime.tm_sec);
+	
+		    /* check for a timezone suffix - Ingres does not output one, 
+		   its date/time is GMT unless a timezone is specified in parameters */
+			//while(isdigit(*p) || isspace(*p))
+			//	++p;
+		}
+		/* output is UTC, not local time */
+		return timegm(&unixtime);
+	}else
+		_verbose_handler(NULL,"bad date: '%s'",raw);
+	return 0;
 }
 
 /* real code starts here */
@@ -403,6 +451,7 @@ static int ingres_results(dbi_result_t *result){
 					case IIAPI_LNVCH_TYPE:
 					case IIAPI_DEC_TYPE:
 					case IIAPI_MNY_TYPE:
+					case IIAPI_DTE_TYPE:
 						// convert to string first
 						convParm.cv_srcDesc = desc[i];
 						convParm.cv_srcValue = databuf[i];
@@ -416,26 +465,24 @@ static int ingres_results(dbi_result_t *result){
 						convParm.cv_dstValue.dv_length = convParm.cv_dstDesc.ds_length;
 						convParm.cv_dstValue.dv_value = val = malloc(convParm.cv_dstValue.dv_length+1);
 						IIapi_convertData(&convParm);
-						if(convParm.cv_status > IIAPI_ST_SUCCESS){
-							_verbose_handler(result->conn,"could not convertData from column type %d to %d\n",desc[i].ds_dataType);
-							break; // ought to do something more drastic here
-						}
-						
-						// strip trailing blanks from converted value,
-						// since we had to overestimate the dst field width
 						len = convParm.cv_dstValue.dv_length;
-						while(len > 0 && val[len-1] == ' ')
-							--len;
-						
-						row->field_sizes[i] = len;
-						data->d_string = malloc(len+1); // FIXME: error check
-						memcpy(data->d_string, val, len);
-						data->d_string[len] = 0;
-
+						if(convParm.cv_status > IIAPI_ST_SUCCESS){
+							_verbose_handler(result->conn,"could not convertData from column type %d\n",desc[i].ds_dataType);
+						}else if(desc[i].ds_dataType == IIAPI_DTE_TYPE){
+							val[len] = 0;
+							data->d_datetime = ingres_date(val);
+						}else{
+							// strip trailing blanks from converted value,
+							// since we had to overestimate the dst field width
+							while(len > 0 && val[len-1] == ' ')
+								--len;
+							
+							row->field_sizes[i] = len;
+							data->d_string = malloc(len+1); // FIXME: error check
+							memcpy(data->d_string, val, len);
+							data->d_string[len] = 0;
+						}
 						free(val);
-						break;
-					case IIAPI_DTE_TYPE:
-						data->d_datetime = ingres_date(&desc[i], &databuf[i]);
 						break;
 					// the blob types aren't implemented by fetch yet (TODO)
 					//case IIAPI_LBYTE_TYPE:

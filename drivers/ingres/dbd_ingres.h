@@ -6,6 +6,12 @@
  * $Id$
  */
 
+// used by gperf hash, see months.gperf
+struct month {
+	char *name;
+	int index;
+};
+
 // Interactive SQL reserved words
 // list from Ingres(R) 2006 SQL Reference Guide, Appendix A
 

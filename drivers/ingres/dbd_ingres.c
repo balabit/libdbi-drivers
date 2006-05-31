@@ -64,6 +64,11 @@ static const char encoding_hash[][16] = {
   "", ""
 };
 
+// quite arbitrary row count that we initially allocate, increasing as necessary.
+// needed because Ingres gives us no way to get a row count prior to fetching data.
+#define INITIAL_ROWS 50
+#define ROW_FACTOR 4 // multiply by this factor when we fill row array
+
 typedef struct {
 	II_PTR connHandle;
 	II_PTR autoTranHandle;
@@ -80,6 +85,29 @@ void _get_field_info(dbi_result_t *result);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 int _dbd_real_connect(dbi_conn_t *conn, const char *db);
 void _dbd_geterror(dbi_conn_t *conn, II_PTR errorHandle);
+
+static IIAPI_STATUS ingres_wait(dbi_conn_t *conn, IIAPI_GENPARM *pgp){
+    IIAPI_WAITPARM	waitParm;
+
+    for( waitParm.wt_timeout = -1 ; ! pgp->gp_completed ; )
+		IIapi_wait(&waitParm);
+	_dbd_geterror(conn, pgp->gp_errorHandle);
+	return pgp->gp_status;
+}
+
+static void ingres_close(II_PTR hdl) {
+    IIAPI_STATUS status;
+	IIAPI_CLOSEPARM closeParm;
+
+	if(hdl){
+		closeParm.cl_genParm.gp_callback = NULL;
+		closeParm.cl_genParm.gp_closure = NULL;
+		closeParm.cl_stmtHandle = hdl;
+	    fprintf(stderr, "closing stmtHandle %#x...\n", hdl);
+		IIapi_close(&closeParm);
+		ingres_wait(NULL, &closeParm.cl_genParm);
+	}
+}
 
 /* real code starts here */
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, const char ***_reserved_words) {
@@ -104,7 +132,7 @@ int dbd_initialize(dbi_driver_t *driver) {
 }
 
 int dbd_connect(dbi_conn_t *conn) {
-  return _dbd_real_connect(conn, NULL);
+	return _dbd_real_connect(conn, NULL);
 }
 
 #define ERRMAX 1024
@@ -139,22 +167,12 @@ void _dbd_geterror(dbi_conn_t *conn, II_PTR errorHandle){
 	}
 }
 
-IIAPI_STATUS ingres_wait(dbi_conn_t *conn, IIAPI_GENPARM *pgp){
-    IIAPI_WAITPARM	waitParm;
-
-    for( waitParm.wt_timeout = -1 ; ! pgp->gp_completed ; )
-		IIapi_wait(&waitParm);
-	_dbd_geterror(conn, pgp->gp_errorHandle);
-	return pgp->gp_status;
-}
-
 int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	ingres_conn_t *iconn;
     IIAPI_CONNPARM connParm;
     IIAPI_AUTOPARM acParm;
     IIAPI_STATUS status;
     char *autocommit = dbi_conn_get_option(conn, "ingres_autocommit");
-    int ok, ac = autocommit ? atoi(autocommit) : 1; // enable auto-commit by default
 
     connParm.co_genParm.gp_callback = NULL;
     connParm.co_genParm.gp_closure = NULL;
@@ -168,27 +186,34 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
     IIapi_connect(&connParm);
     status = ingres_wait(conn, &connParm.co_genParm);
 
-    conn->connection = iconn = malloc(sizeof(ingres_conn_t));
-    iconn->connHandle = connParm.co_connHandle;
-    iconn->autoTranHandle = NULL;
-    ok = status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR;
-	if(ok && ac){
-    	// set autocommit mode
-    	acParm.ac_genParm.gp_callback = NULL;
-    	acParm.ac_genParm.gp_closure = NULL;
-    	acParm.ac_connHandle = connParm.co_connHandle;
-    	acParm.ac_tranHandle = NULL;
-    	IIapi_autocommit(&acParm);
-    	status = ingres_wait(conn, &acParm.ac_genParm);
-		if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
-			// stash the autocommit transaction handle
-			iconn->autoTranHandle = acParm.ac_tranHandle;
-    		_verbose_handler(conn, "...enabled autocommit\n");
-		}else
-			_verbose_handler(conn, "...FAILED to enable autocommit\n");
+	if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
+	    conn->connection = iconn = malloc(sizeof(ingres_conn_t));
+	    iconn->connHandle = connParm.co_connHandle;
+	    iconn->autoTranHandle = NULL;
+		if(!autocommit || atoi(autocommit)){ // enable auto-commit by default
+	    	// set autocommit mode
+	    	acParm.ac_genParm.gp_callback = NULL;
+	    	acParm.ac_genParm.gp_closure = NULL;
+	    	acParm.ac_connHandle = connParm.co_connHandle;
+	    	acParm.ac_tranHandle = NULL;
+	    	IIapi_autocommit(&acParm);
+	    	status = ingres_wait(conn, &acParm.ac_genParm);
+			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
+				// stash the autocommit transaction handle
+				iconn->autoTranHandle = acParm.ac_tranHandle;
+	    		_verbose_handler(conn, "...enabled autocommit\n");
+			}else
+				_verbose_handler(conn, "...FAILED to enable autocommit\n");
+		}
+		// TODO: set some session options
+		// dbi_conn_get_option(conn, "ingres_money_format");
+		// dbi_conn_get_option(conn, "ingres_money_prec");
+		// dbi_conn_get_option(conn, "ingres_decimal");
+		// dbi_conn_get_option(conn, "ingres_money_format");
+		// TODO: must set II_DATE_FORMAT = YMD for date type conversions to work
+		return 0;
     }
-
-    return ok - 1;
+    return -1;
 }
 
 int dbd_disconnect(dbi_conn_t *conn) {
@@ -223,107 +248,173 @@ int dbd_disconnect(dbi_conn_t *conn) {
 	return 0;
 }
 
-int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) {
+static int ingres_results(dbi_result_t *result){
     ingres_result_t *pres = result->result_handle;
     IIAPI_STATUS status;
-    IIAPI_GETCOLPARM	gcParm;
+    IIAPI_GETCOLPARM gcParm;
     IIAPI_DESCRIPTOR *desc = pres->dataDesc;
     IIAPI_DATAVALUE *databuf;
+	IIAPI_CONVERTPARM convParm;
 	dbi_row_t *row = NULL;
 	dbi_data_t *data;
-    int i,j;
-	
-	if (result->result_state == ROWS_RETURNED && pres && pres->stmtHandle) {
-	
-		// no random access, we have to fetch row data sequentially using getColumns
-		// therefore, grab all rows now. -- yes, this is less than ideal.
-		databuf = malloc(result->numfields*sizeof(IIAPI_DATAVALUE));
-		if(!databuf) return 0;
-		for(j = 0; j < result->numfields; ++j)
-			if(!(databuf[j].dv_value = malloc(desc[j].ds_length))) // maximum length
-				return 0; // FIXME: it can leak if we fail :)
+	dbi_row_t *resized;
+    int i, retval = 0, len;
+    unsigned long count,limit;
+    char *val;
 
-	    gcParm.gc_genParm.gp_callback = NULL;
-	    gcParm.gc_genParm.gp_closure = NULL;
-	    gcParm.gc_stmtHandle = pres->stmtHandle;
-	    gcParm.gc_rowCount = 1;
-	    gcParm.gc_columnCount = result->numfields;
-	    gcParm.gc_columnData = databuf;
-	    gcParm.gc_rowsReturned = 0;
-	    gcParm.gc_moreSegments = 0;
-		_verbose_handler(result->conn,"calling getColumns, columnCount=%d, stmtHandle=%#x\n", 
-			gcParm.gc_columnCount, gcParm.gc_stmtHandle);
-	    
-		for(i = 0; i < result->numrows_matched; ++i){
-			_verbose_handler(result->conn,"fetching row %d\n",i);
-			IIapi_getColumns( &gcParm );
-		    status = ingres_wait(result->conn, &gcParm.gc_genParm);
-			if ( status >= IIAPI_ST_NO_DATA ){
-				_verbose_handler(result->conn,"getColumns returned status %d; aborting\n",status);
-			    break;
-			}
-			if(gcParm.gc_moreSegments){
-				_verbose_handler(result->conn,"multisegment (long) columns not yet supported; aborting\n");
-				break;
-			}
+	// no random access, we have to fetch row data sequentially using getColumns
+	// therefore, grab all rows now. -- yes, this is less than ideal.
+	databuf = malloc(result->numfields*sizeof(IIAPI_DATAVALUE));
+	if(!databuf) return 0;
+	for(i = 0; i < result->numfields; ++i)
+		if(!(databuf[i].dv_value = malloc(desc[i].ds_length))) // maximum length
+			return 0; // FIXME: it can leak if we fail :)
 
-			if((row = _dbd_row_allocate(result->numfields))){
-				for(j = 0, data = row->field_values; j < result->numfields; ++j, ++data){
-					_verbose_handler(result->conn,"  fetch field %d\n",j);
-					row->field_sizes[j] = 0; // will be set to strlen later on for strings
-					if(databuf[j].dv_null)
-						_set_field_flag(row, j, DBI_VALUE_NULL, 1);
-					else // fixme, this classification probably needs to be on ingres types, since some need pre-conversion
-						switch(result->field_types[j]){
-						case DBI_TYPE_INTEGER:
-						case DBI_TYPE_DECIMAL:
-							memcpy(data, databuf[j].dv_value, desc[j].ds_length);
-							break;
-						case DBI_TYPE_STRING:
-						case DBI_TYPE_BINARY:
-							row->field_sizes[j] = databuf[j].dv_length;
-							data->d_string = malloc(databuf[j].dv_length+1); // FIXME: error check
-							memcpy(data->d_string, databuf[j].dv_value, databuf[j].dv_length);
-							data->d_string[databuf[j].dv_length] = 0;
-							break;
-						case DBI_TYPE_DATETIME:
-							break;
-						}
-				}
-				_dbd_row_finalize(result, row, i);
-			}else{
-				_verbose_handler(result->conn,"failed to allocate row; aborting\n");
+    gcParm.gc_genParm.gp_callback = NULL;
+    gcParm.gc_genParm.gp_closure = NULL;
+    gcParm.gc_stmtHandle = pres->stmtHandle;
+    gcParm.gc_rowCount = 1;
+    gcParm.gc_columnCount = result->numfields;
+    gcParm.gc_columnData = databuf;
+    gcParm.gc_rowsReturned = 0;
+    gcParm.gc_moreSegments = 0;
+	_verbose_handler(result->conn,"calling getColumns, columnCount=%d, stmtHandle=%#x\n", 
+		gcParm.gc_columnCount, gcParm.gc_stmtHandle);
+    
+    limit = result->numrows_matched;
+	for(count = 0; ; ++count){
+	
+		if(count == limit){
+			limit *= ROW_FACTOR;
+			_verbose_handler(result->conn,"reallocating to new row limit %d\n",limit);
+			if( (resized = realloc(result->rows, limit*sizeof(dbi_row_t*))) )
+				result->rows = resized;
+			else{
+				_verbose_handler(result->conn,"can't expand row array; aborting\n");
 				break;
 			}
 		}
-		
-		// free early
-		ingres_close(pres->stmtHandle);
-		pres->stmtHandle = NULL;
-		
-		for(j = 0; j < result->numfields; ++j)
-			free(databuf[j].dv_value);
-		free(databuf);
-		return i == result->numrows_matched;
+	
+		_verbose_handler(result->conn,"fetching row %d\n",count);
+		IIapi_getColumns( &gcParm );
+	    status = ingres_wait(result->conn, &gcParm.gc_genParm);
+		if ( status == IIAPI_ST_NO_DATA ){ // normal completion of fetch
+			retval = 1;
+		    break; 
+		}else if ( status > IIAPI_ST_NO_DATA ){
+			_verbose_handler(result->conn,"getColumns returned status %d; aborting\n",status);
+		    break;
+		}else if(gcParm.gc_moreSegments){
+			_verbose_handler(result->conn,"multisegment (long) columns not yet supported; aborting\n");
+			break;
+		}
+
+		if((row = _dbd_row_allocate(result->numfields))){
+			for(i = 0, data = row->field_values; i < result->numfields; ++i, ++data){
+				//_verbose_handler(result->conn,"  fetch field %d\n",i);
+				row->field_sizes[i] = 0; // will be set to strlen later on for strings
+				if(databuf[i].dv_null)
+					_set_field_flag(row, i, DBI_VALUE_NULL, 1);
+				else
+					switch(desc[i].ds_dataType){					
+					//case IIAPI_HNDL_TYPE: // can't do anything with this
+					// 'national character sets' -- UTF-16 strings
+					case IIAPI_NCHA_TYPE:
+					case IIAPI_NVCH_TYPE:
+					case IIAPI_LNVCH_TYPE:
+					case IIAPI_DEC_TYPE:
+					case IIAPI_MNY_TYPE:
+					case IIAPI_DTE_TYPE:
+						// convert to string first
+						convParm.cv_srcDesc = desc[i];
+						convParm.cv_srcValue = databuf[i];
+						convParm.cv_dstDesc.ds_dataType = IIAPI_CHA_TYPE;
+						convParm.cv_dstDesc.ds_nullable = FALSE;
+						convParm.cv_dstDesc.ds_length = desc[i].ds_length + desc[i].ds_precision + 32; // include plenty of slop
+						convParm.cv_dstDesc.ds_precision = 0;
+						convParm.cv_dstDesc.ds_scale = 0;
+						convParm.cv_dstDesc.ds_columnType = IIAPI_COL_TUPLE;
+						convParm.cv_dstValue.dv_null = FALSE;
+						convParm.cv_dstValue.dv_length = convParm.cv_dstDesc.ds_length;
+						convParm.cv_dstValue.dv_value = val = malloc(convParm.cv_dstValue.dv_length+1);
+						IIapi_convertData(&convParm);
+						if(convParm.cv_status > IIAPI_ST_SUCCESS){
+							_verbose_handler(result->conn,"could not convertData from column type %d to %d\n",desc[i].ds_dataType);
+							break; // ought to do something more drastic here
+						}
+
+						if(desc[i].ds_dataType == IIAPI_DTE_TYPE){ // minor hack, special case rather than dup'ing above code
+							// Ingres won't tell us whether this is an absolute date,
+							// absolute time, or both, so we'll need to figure it out ourselves (TODO)
+							// (e.g. look for -'s, :'s)
+							// note that the helper function below takes a restricted set of formats,
+							// so the date formatting needs to be controlled by session options (TODO)
+							data->d_datetime = _dbd_parse_datetime(val, 0);
+						}else{
+							// strip trailing blanks from converted value
+							len = convParm.cv_dstValue.dv_length;
+							while(len > 0 && val[len-1] == ' ')
+								--len;
+							
+							row->field_sizes[i] = len;
+							data->d_string = malloc(len+1); // FIXME: error check
+							memcpy(data->d_string, val, len);
+							data->d_string[len] = 0;
+						}
+						free(val);
+						break;
+					// the blob types aren't implemented by fetch yet (TODO)
+					case IIAPI_LBYTE_TYPE:
+					case IIAPI_LVCH_TYPE:
+					case IIAPI_LTXT_TYPE:
+					// ordinary string/binary types
+					case IIAPI_BYTE_TYPE:
+					case IIAPI_CHR_TYPE:
+					case IIAPI_CHA_TYPE:
+					case IIAPI_VCH_TYPE:
+					case IIAPI_VBYTE_TYPE:
+					case IIAPI_TXT_TYPE:
+					// oddball key types, try to handle anyway
+					case IIAPI_LOGKEY_TYPE:
+					case IIAPI_TABKEY_TYPE:
+						row->field_sizes[i] = len = databuf[i].dv_length;
+						data->d_string = malloc(len+1); // FIXME: error check
+						memcpy(data->d_string, databuf[i].dv_value, len);
+						data->d_string[len] = 0;
+						break;
+					// these are returned in native format, all sizes
+					case IIAPI_INT_TYPE:
+					case IIAPI_FLT_TYPE:
+						memcpy(data, databuf[i].dv_value, desc[i].ds_length);
+						break;
+					default:
+						_verbose_handler(result->conn,"can't handle column type = %d\n",desc[i].ds_dataType);
+					}
+			}
+			_dbd_row_finalize(result, row, count);
+		}else{
+			_verbose_handler(result->conn,"failed to allocate row; aborting\n");
+			break;
+		}
 	}
 	
-	return 0; /* 0 on error, 1 on successful fetchrow */
+	result->numrows_matched = count;
+	if( (resized = realloc(result->rows, count*sizeof(dbi_row_t*))) )
+		result->rows = resized;
+	
+	// don't need this any more
+	ingres_close(pres->stmtHandle);
+	pres->stmtHandle = NULL;
+	
+	for(i = 0; i < result->numfields; ++i)
+		free(databuf[i].dv_value);
+	free(databuf);
+	
+	return retval;
 }
 
-int ingres_close(II_PTR hdl) {
-    IIAPI_STATUS status;
-	IIAPI_CLOSEPARM closeParm;
-
-	if(hdl){
-		closeParm.cl_genParm.gp_callback = NULL;
-		closeParm.cl_genParm.gp_closure = NULL;
-		closeParm.cl_stmtHandle = hdl;
-	    fprintf(stderr, "closing stmtHandle %#x...\n", hdl);
-		IIapi_close(&closeParm);
-		status = ingres_wait(NULL, &closeParm.cl_genParm);
-		return status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR;
-	}
-	return 0;
+int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) {
+	return result->result_state == ROWS_RETURNED; /* 0 on error, 1 on successful fetchrow */
 }
 
 int dbd_free_query(dbi_result_t *result) {
@@ -428,7 +519,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	ingres_conn_t *iconn = conn->connection;
 	dbi_result_t *res = NULL;
 	ingres_result_t *pres;
-	int i;
+	int i, matchedRows, affectedRows;
     IIAPI_QUERYPARM	queryParm;
     IIAPI_GETQINFOPARM gqParm;
 	IIAPI_GETDESCRPARM gdParm;
@@ -451,42 +542,43 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	if(status == IIAPI_ST_NO_DATA)
 		_verbose_handler(conn,"(IIAPI_ST_NO_DATA: expected data, but none returned)\n");
 	if (status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
-
+		    
 		gdParm.gd_genParm.gp_callback = NULL;
 		gdParm.gd_genParm.gp_closure = NULL;
 		gdParm.gd_stmtHandle = queryParm.qy_stmtHandle;
 		IIapi_getDescriptor(&gdParm);
     	status = ingres_wait(conn, &gdParm.gd_genParm);
 		if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
-			// stash pointer to descriptor array, needed later when fetching fields
-	    	// fetch the number of affected rows 
-	    	gqParm.gq_genParm.gp_callback = NULL;
-	    	gqParm.gq_genParm.gp_closure = NULL;
-	    	gqParm.gq_stmtHandle = queryParm.qy_stmtHandle;
-	    	IIapi_getQueryInfo(&gqParm);
-		    status = ingres_wait(conn, &gqParm.gq_genParm);
-			
-			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR && !(gqParm.gq_mask & IIAPI_GQ_ROW_COUNT))
-				_verbose_handler(conn,"(no row count available)\n");
-			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR && (gqParm.gq_mask & IIAPI_GQ_ROW_COUNT)){
-				_verbose_handler(conn,"gq_rowCount = %d\n",gqParm.gq_rowCount);
-			
-				// if descriptorCount is zero, no data can be expected
-				// create result struct anyway
-				if(!gdParm.gd_descriptorCount){
-					_verbose_handler(conn,"gd_descriptorCount is ZERO, closing stmtHandle now\n");
-					ingres_close(queryParm.qy_stmtHandle);
-					pres = NULL;
-				}else{
-					_verbose_handler(conn,"new result set, stmtHandle = %#x\n",queryParm.qy_stmtHandle);
-					pres = malloc(sizeof(ingres_result_t));
-					pres->stmtHandle = queryParm.qy_stmtHandle;
-					pres->dataDesc = gdParm.gd_descriptor;
-				}
+			// if descriptorCount is zero, no data can be expected
+			// create result struct anyway
+
+			if(!gdParm.gd_descriptorCount){
+		    	// fetch the number of affected rows 
+		    	gqParm.gq_genParm.gp_callback = NULL;
+		    	gqParm.gq_genParm.gp_closure = NULL;
+		    	gqParm.gq_stmtHandle = queryParm.qy_stmtHandle;
+		    	IIapi_getQueryInfo(&gqParm);
+			    status = ingres_wait(conn, &gqParm.gq_genParm);
+
+				if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR && (gqParm.gq_mask & IIAPI_GQ_ROW_COUNT)){
+					affectedRows = gqParm.gq_rowCount;
+					_verbose_handler(conn,"getQueryInfo: row count = %d\n",affectedRows);
+				}else
+					affectedRows = 0;
 				
-				res = _dbd_result_create(conn, pres, 
-						gdParm.gd_descriptorCount ? gqParm.gq_rowCount : 0, gqParm.gq_rowCount);
+				res = _dbd_result_create(conn, NULL, 0, affectedRows);
+				_verbose_handler(conn,"no descriptors, closing stmtHandle\n");
+				ingres_close(queryParm.qy_stmtHandle);
+			}else{
+				_verbose_handler(conn,"new result set, stmtHandle = %#x\n",queryParm.qy_stmtHandle);
+				pres = malloc(sizeof(ingres_result_t));
+				pres->stmtHandle = queryParm.qy_stmtHandle;
+				pres->dataDesc = gdParm.gd_descriptor;
+				
+				res = _dbd_result_create(conn, pres, INITIAL_ROWS, 0);
 				_dbd_result_set_numfields(res, gdParm.gd_descriptorCount);
+				
+				// fetch column information
 				for(i = 0, pdesc = gdParm.gd_descriptor; i < gdParm.gd_descriptorCount; ++i, ++pdesc){
 					unsigned short type;
 					unsigned int attribs;
@@ -497,10 +589,13 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 						pdesc->ds_length,pdesc->ds_precision,pdesc->ds_scale,type,attribs);
 					_dbd_result_add_field(res, i, pdesc->ds_columnName, type, attribs);
 				}
-			
+				
+				// we have no choice but to fetch all result data now, because
+				// that is the only way we can report the correct row count
+				// as a property of the result set.
+				ingres_results(res);
 			}
 		}
-
 	}
 	return res;
 }
@@ -609,13 +704,13 @@ void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned 
 	case IIAPI_CHR_TYPE: // deprecated
 	case IIAPI_CHA_TYPE:
 	case IIAPI_LTXT_TYPE:
-	case IIAPI_LOGKEY_TYPE:
-	case IIAPI_TABKEY_TYPE:
 	// Ingres-native types, must be converted
 	case IIAPI_DEC_TYPE: // packed decimal; use convertData or formatData
 	case IIAPI_MNY_TYPE: // Ingres money; use convertData or formatData
 		_type = DBI_TYPE_STRING;
 		break;
+	case IIAPI_LOGKEY_TYPE:
+	case IIAPI_TABKEY_TYPE:
 	// variable length binary string
 	case IIAPI_LBYTE_TYPE:
 	case IIAPI_VBYTE_TYPE:

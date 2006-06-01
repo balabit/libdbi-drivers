@@ -26,14 +26,6 @@
 
 #define _GNU_SOURCE /* we need asprintf */
 
-#ifndef HAVE_ATOLL
-long long atoll(const char *str);
-#endif
-
-#ifndef HAVE_STRTOLL
-long long strtoll(const char *nptr, char **endptr, int base);
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,7 +48,7 @@ static const dbi_info_t driver_info = {
 	__DATE__
 };
 
-static const char *custom_functions[] = {NULL}; // TODO
+static const char *custom_functions[] = {NULL};
 static const char *reserved_words[] = INGRES_RESERVED_WORDS;
 
 /* encoding strings, array is terminated by a pair of empty strings */
@@ -69,13 +61,19 @@ static II_PTR envHandle = NULL;
 
 // quite arbitrary row count that we initially allocate, increasing as necessary.
 // needed because Ingres can't provide a row count prior to fetching data.
-#define INITIAL_ROWS 50
-#define ROW_FACTOR 4 // multiply by this factor when we fill row array
+#define INITIAL_ROWS	50
+#define ROW_FACTOR		4 // multiply by this factor when we fill row array
+
+#define SYS_CATALOGS	"iidbdb" // database name for system catalogs
+#define NO_AUTOCOMMIT	"0" // mnemonic value for option
+
+#define AUTOCOMMIT_ON(C) (((ingres_conn_t*)C->connection)->autoTranHandle != NULL)
 
 typedef struct {
 	II_PTR connHandle;
 	II_PTR autoTranHandle;
 	II_LONG sizeAdvise; // advised buffer size for blob (long) types
+	dbi_conn_t *sysConn; // used for querying system catalogs
 } ingres_conn_t;
 
 typedef struct {
@@ -84,9 +82,11 @@ typedef struct {
 } ingres_result_t;
 
 /* forward declarations of internal functions */
-void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned int *attribs);
-int _dbd_real_connect(dbi_conn_t *conn, const char *db);
-void _dbd_geterror(dbi_conn_t *conn, II_PTR errorHandle);
+static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PTR *tranHandle);
+static void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned int *attribs);
+static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocommit);
+static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PTR *tranHandle);
+void ingres_error(dbi_conn_t *conn, II_PTR errorHandle);
 
 // months.gperf.c
 struct month *in_word_set (register const char *str, register unsigned int len);
@@ -96,19 +96,17 @@ static IIAPI_STATUS ingres_wait(dbi_conn_t *conn, IIAPI_GENPARM *pgp){
 
 	for( waitParm.wt_timeout = -1 ; ! pgp->gp_completed ; )
 		IIapi_wait(&waitParm);
-	_dbd_geterror(conn, pgp->gp_errorHandle);
+	ingres_error(conn, pgp->gp_errorHandle);
 	return pgp->gp_status;
 }
 
 static void ingres_close(II_PTR hdl) {
 	IIAPI_STATUS status;
-	IIAPI_CLOSEPARM closeParm;
+	IIAPI_CLOSEPARM closeParm = {{NULL, NULL}};
 
 	if(hdl){
-		closeParm.cl_genParm.gp_callback = NULL;
-		closeParm.cl_genParm.gp_closure = NULL;
 		closeParm.cl_stmtHandle = hdl;
-		fprintf(stderr, "closing stmtHandle %#x...\n", hdl);
+		_verbose_handler(NULL, "closing stmtHandle %#x...\n", hdl);
 		IIapi_close(&closeParm);
 		ingres_wait(NULL, &closeParm.cl_genParm);
 	}
@@ -118,17 +116,12 @@ static time_t ingres_date(char *raw){
 	struct tm unixtime;
 	char *p = raw, *q, sep;
 
-	int check_time = 1;
-
 	//_verbose_handler(NULL,"date: '%s'\n",raw);
 	
 	unixtime.tm_sec = unixtime.tm_min = unixtime.tm_hour = 0;
-	//unixtime.tm_mday = 1; /* days are 1 through 31 */
-	//unixtime.tm_mon = 0;
-	//unixtime.tm_year = 70; /* can't start before Unix epoch */
 	unixtime.tm_isdst = -1;
 	
-	// Ingres default (US) date format: dd-mmm-yyyy [hh:mm:ss]
+	// parse Ingres default (US) date format: dd-mmm-yyyy [hh:mm:ss]
 	//for(p = raw; *p && !isdigit(*p); ++p)
 	//	;
 	if(isdigit(*p)){
@@ -151,7 +144,7 @@ static time_t ingres_date(char *raw){
 				++p;
 			if(*p){
 				*p = 0;
-				unixtime.tm_mon = in_word_set(q,p-q)->index;
+				unixtime.tm_mon = in_word_set(q,3)->index; // should work for long month names too
 				 //_verbose_handler(NULL,"month: %s -> %d ",q,unixtime.tm_mon);
 				++p;
 			}
@@ -162,29 +155,36 @@ static time_t ingres_date(char *raw){
 		unixtime.tm_year = atoi(p)-1900; //_verbose_handler(NULL,"year: %d\n",unixtime.tm_year);
 		while(isdigit(*p))
 			++p;
+
 		// skip space following date
 		while(isspace(*p))
 			++p;
 
 		// Ingres does not generate a time by itself, it's always preceded by a date.
-		if(*p){ // time is present
+		if(isdigit(*p)){ // time is present
+			// process hours
 		    unixtime.tm_hour = atoi(p); //_verbose_handler(NULL,"hour: %d ",unixtime.tm_hour);
 		    while(isdigit(*p))
 		    	++p;
 		    if(!*p){ _verbose_handler(NULL,"time ended after hour??",raw); return 0; }
 		    ++p; // skip separator
+
+			// process minutes
 		    unixtime.tm_min = atoi(p); //_verbose_handler(NULL,"min: %d ",unixtime.tm_min);
 		    while(isdigit(*p))
 		    	++p;
 		    if(!*p){ _verbose_handler(NULL,"time ended after minute??",raw); return 0; }
 		    ++p; // skip separator
+
+			// process seconds
 		    unixtime.tm_sec = atoi(p); //_verbose_handler(NULL,"sec: %d\n",unixtime.tm_sec);
 	
 		    /* check for a timezone suffix - Ingres does not output one, 
 		   its date/time is GMT unless a timezone is specified in parameters */
 			//while(isdigit(*p) || isspace(*p))
 			//	++p;
-		}
+		}else if(*p)
+			_verbose_handler(NULL,"bad time: '%s'",p);
 		/* output is UTC, not local time */
 		return timegm(&unixtime);
 	}else
@@ -207,7 +207,7 @@ int dbd_initialize(dbi_driver_t *driver) {
 	 * be added to the list of available drivers. */
 	IIAPI_INITPARM  initParm;
 
-	initParm.in_version = IIAPI_VERSION_3; 
+	initParm.in_version = IIAPI_VERSION_3;
 	initParm.in_timeout = -1;
 	IIapi_initialize( &initParm );
 	envHandle = initParm.in_envHandle;
@@ -217,11 +217,11 @@ int dbd_initialize(dbi_driver_t *driver) {
 }
 
 int dbd_connect(dbi_conn_t *conn) {
-	return _dbd_real_connect(conn, NULL);
+	return ingres_connect(conn, NULL, dbi_conn_get_option(conn, "ingres_autocommit"));
 }
 
 #define ERRMAX 1024
-void _dbd_geterror(dbi_conn_t *conn, II_PTR errorHandle){
+void ingres_error(dbi_conn_t *conn, II_PTR errorHandle){
 	static char *typestr[] = {"0","ERROR","WARNING","MESSAGE"};
 	char *msg, *p, buf[0x100];
 	int count, n;
@@ -277,19 +277,16 @@ static int ingres_option_str(dbi_conn_t *conn, IIAPI_SETCONPRMPARM *psc, II_LONG
 	return 1;
 }
 
-int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
+static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocommit) {
 	ingres_conn_t *iconn;
-	IIAPI_SETCONPRMPARM scParm;
-	IIAPI_CONNPARM connParm;
-	IIAPI_AUTOPARM acParm;
+	IIAPI_SETCONPRMPARM scParm = {{NULL, NULL}};
+	IIAPI_CONNPARM connParm = {{NULL, NULL}};
+	IIAPI_AUTOPARM acParm = {{NULL, NULL}};
 	IIAPI_STATUS status;
-	const char *autocommit = dbi_conn_get_option(conn, "ingres_autocommit");
-    
-	scParm.sc_genParm.gp_callback = NULL;
-	scParm.sc_genParm.gp_closure = NULL;
+
 	scParm.sc_connHandle = NULL; // later, envHandle, but currently that causes connect to fail (?!)
     
-    //_verbose_handler(NULL, "_dbd_real_connect: envHandle=%#x\n",envHandle);
+    //_verbose_handler(NULL, "ingres_connect: envHandle=%#x\n",envHandle);
 
     // see OpenAPI reference for meaning of these options. Numeric codes in iiapi.h
 	ingres_option_num(conn, &scParm, IIAPI_CP_CENTURY_BOUNDARY, "ingres_century_bdry"); // interpretation of 2-digit years
@@ -305,9 +302,7 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	ingres_option_str(conn, &scParm, IIAPI_CP_STRING_TRUNC, "ingres_string_trunc"); // overlong string behaviour
 	ingres_option_str(conn, &scParm, IIAPI_CP_TIMEZONE, "ingres_timezone");
 
-	connParm.co_genParm.gp_callback = NULL;
-	connParm.co_genParm.gp_closure = NULL;
-	connParm.co_target = dbi_conn_get_option(conn, "dbname");
+	connParm.co_target = db ? db : dbi_conn_get_option(conn, "dbname");
 	connParm.co_connHandle = scParm.sc_connHandle;
 	connParm.co_tranHandle = NULL;
 	connParm.co_username = dbi_conn_get_option(conn, "username");
@@ -318,15 +313,15 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	status = ingres_wait(conn, &connParm.co_genParm);
 
 	if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
-		_verbose_handler(conn, "connected, API level %d\n",connParm.co_apiLevel);
+		_verbose_handler(conn, "connected, target='%s', API level=%d\n",
+						 connParm.co_target, connParm.co_apiLevel);
 	    conn->connection = iconn = malloc(sizeof(ingres_conn_t));
 	    iconn->connHandle = connParm.co_connHandle;
 	    iconn->autoTranHandle = NULL;
 	    iconn->sizeAdvise = connParm.co_sizeAdvise;
+	    iconn->sysConn = NULL;
 		if(!autocommit || atoi(autocommit)){ // enable auto-commit by default
 	    	// set autocommit mode
-	    	acParm.ac_genParm.gp_callback = NULL;
-	    	acParm.ac_genParm.gp_closure = NULL;
 	    	acParm.ac_connHandle = connParm.co_connHandle;
 	    	acParm.ac_tranHandle = NULL;
 	    	IIapi_autocommit(&acParm);
@@ -345,44 +340,45 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 
 int dbd_disconnect(dbi_conn_t *conn) {
 	ingres_conn_t *iconn = conn->connection;
-	IIAPI_DISCONNPARM disconnParm;
-	IIAPI_AUTOPARM acParm;
+	IIAPI_DISCONNPARM disconnParm = {{NULL, NULL}};
+	IIAPI_AUTOPARM acParm = {{NULL, NULL}};
 	IIAPI_STATUS status;
     
-	if(iconn->autoTranHandle){
-		// exit autocommit mode
-		acParm.ac_genParm.gp_callback = NULL;
-		acParm.ac_genParm.gp_closure = NULL;
-		acParm.ac_connHandle = iconn->connHandle;
-		acParm.ac_tranHandle = iconn->autoTranHandle;
-		IIapi_autocommit(&acParm);
-		status = ingres_wait(conn, &acParm.ac_genParm);
-		if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR)
-			_verbose_handler(conn, "...exited autocommit\n");
-		else
-			_verbose_handler(conn, "...FAILED to exit autocommit\n");
+    if(iconn){
+	    if(iconn->sysConn)
+	    	dbi_conn_close(iconn->sysConn);
+	    
+		if(iconn->autoTranHandle){
+			// exit autocommit mode
+			acParm.ac_connHandle = iconn->connHandle;
+			acParm.ac_tranHandle = iconn->autoTranHandle;
+			IIapi_autocommit(&acParm);
+			status = ingres_wait(conn, &acParm.ac_genParm);
+			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR)
+				_verbose_handler(conn, "...exited autocommit\n");
+			else
+				_verbose_handler(conn, "...FAILED to exit autocommit\n");
+		}
+
+		disconnParm.dc_connHandle = iconn->connHandle;
+		_verbose_handler(conn, "disconnecting...\n");
+		IIapi_disconnect( &disconnParm );
+		ingres_wait(conn, &disconnParm.dc_genParm);
+	    
+		free(conn->connection);
+		conn->connection = NULL;
 	}
-			
-	disconnParm.dc_genParm.gp_callback = NULL;
-	disconnParm.dc_genParm.gp_closure = NULL;
-	disconnParm.dc_connHandle = iconn->connHandle;
-	_verbose_handler(conn, "disconnecting...\n");
-	IIapi_disconnect( &disconnParm );
-	ingres_wait(conn, &disconnParm.dc_genParm);
-    
-	free(conn->connection);
-	conn->connection = NULL;
 	return 0;
 }
 
 static int ingres_results(dbi_result_t *result){
 	ingres_result_t *pres = result->result_handle;
 	IIAPI_STATUS status;
-	IIAPI_GETCOLPARM gcParm;
+	IIAPI_GETCOLPARM gcParm = {{NULL, NULL}};
 	IIAPI_DESCRIPTOR *desc = pres->dataDesc;
 	IIAPI_DATAVALUE *databuf;
 	IIAPI_CONVERTPARM convParm;
-	dbi_row_t *row = NULL;
+	dbi_row_t *row;
 	dbi_data_t *data;
 	dbi_row_t **resized;
 	int i, j, retval = 0, len;
@@ -390,22 +386,24 @@ static int ingres_results(dbi_result_t *result){
 	char *val;
 
 	// no random access, we have to fetch row data sequentially using getColumns
-	// therefore, grab all rows now. -- yes, this is less than ideal.
+	// therefore, grab all rows now.
+
+	// set up a destination block for each field
 	databuf = malloc(result->numfields*sizeof(IIAPI_DATAVALUE));
 	if(!databuf) return 0;
-	for(i = 0; i < result->numfields; ++i)
-		if(!(databuf[i].dv_value = malloc(desc[i].ds_length))) // maximum length
-			return 0; // FIXME: it can leak if we fail :)
+	for(i = 0; i < result->numfields; ++i){
+		databuf[i].dv_length = desc[i].ds_length;
+		if(!(databuf[i].dv_value = malloc(desc[i].ds_length+1)))
+			goto err;
+	}
 
-	gcParm.gc_genParm.gp_callback = NULL;
-	gcParm.gc_genParm.gp_closure = NULL;
 	gcParm.gc_stmtHandle = pres->stmtHandle;
 	gcParm.gc_rowCount = 1;
 	gcParm.gc_columnCount = result->numfields;
 	gcParm.gc_columnData = databuf;
 	gcParm.gc_rowsReturned = 0;
 	gcParm.gc_moreSegments = 0;
-	_verbose_handler(result->conn,"calling getColumns, columnCount=%d, stmtHandle=%#x\n", 
+	_verbose_handler(result->conn,"result columnCount=%d, stmtHandle=%#x\n", 
 					 gcParm.gc_columnCount, gcParm.gc_stmtHandle);
     
 	limit = result->numrows_matched;
@@ -432,18 +430,18 @@ static int ingres_results(dbi_result_t *result){
 			_verbose_handler(result->conn,"getColumns returned status %d; aborting\n",status);
 		    break;
 		}else if(gcParm.gc_moreSegments){
-			_verbose_handler(result->conn,"multisegment (long) columns not yet supported; aborting\n");
+			_verbose_handler(result->conn,"long/blob columns not yet supported; aborting\n");
 			break;
 		}
 
 		if((row = _dbd_row_allocate(result->numfields))){
 			for(i = 0, data = row->field_values; i < result->numfields; ++i, ++data){
-				//_verbose_handler(result->conn,"  fetch field %d\n",i);
-				row->field_sizes[i] = 0; // will be set to strlen later on for strings
-				if(databuf[i].dv_null)
+				row->field_sizes[i] = 0;
+				if(databuf[i].dv_null){
 					_set_field_flag(row, i, DBI_VALUE_NULL, 1);
-				else
-					switch(desc[i].ds_dataType){					
+					//_verbose_handler(result->conn,"  [%d] is NULL\n",i);
+				}else
+					switch(desc[i].ds_dataType){
 					//case IIAPI_HNDL_TYPE: // can't do anything with this
 					// 'national character sets' -- UTF-16 strings
 					case IIAPI_NCHA_TYPE:
@@ -458,31 +456,32 @@ static int ingres_results(dbi_result_t *result){
 						convParm.cv_dstDesc.ds_dataType = IIAPI_CHA_TYPE;
 						convParm.cv_dstDesc.ds_nullable = FALSE;
 						convParm.cv_dstDesc.ds_length = desc[i].ds_length + desc[i].ds_precision + 32; // include plenty of slop
-						convParm.cv_dstDesc.ds_precision = 0;
+						convParm.cv_dstDesc.ds_precision =
 						convParm.cv_dstDesc.ds_scale = 0;
 						convParm.cv_dstDesc.ds_columnType = IIAPI_COL_TUPLE;
-						convParm.cv_dstValue.dv_null = FALSE;
 						convParm.cv_dstValue.dv_length = convParm.cv_dstDesc.ds_length;
 						convParm.cv_dstValue.dv_value = val = malloc(convParm.cv_dstValue.dv_length+1);
 						IIapi_convertData(&convParm);
 						len = convParm.cv_dstValue.dv_length;
 						if(convParm.cv_status > IIAPI_ST_SUCCESS){
 							_verbose_handler(result->conn,"could not convertData from column type %d\n",desc[i].ds_dataType);
+							free(val);
+							break; // should do something more drastic
 						}else if(desc[i].ds_dataType == IIAPI_DTE_TYPE){
 							val[len] = 0;
 							data->d_datetime = ingres_date(val);
-						}else{
-							// strip trailing blanks from converted value,
-							// since we had to overestimate the dst field width
-							while(len > 0 && val[len-1] == ' ')
-								--len;
-							
-							row->field_sizes[i] = len;
-							data->d_string = malloc(len+1); // FIXME: error check
-							memcpy(data->d_string, val, len);
-							data->d_string[len] = 0;
+							//_verbose_handler(result->conn,"  [%d] date string %d bytes\n", i,len);
+							free(val);
+							break;
 						}
-						free(val);
+						// strip trailing blanks from converted value,
+						// since we had to overestimate the dst field width
+						while(len && val[len-1] == ' ')
+							--len;							
+						val[len] = 0;
+						data->d_string = val; // use converted data block
+						row->field_sizes[i] = len;
+						//_verbose_handler(result->conn,"  [%d] converted string %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
 						break;
 					// the blob types aren't implemented by fetch yet (TODO)
 					//case IIAPI_LBYTE_TYPE:
@@ -492,32 +491,35 @@ static int ingres_results(dbi_result_t *result){
 					case IIAPI_VCH_TYPE:
 					case IIAPI_VBYTE_TYPE:
 					case IIAPI_TXT_TYPE:
-						// the following experiment shows that the length (first 2 bytes)
-						// is encoded little-endian, let's assume host native (short)
 						//for(j=0;j<databuf[i].dv_length;++j)
 						//	_verbose_handler(result->conn,"%02x ",((unsigned char*)databuf[i].dv_value)[j]);
 						//_verbose_handler(result->conn,"\n");
+						// assume length (first 2 bytes of datum) is host native (short)
 						row->field_sizes[i] = len = *(short*)databuf[i].dv_value;
-						data->d_string = malloc(len+1); // FIXME: error check
-						memcpy(data->d_string, (char*)databuf[i].dv_value + 2, len);
-						data->d_string[len] = 0;
+						if((data->d_string = malloc(len+1))){
+							memcpy(data->d_string, (char*)databuf[i].dv_value + 2, len);
+							data->d_string[len] = 0; // NUL-terminate it, in case someone wants to pretend it's a string
+						}
+						//_verbose_handler(result->conn,"  [%d] variable size %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
 						break;
 					// fixed string/binary types
 					case IIAPI_BYTE_TYPE:
 					case IIAPI_CHR_TYPE:
 					case IIAPI_CHA_TYPE:
-					// oddballs, try to handle anyway
 					case IIAPI_LOGKEY_TYPE:
 					case IIAPI_TABKEY_TYPE:
 						row->field_sizes[i] = len = databuf[i].dv_length;
-						data->d_string = malloc(len+1); // FIXME: error check
-						memcpy(data->d_string, databuf[i].dv_value, len);
-						data->d_string[len] = 0;
+						data->d_string = databuf[i].dv_value; // just copy pointer to the fetched block
+						databuf[i].dv_value = malloc(desc[i].ds_length+1); // replace block for future rows
+						data->d_string[len] = 0; // NUL-terminate the string
+						//_verbose_handler(result->conn,"  [%d] fixed size %d bytes (desc %d bytes)\n",i,databuf[i].dv_length,desc[i].ds_length);
 						break;
 					// these are returned in native format, all sizes
 					case IIAPI_INT_TYPE:
 					case IIAPI_FLT_TYPE:
-						memcpy(data, databuf[i].dv_value, desc[i].ds_length);
+						// getColumns already copied data
+						//_verbose_handler(result->conn,"  [%d] copying %d bytes\n",i,databuf[i].dv_length);
+						memcpy(&row->field_values[i], databuf[i].dv_value, databuf[i].dv_length);
 						break;
 					default:
 						_verbose_handler(result->conn,"can't handle column type = %d\n",desc[i].ds_dataType);
@@ -530,16 +532,19 @@ static int ingres_results(dbi_result_t *result){
 		}
 	}
 	
-	result->numrows_matched = count;
-	if( (resized = realloc(result->rows, count*sizeof(dbi_row_t*))) )
-		result->rows = resized;
-	
-	// don't need this any more
+	// Don't need this handle any more.
 	ingres_close(pres->stmtHandle);
 	pres->stmtHandle = NULL;
-	
+
+	result->numrows_matched = count;
+	// resize row array to match actual count (FIXME: work out why this crashes)
+	//if( (resized = realloc(result->rows, count*sizeof(dbi_row_t*))) )
+	//	result->rows = resized;
+
+err: // clean up allocations
 	for(i = 0; i < result->numfields; ++i)
-		free(databuf[i].dv_value);
+		if(databuf[i].dv_value)
+			free(databuf[i].dv_value);
 	free(databuf);
 	
 	return retval;
@@ -553,59 +558,106 @@ int dbd_free_query(dbi_result_t *result) {
 	if(result->result_handle){
 		ingres_close(((ingres_result_t*)result->result_handle)->stmtHandle);
 		free(result->result_handle);
+		result->result_handle = NULL;
 	}
 	return 0;
 }
 
 int dbd_goto_row(dbi_result_t *result, unsigned long long rowidx) {
-	/* libpq doesn't have to do anything, the row index is specified when
-	 * fetching fields */
 	return 1;
 }
 
-int dbd_get_socket(dbi_conn_t *conn)
-{
+int dbd_get_socket(dbi_conn_t *conn){
 	return 0; // we don't use socket
 }
 
 const char *dbd_get_encoding(dbi_conn_t *conn){
-	  return NULL; // TODO
+	return NULL; // TODO
 }
 
 const char* dbd_encoding_to_iana(const char *db_encoding) {
-  /* don't know how to translate, return original encoding */
-  return db_encoding; //TODO
+	/* don't know how to translate, return original encoding */
+	return db_encoding; //TODO
 }
 
 const char* dbd_encoding_from_iana(const char *iana_encoding) {
-  /* don't know how to translate, return original encoding */
-  return iana_encoding; //TODO
+	/* don't know how to translate, return original encoding */
+	return iana_encoding; //TODO
+}
+
+static int ingres_commit(dbi_conn_t *conn, II_PTR tranHandle){
+	IIAPI_COMMITPARM cmParm = {{NULL, NULL}};
+	
+    cmParm.cm_tranHandle = tranHandle;
+	IIapi_commit(&cmParm);
+    return ingres_wait(conn, &cmParm.cm_genParm) == IIAPI_ST_SUCCESS;
+}
+
+static int ingres_rollback(dbi_conn_t *conn, II_PTR tranHandle){
+	IIAPI_ROLLBACKPARM rbParm = {{NULL, NULL}};
+	
+    rbParm.rb_tranHandle = tranHandle;
+    rbParm.rb_savePointHandle = NULL;
+	IIapi_rollback(&rbParm);
+    return ingres_wait(conn, &rbParm.rb_genParm) == IIAPI_ST_SUCCESS;
+}
+
+static dbi_result_t *ingres_sys_query(dbi_conn_t *conn, const char *sql) {
+	II_PTR tranHandle;
+	dbi_result_t *res = NULL;
+	ingres_conn_t *iconn = conn->connection;
+	
+	if(!iconn->sysConn){
+		// note that we need to keep the system connection around,
+		// because closing it prematurely will kill result sets returned by
+		// dbd_list_dbs() & dbd_list_tables()
+		// (it gets disconnected when the main connection is disconnected)
+		iconn->sysConn = dbi_conn_new(driver_info.name);
+		if(ingres_connect(iconn->sysConn, SYS_CATALOGS, NO_AUTOCOMMIT) < 0){
+			_verbose_handler(conn,"can't connect to '%s'\n",SYS_CATALOGS);
+			return NULL;
+		}
+	}
+	res = ingres_query(iconn->sysConn, sql, &tranHandle);
+	_verbose_handler(conn,"ingres_sys_query: tranHandle=%#x\n",tranHandle);
+	if(!res) _verbose_handler(conn,"no result for '%s'??\n",sql);
+	ingres_rollback(iconn->sysConn, tranHandle);
+	return res;
 }
 
 char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) {
-	// TODO: obtain this from iidbcapabilities catalog, INGRES/SQL_LEVEL
-	*versionstring = 0;
-	return versionstring;
+	char *str = "0";
+	dbi_result_t *res = ingres_query(conn, "SELECT dbmsinfo('_version')", NULL);
+	if(res && dbi_result_next_row(res)){
+		strncpy(versionstring, dbi_result_get_string_idx(res,1), VERSIONSTRING_LENGTH);
+		versionstring[VERSIONSTRING_LENGTH-1] = 0; // make sure of NUL-termination
+		str = versionstring;
+	}
+	if(res) dbi_result_free(res);
+	return str;
 }
 
 dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
-	// obtain from iidatabase_info catalog
-/* FIXME: need to connect to iidbdb first
-	if (pattern == NULL) {
-		return dbd_query(conn, "SELECT database_name FROM iidatabase_info");
+	static char *select = "SELECT database_name FROM iidatabase_info";
+	char *sql = select;
+	dbi_result_t *res = NULL;
+	if(!pattern || asprintf(&sql, "%s WHERE database_name LIKE '%s'",select,pattern) > 0){
+		res = ingres_sys_query(conn, sql);
+		if(pattern) free(sql);
 	}
-	else {
-		asprintf(&sql_cmd, "SELECT database_name FROM iidatabase_info WHERE datname LIKE '%s'", pattern);
-		res = dbd_query(conn, sql_cmd);
-		free(sql_cmd);
-		return res;
-	}
-*/
-	return NULL; // TODO
+	return res;
 }
 
 dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *pattern) {
-	return NULL; // TODO
+	// FIXME: returns tables for this connection's database only (db parameter is ignored)
+	static char *select = "SELECT table_name FROM iitables WHERE table_name NOT LIKE 'ii%'";
+	char *sql = select;
+	dbi_result_t *res = NULL;
+	if(!pattern || asprintf(&sql, "%s AND table_name LIKE '%s'",select,pattern) > 0){
+		res = ingres_query(conn, sql, NULL);
+		if(pattern) free(sql);
+	}
+	return res;
 }
 
 size_t dbd_quote_string(dbi_driver_t *driver, const char *orig, char *dest) {
@@ -647,19 +699,24 @@ size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char* orig, size_t from
 	return DBI_LENGTH_ERROR;
 }
 
-dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
+// note transaction handle is returned in tranHandle parameter, if not NULL
+// this is only really of use for non-Autocommit connections (such as system catalog access).
+static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PTR *tranHandle) {
 	ingres_conn_t *iconn = conn->connection;
 	dbi_result_t *res = NULL;
-	ingres_result_t *pres;
+	ingres_result_t *pres = NULL;
 	int i, matchedRows, affectedRows;
-	IIAPI_QUERYPARM	queryParm;
-	IIAPI_GETQINFOPARM gqParm;
-	IIAPI_GETDESCRPARM gdParm;
+	IIAPI_QUERYPARM	queryParm = {{NULL, NULL}};
+	IIAPI_GETQINFOPARM gqParm = {{NULL, NULL}};
+	IIAPI_GETDESCRPARM gdParm = {{NULL, NULL}};
 	IIAPI_DESCRIPTOR *pdesc;
 	IIAPI_STATUS status;
-    
-	queryParm.qy_genParm.gp_callback = NULL;
-	queryParm.qy_genParm.gp_closure = NULL;
+
+	if(!iconn || !iconn->connHandle){
+		_verbose_handler(conn,"whoa, query attempted without a connection\n");
+		return NULL;
+	}
+
 	queryParm.qy_connHandle = iconn->connHandle;
 	queryParm.qy_queryType = IIAPI_QT_QUERY;
 	queryParm.qy_queryText = statement;
@@ -668,15 +725,13 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	queryParm.qy_stmtHandle = NULL;
 	IIapi_query( &queryParm );
 	status = ingres_wait(conn, &queryParm.qy_genParm);
-   
-	// status could be IIAPI_ST_NO_DATA here, which we treat as harmless.
-	// libdbi docs say only return NULL in case of error. (An empty SELECT is fine.)
+	if(tranHandle) *tranHandle = queryParm.qy_tranHandle;
+
 	if(status == IIAPI_ST_NO_DATA)
 		_verbose_handler(conn,"(IIAPI_ST_NO_DATA: expected data, but none returned)\n");
-	if (status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
-		    
-		gdParm.gd_genParm.gp_callback = NULL;
-		gdParm.gd_genParm.gp_closure = NULL;
+
+	if (status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_NO_DATA){
+
 		gdParm.gd_stmtHandle = queryParm.qy_stmtHandle;
 		IIapi_getDescriptor(&gdParm);
     	status = ingres_wait(conn, &gdParm.gd_genParm);
@@ -685,9 +740,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 			// create result struct anyway
 
 			if(!gdParm.gd_descriptorCount){
-		    	// fetch the number of affected rows 
-		    	gqParm.gq_genParm.gp_callback = NULL;
-		    	gqParm.gq_genParm.gp_closure = NULL;
+		    	// fetch the number of affected rows
 		    	gqParm.gq_stmtHandle = queryParm.qy_stmtHandle;
 		    	IIapi_getQueryInfo(&gqParm);
 			    status = ingres_wait(conn, &gqParm.gq_genParm);
@@ -699,7 +752,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 					affectedRows = 0;
 				
 				res = _dbd_result_create(conn, NULL, 0, affectedRows);
-				_verbose_handler(conn,"no descriptors, closing stmtHandle\n");
+				_verbose_handler(conn,"no descriptors\n");
 				ingres_close(queryParm.qy_stmtHandle);
 			}else{
 				_verbose_handler(conn,"new result set, stmtHandle = %#x\n",queryParm.qy_stmtHandle);
@@ -715,8 +768,8 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 					unsigned short type;
 					unsigned int attribs;
 					ingres_classify_field(&gdParm.gd_descriptor[i], &type, &attribs);
-					_verbose_handler(conn,"field %d: '%s' ds_dataType=%d ds_nullable=%d"
-						" ds_length=%d ds_precision=%d ds_scale=%d dbiType=%d dbiAttribs=%#x\n",
+					_verbose_handler(conn,"field %d: '%s' dataType=%d nullable=%d"
+						" length=%d precision=%d scale=%d dbiType=%d dbiAttr=%#x\n",
 						i,pdesc->ds_columnName,pdesc->ds_dataType,pdesc->ds_nullable,
 						pdesc->ds_length,pdesc->ds_precision,pdesc->ds_scale,type,attribs);
 					_dbd_result_add_field(res, i, pdesc->ds_columnName, type, attribs);
@@ -729,7 +782,14 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 			}
 		}
 	}
+	// must have been an error.
+	if(!res)
+		ingres_close(queryParm.qy_stmtHandle);
 	return res;
+}
+
+dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
+	return ingres_query(conn, statement, NULL);
 }
 
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) {
@@ -738,14 +798,14 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, s
 }
 
 const char *dbd_select_db(dbi_conn_t *conn, const char *db) {
-/* Ingres doesn't support switching databases without reconnecting */
+	/* Ingres doesn't support switching databases without reconnecting */
 	if (!db || !*db)
 		return NULL;
 	
 	if (conn->connection)
 		dbd_disconnect(conn);
 	
-	if (_dbd_real_connect(conn, db))
+	if (ingres_connect(conn, db, dbi_conn_get_option(conn, "ingres_autocommit")))
 		return NULL;
 	
 	return db;
@@ -754,52 +814,65 @@ const char *dbd_select_db(dbi_conn_t *conn, const char *db) {
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) {
 	/* put error number into errno, error string into errstr
 	 * return 0 if error, 1 if errno filled, 2 if errstr filled, 3 if both errno and errstr filled */
-	// for now, just assume errstr was set up by a _dbd_geterror call
+	// for now, just assume errstr was set up by a ingres_error call
 	// FIXME: we really need to be able to stash an errorhandle instead (after each API call), and use it here
 	return 2;
 }
 
 unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) {
-	unsigned long long seq_last = 0;
-	char *sql_cmd;
-	char *rawdata;
-	dbi_result_t *result;
+	// This function cannot be used in autocommit mode.
 
-	asprintf(&sql_cmd, "SELECT CURRENT VALUE FOR %s", sequence);
-	if (!sql_cmd) return 0;
-	result = dbd_query(conn, sql_cmd);
-	free(sql_cmd);
+	// in particular, it cannot tell you anything about the sequence value used
+	// in a previous INSERT(NEXT VALUE FOR ...) statement, because other transactions
+	// may have used the same sequence since then.
+	// Ingres won't allow this function in an unrelated transaction.
 
-	if (result) {
-		// TODO
-		dbi_result_free((dbi_result)result);
-	}
+	// To use sequences to identify INSERTed rows, first obtain the NEXT VALUE
+	// using the dbi function (which will be an individual transaction), 
+	// then use that sequence value directly in a separate INSERT transaction.
 
-	return seq_last;
+	long seq = 0;
+	char *sql;
+	dbi_result_t *res;
+
+	asprintf(&sql, "SELECT CURRENT VALUE FOR %s", sequence);
+	res = ingres_query(conn, sql, NULL);
+	if(res && dbi_result_next_row(res))
+		seq = dbi_result_get_int_idx(res,1);
+	else if(AUTOCOMMIT_ON(conn))
+		_verbose_handler(conn,"dbi_conn_sequence_last() can't work in autocommit mode."
+						 " See libdbd-ingres driver docs for a workaround.\n");
+	if(res) dbi_result_free(res);
+	return seq;
+	
+	return 0;
 }
 
 unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) {
-	unsigned long long seq_next = 0;
-	char *sql_cmd;
-	char *rawdata;
-	dbi_result_t *result;
+	long seq = 0;
+	char *sql;
+	dbi_result_t *res;
+	II_PTR tran;
 
-	asprintf(&sql_cmd, "SELECT NEXT VALUE FOR %s", sequence);
-	if (!sql_cmd) return 0;
-	result = dbd_query(conn, sql_cmd);
-	free(sql_cmd);
-
-	if (result) {	
-		// TODO
-		dbi_result_free((dbi_result)result);
-	}
-
-	return seq_next;
+	asprintf(&sql, "SELECT NEXT VALUE FOR %s", sequence);
+	res = ingres_query(conn, sql, &tran);
+	if(res && dbi_result_next_row(res))
+		seq = dbi_result_get_int_idx(res,1);
+	if(res) dbi_result_free(res);
+	//if(!AUTOCOMMIT_ON(conn))  // you probably don't want this hack
+	//	ingres_commit(conn, tran);
+	return seq;
 }
 
 int dbd_ping(dbi_conn_t *conn) {
-	// TODO
-	return 0;
+	long test = 0;
+	dbi_result_t *res;
+
+	res = ingres_query(conn, "SELECT 1", NULL);
+	if(res && dbi_result_next_row(res))
+		test = dbi_result_get_int_idx(res,1);
+	if(res) dbi_result_free(res);
+	return test;
 }
 
 /* CORE DATA FETCHING STUFF */
@@ -828,19 +901,6 @@ void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned 
 		case 8: _attribs = DBI_DECIMAL_SIZE8; break;
 		}
 		break;
-	// variable length char string; segment length is first two bytes of datum
-	case IIAPI_VCH_TYPE:
-	case IIAPI_LVCH_TYPE:
-	case IIAPI_TXT_TYPE: // deprecated
-	// fixed length char string
-	case IIAPI_CHR_TYPE: // deprecated
-	case IIAPI_CHA_TYPE:
-	case IIAPI_LTXT_TYPE:
-	// Ingres-native types, must be converted
-	case IIAPI_DEC_TYPE: // packed decimal; use convertData or formatData
-	case IIAPI_MNY_TYPE: // Ingres money; use convertData or formatData
-		_type = DBI_TYPE_STRING;
-		break;
 	case IIAPI_LOGKEY_TYPE:
 	case IIAPI_TABKEY_TYPE:
 	// variable length binary string
@@ -850,11 +910,22 @@ void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned 
 	case IIAPI_BYTE_TYPE:
 		_type = DBI_TYPE_BINARY;
 		break;
+	// variable length char string; segment length is first two bytes of datum
+	case IIAPI_VCH_TYPE:
+	case IIAPI_LVCH_TYPE:
+	case IIAPI_TXT_TYPE: // deprecated
+	// fixed length char string
+	case IIAPI_CHR_TYPE: // deprecated
+	case IIAPI_CHA_TYPE:
+	case IIAPI_LTXT_TYPE:
 	// fixed length 'national character set' UTF-16 (wide) char string (TODO)
 	case IIAPI_NCHA_TYPE:
 	// variable length UTF-16 string; first 2 bytes are length
 	case IIAPI_NVCH_TYPE:
 	case IIAPI_LNVCH_TYPE:
+	// Ingres-native types, must be converted
+	case IIAPI_DEC_TYPE: // packed decimal; use convertData or formatData
+	case IIAPI_MNY_TYPE: // Ingres money; use convertData or formatData
 		_type = DBI_TYPE_STRING; //TODO
 		break;
 	case IIAPI_DTE_TYPE: // Ingres date; use convertData or formatData

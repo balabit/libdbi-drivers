@@ -201,9 +201,10 @@
 		the standard options of
 		<varname>username</varname>, <varname>password</varname> and
 		<varname>dbname</varname>. The latter parameter is in Ingres syntax,
-		[node_id::]dbname[/svr_class] - see Ingres documentation for details.
+		<literal>[node_id::]dbname[/svr_class]</literal> - 
+		see Ingres documentation for details.
 		(When running as the Ingres admin user on the same host as the DBMS,
-		only the dbname is normally required.)
+		only the <literal>dbname</literal> is normally required.)
 		Sensible defaults will be used for all unspecified options.
 	</para>
 	<para>
@@ -215,13 +216,9 @@
 			<term>ingres_autocommit</term>
 			<listitem>
 				<para>
-					'Autocommit' mode
-					is enabled by default for the Ingres DBMS connection.
-					In this mode, every query is committed as an individual transaction.
-					With autocommit disabled (0), a transaction is begun at
-					connection, and must be committed or rolled back
-					explicitly (see Ingres OpenAPI and SQL references for more
-					information).
+					Set this option to <emphasis>string value</emphasis> "0" 
+					to disable Ingres autocommit mode
+					for the connection (it is enabled by default).
 				</para>
 			</listitem>
 		</varlistentry>
@@ -236,7 +233,49 @@
 		extra functionality may be utilized for particular drivers.
 	</para>
 	<para>
-		
+		'Autocommit' mode is enabled by default for the DBMS connection.
+		In this mode, every query is committed as an individual transaction.
+		With autocommit disabled (see <literal>ingres_autocommit</literal>),
+		a transaction is begun by the first statement after connection, commit
+		or rollback. The transaction remains open until the next explicit commit,
+		rollback or disconnection (which implies commit). 
+		See Ingres OpenAPI and SQL documentation for more information.
+		The current version of the driver has some problems with autocommit disabled,
+		this needs to be investigated. (Without libdbi <function>commit()</function> and <function>rollback()</function> functions,
+		it may not be possible to fix.)
+	</para>
+	<para>
+		<function>dbi_conn_sequence_last()</function> is not usable in Ingres' autocommit mode
+		(the default). To use sequences to identify INSERTed rows, first 
+		obtain the NEXT VALUE using <function>dbi_conn_sequence_next()</function> then use that 
+		sequence value directly in a separate INSERT transaction.
+	</para>
+	<para>
+		Parsing DATE columns into timestamp values will only work correctly when
+		returned values are in the default (US) date format; i.e.
+		<literal>dd-mmm-yyyy [hh:mm:ss]</literal> where <literal>mmm</literal>
+		is a partial month name. The parsing routine will accept
+		any separators and either a numeric or named month, but the D-M-Y
+		ordering is required. If needed, a workaround for date format
+		incompatibility is to format into a string and don't fetch as datetime.
+	</para>
+	<para>
+		Availability of certain Ingres features and column types (such as BIGINT)
+		depends on API level of the connection (logged
+		at connection time). This version of the driver requests API level 3,
+		but may connect at a lower level depending on your server.
+		See Ingres documentation for details.
+	</para>
+	<para>
+		<function>dbi_conn_get_engine_version_string()</function> returns a
+		string like <literal>II 9.0.4 (int.lnx/104)NPTL</literal>
+		(internally this is implemented as <literal>SELECT dbmsinfo('_version')</literal>.
+	</para>
+	<para>
+		<function>dbi_conn_get_table_list()</function> returns matching objects 
+		of all types - tables, views, indexes and partitions -
+		in the <literal>iitables</literal> catalog for the current connection
+		(except those beginning with <literal>ii</literal>, which are Ingres reserved).
 	</para>
 </chapter>
 

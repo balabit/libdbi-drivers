@@ -1,12 +1,13 @@
-31-May-2006
+1-Jun-2006
 
 TODO:
 * (DONE) result set handling
-* resolve date retrieval issue
+* (DONE) resolve date retrieval issue
+* long clob/blob column types (LONG VARCHAR, LONG NVARCHAR, LONG BYTE)
+* figure out if transactional sessions (non-autocommit) can work
 * documentation
 * error string retrieval
 * encodings
 * support for UTF-16 column types
-* querying system catalogs (e.g. for version number, database list, table lists)
 * quieten the debug logging
 * whatever else is missing

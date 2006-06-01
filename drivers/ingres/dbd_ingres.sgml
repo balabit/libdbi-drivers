@@ -241,8 +241,9 @@
 		rollback or disconnection (which implies commit). 
 		See Ingres OpenAPI and SQL documentation for more information.
 		The current version of the driver has some problems with autocommit disabled,
-		this needs to be investigated. (Without libdbi <function>commit()</function> and <function>rollback()</function> functions,
-		it may not be possible to fix.)
+		this needs to be investigated. (Without libdbi <function>commit()</function> 
+		and <function>rollback()</function> extension functions,
+		it may not be possible to resolve the issue.)
 	</para>
 	<para>
 		<function>dbi_conn_sequence_last()</function> is not usable in Ingres' autocommit mode
@@ -263,7 +264,7 @@
 		Availability of certain Ingres features and column types (such as BIGINT)
 		depends on API level of the connection (logged
 		at connection time). This version of the driver requests API level 3,
-		but may connect at a lower level depending on your server.
+		but may actually connect at a lower level depending on your server.
 		See Ingres documentation for details.
 	</para>
 	<para>
@@ -274,8 +275,8 @@
 	<para>
 		<function>dbi_conn_get_table_list()</function> returns matching objects 
 		of all types - tables, views, indexes and partitions -
-		in the <literal>iitables</literal> catalog for the current connection
-		(except those beginning with <literal>ii</literal>, which are Ingres reserved).
+		in the <literal>iitables</literal> catalog for the named database
+		(except those beginning with <literal>ii</literal>, which are reserved for Ingres).
 	</para>
 </chapter>
 

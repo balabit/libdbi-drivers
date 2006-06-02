@@ -246,6 +246,13 @@
 		it may not be possible to resolve the issue.)
 	</para>
 	<para>
+		In the Ingres OpenAPI, result sets must be accessed sequentially.
+		Furthermore, Ingres does not provide the row count; this must be determined
+		by fetching rows until no more is available. For this reason, the driver
+		must fetch all result data into memory immediately after a query. Then
+		libdbi functions can be used to get random access to rows as usual.
+	</para>
+	<para>
 		<function>dbi_conn_sequence_last()</function> is not usable in Ingres' autocommit mode
 		(the default). To use sequences to identify INSERTed rows, first 
 		obtain the NEXT VALUE using <function>dbi_conn_sequence_next()</function> then use that 
@@ -281,6 +288,15 @@
 	<para>
 		The driver will not be loaded at all by <function>dbi_initialize()</function>
 		if the current user does not have permission to use the Ingres DBMS.
+	</para>
+	<para>
+		The driver respects <function>dbd_set_verbosity()</function> level in reporting messages.
+		At verbosity 1, only errors and abnormalities are reported;
+		at 2, more information is shown; at 3, detailed debugging information is shown.
+	</para>
+	<para>
+		Only the first segment (up to 2000 bytes) is retrieved for LONG BLOB/CLOB columns.
+		This will be fixed in a subsequent release (such columns can store data up to 2GB).
 	</para>
 </chapter>
 

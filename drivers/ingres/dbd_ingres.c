@@ -72,6 +72,9 @@ static II_PTR envHandle = NULL;
 #define SAVE_ERROR(C,E) ingres_error(E, 0, &((ingres_conn_t*)C->connection)->errorCode, \
 										   &((ingres_conn_t*)C->connection)->errorMsg)
 
+#define PRINT_VERBOSE if(dbi_verbosity>1) _verbose_handler
+#define PRINT_DEBUG if(dbi_verbosity>2) _verbose_handler
+
 typedef struct {
 	II_PTR connHandle;
 	II_PTR autoTranHandle;
@@ -110,7 +113,7 @@ static void ingres_close(dbi_conn_t *conn, II_PTR hdl) {
 
 	if(hdl){
 		closeParm.cl_stmtHandle = hdl;
-		_verbose_handler(conn, "closing stmtHandle %#x...\n", hdl);
+		PRINT_DEBUG(conn, "closing stmtHandle %#x...\n", hdl);
 		IIapi_close(&closeParm);
 		ingres_wait(conn, &closeParm.cl_genParm);
 	}
@@ -120,7 +123,7 @@ static time_t ingres_date(char *raw){
 	struct tm unixtime;
 	char *p = raw, *q, sep;
 
-	//_verbose_handler(NULL,"date: '%s'\n",raw);
+	//PRINT_VERBOSE(NULL,"date: '%s'\n",raw);
 	
 	unixtime.tm_sec = unixtime.tm_min = unixtime.tm_hour = 0;
 	unixtime.tm_isdst = -1;
@@ -130,7 +133,7 @@ static time_t ingres_date(char *raw){
 	//	;
 	if(isdigit(*p)){
 		// process day
-		unixtime.tm_mday = atoi(p); //_verbose_handler(NULL,"day: %d ",unixtime.tm_mday);
+		unixtime.tm_mday = atoi(p); PRINT_DEBUG(NULL,"day: %d ",unixtime.tm_mday);
 		while(*p && isdigit(*p))
 			++p;
 		if(!*p){ _verbose_handler(NULL,"date ended after day??",raw); return 0; }
@@ -139,7 +142,7 @@ static time_t ingres_date(char *raw){
 		// process month
 		if(isdigit(*p)){
 			unixtime.tm_mon = atoi(p)-1; /* months are 0 through 11 */
-			//_verbose_handler(NULL,"month: %d ",unixtime.tm_mon);
+			PRINT_DEBUG(NULL,"month: %d ",unixtime.tm_mon);
 			while(*p && *p != sep)
 				++p;
 		}else{
@@ -149,14 +152,14 @@ static time_t ingres_date(char *raw){
 			if(*p){
 				*p = 0;
 				unixtime.tm_mon = in_word_set(q,3)->index; // should work for long month names too
-				//_verbose_handler(NULL,"month: %s -> %d ",q,unixtime.tm_mon);
+				PRINT_DEBUG(NULL,"month: %s -> %d ",q,unixtime.tm_mon);
 				++p;
 			}
 		}
 		if(!*p){ _verbose_handler(NULL,"date ended after month??",raw); return 0; }
 		
 		// process year
-		unixtime.tm_year = atoi(p)-1900; //_verbose_handler(NULL,"year: %d\n",unixtime.tm_year);
+		unixtime.tm_year = atoi(p)-1900; PRINT_DEBUG(NULL,"year: %d\n",unixtime.tm_year);
 		while(isdigit(*p))
 			++p;
 
@@ -167,21 +170,21 @@ static time_t ingres_date(char *raw){
 		// Ingres does not generate a time by itself, it's always preceded by a date.
 		if(isdigit(*p)){ // time is present
 			// process hours
-			unixtime.tm_hour = atoi(p); //_verbose_handler(NULL,"hour: %d ",unixtime.tm_hour);
+			unixtime.tm_hour = atoi(p); PRINT_DEBUG(NULL,"hour: %d ",unixtime.tm_hour);
 			while(isdigit(*p))
 				++p;
 			if(!*p){ _verbose_handler(NULL,"time ended after hour??",raw); return 0; }
 			++p; // skip separator
 
 			// process minutes
-			unixtime.tm_min = atoi(p); //_verbose_handler(NULL,"min: %d ",unixtime.tm_min);
+			unixtime.tm_min = atoi(p); PRINT_DEBUG(NULL,"min: %d ",unixtime.tm_min);
 			while(isdigit(*p))
 				++p;
 			if(!*p){ _verbose_handler(NULL,"time ended after minute??",raw); return 0; }
 			++p; // skip separator
 
 			// process seconds
-			unixtime.tm_sec = atoi(p); //_verbose_handler(NULL,"sec: %d\n",unixtime.tm_sec);
+			unixtime.tm_sec = atoi(p); PRINT_DEBUG(NULL,"sec: %d\n",unixtime.tm_sec);
 	
 			/* check for a timezone suffix */
 			//while(isdigit(*p) || isspace(*p))
@@ -214,7 +217,7 @@ int dbd_initialize(dbi_driver_t *driver) {
 	initParm.in_timeout = -1;
 	IIapi_initialize( &initParm );
 	envHandle = initParm.in_envHandle;
-	_verbose_handler(NULL, "initialize: envHandle=%#x\n",envHandle);
+	PRINT_DEBUG(NULL, "initialize: envHandle=%#x\n",envHandle);
 	return (initParm.in_status >= IIAPI_ST_SUCCESS 
 			&& initParm.in_status < IIAPI_ST_ERROR) - 1;
 }
@@ -240,7 +243,7 @@ void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
 				n = snprintf(buf, sizeof(buf), "%s-%s-%08X  %s\n",
 							 typestr[eiParm.ge_type], eiParm.ge_SQLSTATE, 
 							 eiParm.ge_errorCode, eiParm.ge_message);
-				/*if(print)*/ _verbose_handler(NULL, buf);
+				/*if(print)*/ PRINT_VERBOSE(NULL, buf);
 				if(errno) *errno = eiParm.ge_errorCode; // store last error
 				if(errmsg){
 					if(count+n >= size){
@@ -307,7 +310,7 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 		
 	scParm.sc_connHandle = NULL; // later, envHandle, but currently that causes connect to fail (?!)
     
-	//_verbose_handler(NULL, "ingres_connect: envHandle=%#x\n",envHandle);
+	PRINT_DEBUG(NULL, "ingres_connect: envHandle=%#x\n",envHandle);
 
     // see OpenAPI reference for meaning of these options. Numeric codes in iiapi.h
 	ingres_option_num(conn, &scParm, IIAPI_CP_CENTURY_BOUNDARY, "ingres_century_bdry"); // interpretation of 2-digit years
@@ -334,7 +337,7 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	status = ingres_wait(conn, &connParm.co_genParm);
 	SAVE_ERROR(conn, connParm.co_genParm.gp_errorHandle);
 	if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
-		_verbose_handler(conn, "connected, target='%s', API level=%d\n",
+		PRINT_VERBOSE(conn, "connected, target='%s', API level=%d\n",
 						 connParm.co_target, connParm.co_apiLevel);
 		iconn->connHandle = connParm.co_connHandle;
 		iconn->sizeAdvise = connParm.co_sizeAdvise;
@@ -347,9 +350,9 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
 				// stash the autocommit transaction handle
 				iconn->autoTranHandle = acParm.ac_tranHandle;
-				_verbose_handler(conn, "...enabled autocommit\n");
+				PRINT_VERBOSE(conn, "...enabled autocommit\n");
 			}else
-				_verbose_handler(conn, "...FAILED to enable autocommit\n");
+				PRINT_VERBOSE(conn, "...FAILED to enable autocommit\n");
 		}
 		return 0;
     }
@@ -373,13 +376,13 @@ int dbd_disconnect(dbi_conn_t *conn) {
 			IIapi_autocommit(&acParm);
 			status = ingres_wait(conn, &acParm.ac_genParm);
 			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR)
-				_verbose_handler(conn, "...exited autocommit\n");
+				PRINT_VERBOSE(conn, "...exited autocommit\n");
 			else
-				_verbose_handler(conn, "...FAILED to exit autocommit\n");
+				PRINT_VERBOSE(conn, "...FAILED to exit autocommit\n");
 		}
 
 		disconnParm.dc_connHandle = iconn->connHandle;
-		_verbose_handler(conn, "disconnecting...\n");
+		PRINT_VERBOSE(conn, "disconnecting...\n");
 		IIapi_disconnect( &disconnParm );
 		ingres_wait(conn, &disconnParm.dc_genParm);
 		free(conn->connection);
@@ -420,7 +423,7 @@ static int ingres_results(dbi_result_t *result){
 	gcParm.gc_columnData = databuf;
 	gcParm.gc_rowsReturned = 0;
 	gcParm.gc_moreSegments = 0;
-	_verbose_handler(result->conn,"result columnCount=%d, stmtHandle=%#x\n", 
+	PRINT_VERBOSE(result->conn,"result columnCount=%d, stmtHandle=%#x\n", 
 					 gcParm.gc_columnCount, gcParm.gc_stmtHandle);
     
 	limit = result->numrows_matched;
@@ -428,7 +431,7 @@ static int ingres_results(dbi_result_t *result){
 	
 		if(count == limit){
 			limit *= ROW_FACTOR;
-			_verbose_handler(result->conn,"reallocating to new row limit %d\n",limit);
+			PRINT_DEBUG(result->conn,"reallocating to new row limit %d\n",limit);
 			if( (resized = realloc(result->rows, limit*sizeof(dbi_row_t*))) )
 				result->rows = resized;
 			else{
@@ -437,7 +440,7 @@ static int ingres_results(dbi_result_t *result){
 			}
 		}
 	
-		_verbose_handler(result->conn,"fetching row %d\n",count);
+		PRINT_VERBOSE(result->conn,"fetching row %d\n",count);
 		IIapi_getColumns( &gcParm );
 		status = ingres_wait(result->conn, &gcParm.gc_genParm);
 		if ( status == IIAPI_ST_NO_DATA ){ // normal completion of fetch
@@ -457,7 +460,7 @@ static int ingres_results(dbi_result_t *result){
 				row->field_sizes[i] = 0;
 				if(databuf[i].dv_null){
 					_set_field_flag(row, i, DBI_VALUE_NULL, 1);
-					//_verbose_handler(result->conn,"  [%d] is NULL\n",i);
+					PRINT_DEBUG(result->conn,"  [%d] is NULL\n",i);
 				}else
 					switch(desc[i].ds_dataType){
 					//case IIAPI_HNDL_TYPE: // can't do anything with this
@@ -488,7 +491,7 @@ static int ingres_results(dbi_result_t *result){
 						}else if(desc[i].ds_dataType == IIAPI_DTE_TYPE){
 							val[len] = 0;
 							data->d_datetime = ingres_date(val);
-							//_verbose_handler(result->conn,"  [%d] date string %d bytes\n", i,len);
+							PRINT_DEBUG(result->conn,"  [%d] date string %d bytes\n", i,len);
 							free(val);
 							break;
 						}
@@ -499,7 +502,7 @@ static int ingres_results(dbi_result_t *result){
 						val[len] = 0;
 						data->d_string = val; // use converted data block
 						row->field_sizes[i] = len;
-						//_verbose_handler(result->conn,"  [%d] converted string %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
+						PRINT_DEBUG(result->conn,"  [%d] converted string %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
 						break;
 					// FIXME: only first segment is currently fetched
 					case IIAPI_LBYTE_TYPE:
@@ -518,7 +521,7 @@ static int ingres_results(dbi_result_t *result){
 							memcpy(data->d_string, (char*)databuf[i].dv_value + 2, len);
 							data->d_string[len] = 0; // NUL-terminate it, in case someone wants to pretend it's a string
 						}
-						//_verbose_handler(result->conn,"  [%d] variable size %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
+						PRINT_DEBUG(result->conn,"  [%d] variable size %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
 						break;
 					// fixed string/binary types
 					case IIAPI_BYTE_TYPE:
@@ -530,13 +533,13 @@ static int ingres_results(dbi_result_t *result){
 						data->d_string = databuf[i].dv_value; // just copy pointer to the fetched block
 						databuf[i].dv_value = malloc(desc[i].ds_length+1); // replace block for future rows
 						data->d_string[len] = 0; // NUL-terminate the string
-						//_verbose_handler(result->conn,"  [%d] fixed size %d bytes (desc %d bytes)\n",i,databuf[i].dv_length,desc[i].ds_length);
+						PRINT_DEBUG(result->conn,"  [%d] fixed size %d bytes (desc %d bytes)\n",i,databuf[i].dv_length,desc[i].ds_length);
 						break;
 					// these are returned in native format, all sizes
 					case IIAPI_INT_TYPE:
 					case IIAPI_FLT_TYPE:
 						// getColumns already copied data
-						//_verbose_handler(result->conn,"  [%d] copying %d bytes\n",i,databuf[i].dv_length);
+						PRINT_DEBUG(result->conn,"  [%d] copying %d bytes\n",i,databuf[i].dv_length);
 						memcpy(&row->field_values[i], databuf[i].dv_value, databuf[i].dv_length);
 						// memcpy() isn't particularly efficient for this. even a switch on length would probably be faster...
 						break;
@@ -637,7 +640,7 @@ static dbi_result_t *ingres_sys_query(dbi_conn_t *conn, const char *sql) {
 		}
 	}
 	res = ingres_query(iconn->sysConn, sql, &tranHandle);
-	_verbose_handler(conn,"ingres_sys_query: tranHandle=%#x\n",tranHandle);
+	PRINT_DEBUG(conn,"ingres_sys_query: tranHandle=%#x\n",tranHandle);
 	if(!res) _verbose_handler(conn,"no result for '%s'??\n",sql);
 	ingres_rollback(iconn->sysConn, tranHandle);
 	return res;
@@ -780,15 +783,15 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 				SAVE_ERROR(conn, gqParm.gq_genParm.gp_errorHandle);
 				if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR && (gqParm.gq_mask & IIAPI_GQ_ROW_COUNT)){
 					affectedRows = gqParm.gq_rowCount;
-					_verbose_handler(conn,"getQueryInfo: row count = %d\n",affectedRows);
+					PRINT_VERBOSE(conn,"getQueryInfo: row count = %d\n",affectedRows);
 				}else
 					affectedRows = 0;
 				
 				res = _dbd_result_create(conn, NULL, 0, affectedRows);
-				_verbose_handler(conn,"no descriptors\n");
+				PRINT_VERBOSE(conn,"no descriptors\n");
 				ingres_close(conn, queryParm.qy_stmtHandle);
 			}else{
-				_verbose_handler(conn,"new result set, stmtHandle = %#x\n",queryParm.qy_stmtHandle);
+				PRINT_VERBOSE(conn,"new result set, stmtHandle = %#x\n",queryParm.qy_stmtHandle);
 				pres = malloc(sizeof(ingres_result_t));
 				pres->stmtHandle = queryParm.qy_stmtHandle;
 				pres->dataDesc = gdParm.gd_descriptor;
@@ -801,7 +804,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 					unsigned short type;
 					unsigned int attribs;
 					ingres_classify_field(&gdParm.gd_descriptor[i], &type, &attribs);
-					_verbose_handler(conn,"field %d: '%s' dataType=%d nullable=%d"
+					PRINT_VERBOSE(conn,"field %d: '%s' dataType=%d nullable=%d"
 						" length=%d precision=%d scale=%d dbiType=%d dbiAttr=%#x\n",
 						i,pdesc->ds_columnName,pdesc->ds_dataType,pdesc->ds_nullable,
 						pdesc->ds_length,pdesc->ds_precision,pdesc->ds_scale,type,attribs);

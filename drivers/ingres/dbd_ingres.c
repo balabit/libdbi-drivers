@@ -69,11 +69,16 @@ static II_PTR envHandle = NULL;
 
 #define AUTOCOMMIT_ON(C) (((ingres_conn_t*)C->connection)->autoTranHandle != NULL)
 
+#define SAVE_ERROR(C,E) ingres_error(E, 0, &((ingres_conn_t*)C->connection)->errorCode, \
+										   &((ingres_conn_t*)C->connection)->errorMsg)
+
 typedef struct {
 	II_PTR connHandle;
 	II_PTR autoTranHandle;
 	II_LONG sizeAdvise; // advised buffer size for blob (long) types
 	dbi_conn_t *sysConn; // used for querying system catalogs
+	II_LONG errorCode;
+	char *errorMsg;
 } ingres_conn_t;
 
 typedef struct {
@@ -86,7 +91,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 static void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned int *attribs);
 static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocommit);
 static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PTR *tranHandle);
-void ingres_error(dbi_conn_t *conn, II_PTR errorHandle);
+void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg);
 
 // months.gperf.c
 struct month *in_word_set (register const char *str, register unsigned int len);
@@ -96,19 +101,18 @@ static IIAPI_STATUS ingres_wait(dbi_conn_t *conn, IIAPI_GENPARM *pgp){
 
 	for( waitParm.wt_timeout = -1 ; ! pgp->gp_completed ; )
 		IIapi_wait(&waitParm);
-	ingres_error(conn, pgp->gp_errorHandle);
 	return pgp->gp_status;
 }
 
-static void ingres_close(II_PTR hdl) {
+static void ingres_close(dbi_conn_t *conn, II_PTR hdl) {
 	IIAPI_STATUS status;
 	IIAPI_CLOSEPARM closeParm = {{NULL, NULL}};
 
 	if(hdl){
 		closeParm.cl_stmtHandle = hdl;
-		_verbose_handler(NULL, "closing stmtHandle %#x...\n", hdl);
+		_verbose_handler(conn, "closing stmtHandle %#x...\n", hdl);
 		IIapi_close(&closeParm);
-		ingres_wait(NULL, &closeParm.cl_genParm);
+		ingres_wait(conn, &closeParm.cl_genParm);
 	}
 }
 
@@ -219,36 +223,44 @@ int dbd_connect(dbi_conn_t *conn) {
 	return ingres_connect(conn, NULL, dbi_conn_get_option(conn, "ingres_autocommit"));
 }
 
-#define ERRMAX 1024
-void ingres_error(dbi_conn_t *conn, II_PTR errorHandle){
+void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
 	static char *typestr[] = {"0","ERROR","WARNING","MESSAGE"};
-	char *msg, *p, buf[0x100];
-	int count, n;
+	char *p, buf[0x200];
+	int count, n, size=0x200;
 	IIAPI_GETEINFOPARM eiParm;
 
-	if( errorHandle /*&& (msg = malloc(ERRMAX))*/ ){
-		eiParm.ge_errorHandle = errorHandle;
-		for(p = msg, count = 0;;){
+	if(errmsg){
+		if(*errmsg) free(*errmsg);
+		*errmsg = malloc(size);
+	}
+	if( (eiParm.ge_errorHandle = errorHandle) ){
+		for(count = 0;;){
 			IIapi_getErrorInfo(&eiParm);
 			if(eiParm.ge_status == IIAPI_ST_SUCCESS){
 				n = snprintf(buf, sizeof(buf), "%s-%s-%08X  %s\n",
 							 typestr[eiParm.ge_type], eiParm.ge_SQLSTATE, 
 							 eiParm.ge_errorCode, eiParm.ge_message);
-				_verbose_handler(conn, buf);
-				//n = strlen(eiParm.ge_message);
-				/*if(count+n < ERRMAX){
-					memcpy(p, buf, n);
-					p += n;
-					count += n;
-					*p++ = '\n';
-				}*/
+				/*if(print)*/ _verbose_handler(NULL, buf);
+				if(errno) *errno = eiParm.ge_errorCode; // store last error
+				if(errmsg){
+					if(count+n >= size){
+						size += n + 0x200;
+						if( (p = realloc(*errmsg, size)) )
+							*errmsg = p;
+					}else
+						p = *errmsg;
+					if(p){
+						memcpy(p+count, buf, n);
+						p[n] = 0;
+						count += n;
+					}
+				}
 			}else
 				break;
 		}
-		/*if(conn){
-			if(conn->error_message) free(conn->error_message);
-			conn->error_message = msg;
-		}*/
+	}else{
+		if(errmsg) *errmsg = NULL;
+		if(errno) *errno = 0;
 	}
 }
 
@@ -284,6 +296,15 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	IIAPI_AUTOPARM acParm = {{NULL, NULL}};
 	IIAPI_STATUS status;
 
+	// we need this structure whether connection succeeds or not,
+	// at least to track the error handle.
+	conn->connection = iconn = malloc(sizeof(ingres_conn_t));
+	iconn->connHandle = NULL;
+	iconn->autoTranHandle = NULL;
+	iconn->sysConn = NULL;
+	iconn->errorCode = 0;
+	iconn->errorMsg = NULL;
+		
 	scParm.sc_connHandle = NULL; // later, envHandle, but currently that causes connect to fail (?!)
     
 	//_verbose_handler(NULL, "ingres_connect: envHandle=%#x\n",envHandle);
@@ -311,15 +332,12 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 
 	IIapi_connect(&connParm);
 	status = ingres_wait(conn, &connParm.co_genParm);
-
+	SAVE_ERROR(conn, connParm.co_genParm.gp_errorHandle);
 	if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
 		_verbose_handler(conn, "connected, target='%s', API level=%d\n",
 						 connParm.co_target, connParm.co_apiLevel);
-		conn->connection = iconn = malloc(sizeof(ingres_conn_t));
 		iconn->connHandle = connParm.co_connHandle;
-		iconn->autoTranHandle = NULL;
 		iconn->sizeAdvise = connParm.co_sizeAdvise;
-		iconn->sysConn = NULL;
 		if(!autocommit || atoi(autocommit)){ // enable auto-commit by default
 			// set autocommit mode
 			acParm.ac_connHandle = connParm.co_connHandle;
@@ -364,7 +382,6 @@ int dbd_disconnect(dbi_conn_t *conn) {
 		_verbose_handler(conn, "disconnecting...\n");
 		IIapi_disconnect( &disconnParm );
 		ingres_wait(conn, &disconnParm.dc_genParm);
-
 		free(conn->connection);
 		conn->connection = NULL;
 	}
@@ -427,6 +444,7 @@ static int ingres_results(dbi_result_t *result){
 			retval = 1;
 			break; 
 		}else if ( status > IIAPI_ST_NO_DATA ){
+			SAVE_ERROR(result->conn, gcParm.gc_genParm.gp_errorHandle);
 			_verbose_handler(result->conn,"getColumns returned status %d; aborting\n",status);
 			break;
 		}else if(gcParm.gc_moreSegments){
@@ -520,6 +538,7 @@ static int ingres_results(dbi_result_t *result){
 						// getColumns already copied data
 						//_verbose_handler(result->conn,"  [%d] copying %d bytes\n",i,databuf[i].dv_length);
 						memcpy(&row->field_values[i], databuf[i].dv_value, databuf[i].dv_length);
+						// memcpy() isn't particularly efficient for this. even a switch on length would probably be faster...
 						break;
 					default:
 						_verbose_handler(result->conn,"can't handle column type = %d\n",desc[i].ds_dataType);
@@ -533,7 +552,7 @@ static int ingres_results(dbi_result_t *result){
 	}
 	
 	// Don't need this handle any more.
-	ingres_close(pres->stmtHandle);
+	ingres_close(result->conn, pres->stmtHandle);
 	pres->stmtHandle = NULL;
 
 	result->numrows_matched = count;
@@ -556,7 +575,7 @@ int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) {
 
 int dbd_free_query(dbi_result_t *result) {
 	if(result->result_handle){
-		ingres_close(((ingres_result_t*)result->result_handle)->stmtHandle);
+		ingres_close(result->conn, ((ingres_result_t*)result->result_handle)->stmtHandle);
 		free(result->result_handle);
 		result->result_handle = NULL;
 	}
@@ -736,6 +755,8 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 	queryParm.qy_stmtHandle = NULL;
 	IIapi_query( &queryParm );
 	status = ingres_wait(conn, &queryParm.qy_genParm);
+	SAVE_ERROR(conn, queryParm.qy_genParm.gp_errorHandle);
+
 	if(tranHandle) *tranHandle = queryParm.qy_tranHandle;
 
 	if(status == IIAPI_ST_NO_DATA)
@@ -746,6 +767,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 		gdParm.gd_stmtHandle = queryParm.qy_stmtHandle;
 		IIapi_getDescriptor(&gdParm);
     	status = ingres_wait(conn, &gdParm.gd_genParm);
+    	SAVE_ERROR(conn, gdParm.gd_genParm.gp_errorHandle);
 		if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
 			// if descriptorCount is zero, no data can be expected
 			// create result struct anyway
@@ -755,7 +777,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 				gqParm.gq_stmtHandle = queryParm.qy_stmtHandle;
 				IIapi_getQueryInfo(&gqParm);
 				status = ingres_wait(conn, &gqParm.gq_genParm);
-
+				SAVE_ERROR(conn, gqParm.gq_genParm.gp_errorHandle);
 				if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR && (gqParm.gq_mask & IIAPI_GQ_ROW_COUNT)){
 					affectedRows = gqParm.gq_rowCount;
 					_verbose_handler(conn,"getQueryInfo: row count = %d\n",affectedRows);
@@ -764,7 +786,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 				
 				res = _dbd_result_create(conn, NULL, 0, affectedRows);
 				_verbose_handler(conn,"no descriptors\n");
-				ingres_close(queryParm.qy_stmtHandle);
+				ingres_close(conn, queryParm.qy_stmtHandle);
 			}else{
 				_verbose_handler(conn,"new result set, stmtHandle = %#x\n",queryParm.qy_stmtHandle);
 				pres = malloc(sizeof(ingres_result_t));
@@ -795,7 +817,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 	}
 	// must have been an error.
 	if(!res)
-		ingres_close(queryParm.qy_stmtHandle);
+		ingres_close(conn, queryParm.qy_stmtHandle);
 	return res;
 }
 
@@ -804,7 +826,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 }
 
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) {
-	_verbose_handler(conn, "dbd_query_null() not implemented\n");
+	_verbose_handler(conn, "dbd_query_null() not implemented\n"); //FIXME: use internal error handler (fix other instances too!)
 	return NULL;
 }
 
@@ -825,9 +847,12 @@ const char *dbd_select_db(dbi_conn_t *conn, const char *db) {
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) {
 	/* put error number into errno, error string into errstr
 	 * return 0 if error, 1 if errno filled, 2 if errstr filled, 3 if both errno and errstr filled */
-	// for now, just assume errstr was set up by a ingres_error call
-	// FIXME: we really need to be able to stash an errorhandle instead (after each API call), and use it here
-	return 2;
+	if(conn && conn->connection && ((ingres_conn_t*)conn->connection)->errorMsg){
+		*errno = ((ingres_conn_t*)conn->connection)->errorCode;
+		*errstr = strdup( ((ingres_conn_t*)conn->connection)->errorMsg );
+		return 3;
+	}
+	return 0;
 }
 
 unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) {
@@ -848,6 +873,7 @@ unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) {
 
 	asprintf(&sql, "SELECT CURRENT VALUE FOR %s", sequence);
 	res = ingres_query(conn, sql, NULL);
+	free(sql);
 	if(res && dbi_result_next_row(res))
 		seq = dbi_result_get_int_idx(res,1);
 	else if(AUTOCOMMIT_ON(conn))
@@ -867,6 +893,7 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) {
 
 	asprintf(&sql, "SELECT NEXT VALUE FOR %s", sequence);
 	res = ingres_query(conn, sql, &tran);
+	free(sql);
 	if(res && dbi_result_next_row(res))
 		seq = dbi_result_get_int_idx(res,1);
 	if(res) dbi_result_free(res);

@@ -197,7 +197,8 @@ int main(int argc, char **argv) {
   if ((!strcmp(cinfo.drivername, "mysql") && dbengine_version > 40100)
       ||!strcmp(cinfo.drivername, "pgsql")) {
 
-    printf("\nNow run a couple of tests related to character encodings\nThe previous tests used the default encoding, if any. Now we try to connect using UTF-8 and create an UTF-8 database\n");
+    printf("\nNow run a couple of tests related to character encodings\n"
+    	   "The previous tests used the default encoding, if any. Now we try to connect using UTF-8 and create an UTF-8 database\n");
     if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
       printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
       dbi_shutdown();
@@ -597,16 +598,14 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
     }
   }
   else if (!strcmp(ptr_cinfo->drivername, "sqlite")
-	   || !strcmp(ptr_cinfo->drivername, "sqlite3")) {
+		|| !strcmp(ptr_cinfo->drivername, "sqlite3")) {
     strcpy(ptr_cinfo->initial_dbname, ptr_cinfo->dbname);
     if (encoding && *encoding) {
       dbi_conn_set_option(conn, "encoding", encoding);
     }
   }
-  else if (!strcmp(ptr_cinfo->drivername, "mysql")){
-    strcpy(ptr_cinfo->initial_dbname, ptr_cinfo->dbname);
-  }
-  else if (!strcmp(ptr_cinfo->drivername, "firebird")){
+  else if (!strcmp(ptr_cinfo->drivername, "ingres")
+		|| !strcmp(ptr_cinfo->drivername, "firebird")){
     strcpy(ptr_cinfo->initial_dbname, ptr_cinfo->dbname);
   }
   else if (!strcmp(ptr_cinfo->drivername, "freetds")) {
@@ -616,12 +615,8 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
     }
   }
 	
-  if (db && *db) {
-    dbi_conn_set_option(conn, "dbname", db);
-  }
-  else {
-    dbi_conn_set_option(conn, "dbname", ptr_cinfo->initial_dbname);
-  }
+  dbi_conn_set_option(conn, "dbname", db && *db ? db : ptr_cinfo->initial_dbname);
+  dbi_conn_set_option_numeric(conn, "LogQueries", 1);
 
   return 0;
 }
@@ -664,8 +659,9 @@ int test_create_db(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encodi
   if (!strcmp(ptr_cinfo->drivername, "sqlite")
       || !strcmp(ptr_cinfo->drivername, "sqlite3")
       || !strcmp(ptr_cinfo->drivername, "firebird")
-      || !strcmp(ptr_cinfo->drivername, "msql")) {
-    printf("\tThis is a no-op with the sqlite/msql/firebird drivers.\n");
+      || !strcmp(ptr_cinfo->drivername, "msql")
+      || !strcmp(ptr_cinfo->drivername, "ingres")) {
+    printf("\tThis is a no-op with the sqlite/msql/firebird/ingres drivers.\n");
   }
   else {
     if (encoding && *encoding) {
@@ -861,6 +857,32 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	      "id INT IDENTITY,"
 	      "CONSTRAINT tr_test_datatypes PRIMARY KEY (id))");
   } 
+  else if (!strcmp(ptr_cinfo->drivername, "ingres")) {
+     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
+	      "the_char TINYINT,"
+	      "the_uchar TINYINT,"
+	      "the_short SMALLINT,"
+	      "the_ushort SMALLINT,"
+	      "the_long INT,"
+	      "the_ulong INT,"
+	      "the_longlong BIGINT,"
+	      "the_ulonglong BIGINT,"
+	      "the_float FLOAT4,"
+	      "the_double FLOAT,"
+	      "the_decimal DECIMAL(12,4),"
+	      "the_money MONEY,"
+	      "the_character CHAR(50),"
+	      "the_byte BYTE(50),"
+	      "the_driver_string VARCHAR(255),"
+	      "the_conn_string VARCHAR(255),"
+	      "the_empty_string VARCHAR(255),"
+	      "the_null_string VARCHAR(255),"
+	      "the_binary_string BLOB,"
+	      "the_datetime DATE,"
+	      "the_date DATE,"
+	      "the_time DATE,"
+	      "id INT NOT NULL CONSTRAINT id_key PRIMARY KEY)");
+  } 
 
 
   if ((result = dbi_conn_query(conn, query)) == NULL) {
@@ -872,6 +894,9 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     printf("\tOk.\n");
   }
   dbi_result_free(result);
+  
+  if(!strcmp(ptr_cinfo->drivername, "ingres"))
+  	dbi_result_free(dbi_conn_query(conn, "CREATE SEQUENCE test_datatypes_id_seq"));
 
   return 0;
 }
@@ -1011,8 +1036,35 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "'23:59:59',"
 	     "1)", driver_quoted_string, 
 	     conn_quoted_string, quoted_binary);
+  } 
+  else if(!strcmp(ptr_cinfo->drivername, "ingres")) {
+    snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES ("
+	     "-127,"
+	     "127,"
+	     "-32768,"
+	     "32767,"
+	     "-2147483648,"
+	     "2147483647, "
+	     "-9223372036854775807,"
+	     "9223372036854775807,"
+	     "3.4e+37,"
+	     "1.7e+307,"
+	     "'1234.5678',"
+	     "'$567.89',"
+	     "'char column',"
+	     "X'07ff656667',"
+	     "%s,"
+	     "%s,"
+	     "'',"
+	     "NULL,"
+	     "%s, "
+ 	     "'31-dec-2001 23:59:59',"
+	     "'31-dec-2001',"
+	     "'23:59:59',"
+	     "NEXT VALUE FOR test_datatypes_id_seq)", driver_quoted_string, 
+	     conn_quoted_string, quoted_binary);
   }
-else {
+  else {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes ("
 	     "the_char,"
 	     "the_uchar,"
@@ -1075,7 +1127,8 @@ else {
   dbi_result_free(result);
 
   /* check autoincrement column values */
-  if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
+  if (!strcmp(ptr_cinfo->drivername, "pgsql")
+   || !strcmp(ptr_cinfo->drivername, "ingres")) {
     n_last_id = dbi_conn_sequence_last(conn, "test_datatypes_id_seq");
     n_next_id = dbi_conn_sequence_next(conn, "test_datatypes_id_seq");
   } else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
@@ -1201,7 +1254,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 
 
     if( !strcmp(ptr_cinfo->drivername, "firebird")) {
-      printf("the_ulonlong: test skipped for this driver.\n");
+      printf("the_ulonglong: test skipped for this driver.\n");
     } else {
       the_longlong = dbi_result_get_longlong(result, "the_longlong");
       errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
@@ -1211,7 +1264,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     }
 
     if( !strcmp(ptr_cinfo->drivername, "firebird")) {
-      printf("the_ulonlong: test skipped for this driver.\n");
+      printf("the_ulonglong: test skipped for this driver.\n");
     } else {
       the_ulonglong = dbi_result_get_ulonglong(result, "the_ulonglong");
       errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
@@ -1320,7 +1373,21 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	printf("the_time errflag=%d\n", errflag);
       }
 			
-      printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\nthe_short: in:-32767 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\nthe_long: in:-2147483647 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\nthe_longlong: in:-9223372036854775807 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\nthe_float: in:3.402823466E+38 out:%e<<\nthe_driver_string: in:\'%s\' out:\'%s\'<<\nthe_conn_string: in:\'%s\' out:\'%s\'<<\nthe_empty_string: out:\'%s\'\nthe_null_string: out:\'%s\'\nthe_date: in:\'11-jul-1977\' out: %s<<\nthe_time: in:\'23:59:59\' out: %s<<", (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, string_to_quote, the_driver_string, string_to_quote, the_conn_string, the_empty_string, the_null_string, the_date, the_time);
+      printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\n"
+      		 "the_short: in:-32767 out:%hd<<\nthe_ushort: in:32767 out:%hu<<\n"
+      		 "the_long: in:-2147483647 out:%ld<<\nthe_ulong: in:2147483647 out:%lu<<\n"
+      		 "the_longlong: in:-9223372036854775807 out:%lld<<\nthe_ulonglong: in:9223372036854775807 out:%llu<<\n"
+      		 "the_float: in:3.402823466E+38 out:%e<<\n"
+      		 "the_driver_string: in:\'%s\' out:\'%s\'<<\n"
+      		 "the_conn_string: in:\'%s\' out:\'%s\'<<\n"
+      		 "the_empty_string: out:\'%s\'\n"
+      		 "the_null_string: out:\'%s\'\n"
+      		 "the_date: in:\'11-jul-1977\' out: %s<<\n"
+      		 "the_time: in:\'23:59:59\' out: %s<<", 
+      		 (signed int)the_char, (unsigned int)the_uchar, 
+      		 the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, 
+      		 the_float, string_to_quote, the_driver_string, string_to_quote, 
+      		 the_conn_string, the_empty_string, the_null_string, the_date, the_time);
 
     }
     else {
@@ -1389,7 +1456,10 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	       "the_datetime: in:\'2001-12-31 23:59:59\' out:%d-%d-%d %d:%d:%d\n"
 	       "the_date: in:\'2001-12-31\' out:%d-%d-%d\n"
 	       "the_time: in:\'23:59:59\' out:%d:%d:%d\n",
-	       the_short, the_ushort, the_long, the_ulong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, the_empty_string, the_null_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
+	       the_short, the_ushort, the_long, the_ulong, the_float, the_double, 
+	       string_to_quote, the_driver_string, string_to_quote, the_conn_string, 
+	       the_empty_string, the_null_string, 
+	       year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year, mon, day, hour, min, sec);
       }
       else {
 	printf("the_char: in:-127 out:%d<<\n"
@@ -1401,7 +1471,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	       "the_longlong: in:-9223372036854775807 out:%lld<<\n"
 	       "the_ulonglong: in:9223372036854775807 out:%llu<<\n"
 	       "the_float: in:3.402823466E+38 out:%e<<\n"
-	       "the_double: in:1.7976931348623157E+307 out:%e\n"
+	       "the_double: in:1.7976931348623157E+307 out:%e<<\n"
 	       "the_driver_string: in:\'%s\' out:\'%s\'<<\n"
 	       "the_conn_string: in:\'%s\' out:\'%s\'<<\n"
 	       "the_empty_string: out:\'%s\'<<\n"
@@ -1411,7 +1481,13 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	       "the_date: in:\'2001-12-31\' out:%d-%d-%d\n"
 	       "the_time: in:\'23:59:59\' out:%d:%d:%d\n"
 	       "the_time_tz: in:\'23:59:59-10:00\' out:%d:%d:%d\n",
-	       (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, string_to_quote, the_driver_string, string_to_quote, the_conn_string, the_empty_string, the_null_string, year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, year_dt_tz, mon_dt_tz, day_dt_tz, hour_dt_tz, min_dt_tz, sec_dt_tz, year, mon, day, hour, min, sec, hour_tz, min_tz, sec_tz);
+	       (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, 
+	       the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, 
+	       string_to_quote, the_driver_string, string_to_quote, the_conn_string, 
+	       the_empty_string, the_null_string, 
+	       year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, 
+	       year_dt_tz, mon_dt_tz, day_dt_tz, hour_dt_tz, min_dt_tz, sec_dt_tz, 
+	       year, mon, day, hour, min, sec, hour_tz, min_tz, sec_tz);
       }
     }
     
@@ -1427,7 +1503,10 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 
     printf("<<\n");
 
-    printf("\n\nfield lengths:\nthe_driver_string_length %d\nthe_conn_string_length %d\nthe_empty_string_length %d\nthe_null_string_length %d\nthe_binary_string_length %d\n\n", 
+    printf("\n\nfield lengths:\n"
+    	   "the_driver_string_length %d\nthe_conn_string_length %d\n"
+    	   "the_empty_string_length %d\nthe_null_string_length %d\n"
+    	   "the_binary_string_length %d\n\n", 
 	   the_driver_string_length,
 	   the_conn_string_length,
 	   the_empty_string_length,
@@ -1465,7 +1544,7 @@ int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   dbi_result result;
 
   if (!strcmp(ptr_cinfo->drivername, "sqlite")
-      || !strcmp(ptr_cinfo->drivername, "sqlite3")) {
+   || !strcmp(ptr_cinfo->drivername, "sqlite3")) {
     char dbpath[256];
 
     /* need this break to grant some time for db unlocking */
@@ -1483,8 +1562,10 @@ int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     }
     printf("\tOk.\n");
   }
-  else if (!strcmp(ptr_cinfo->drivername, "msql") || !strcmp(ptr_cinfo->drivername, "firebird")) {
-    printf("\tThis is a no-op with the mSQL/Firebird driver.\n");
+  else if (!strcmp(ptr_cinfo->drivername, "msql") 
+  		|| !strcmp(ptr_cinfo->drivername, "firebird")
+  		|| !strcmp(ptr_cinfo->drivername, "ingres")) {
+    printf("\tThis is a no-op with the mSQL/Firebird/Ingres driver.\n");
 		
   }
   

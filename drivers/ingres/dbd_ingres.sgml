@@ -278,6 +278,10 @@
 		in the <literal>iitables</literal> catalog for the named database
 		(except those beginning with <literal>ii</literal>, which are reserved for Ingres).
 	</para>
+	<para>
+		The driver will not be loaded at all by <function>dbi_initialize()</function>
+		if the current user does not have permission to use the Ingres DBMS.
+	</para>
 </chapter>
 
 &freedoc-license;

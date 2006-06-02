@@ -1,4 +1,4 @@
-1-Jun-2006
+2-Jun-2006
 
 TODO:
 * (DONE) result set handling
@@ -6,7 +6,7 @@ TODO:
 * long clob/blob column types (LONG VARCHAR, LONG NVARCHAR, LONG BYTE)
 * figure out if transactional sessions (non-autocommit) can work
 * documentation
-* error string retrieval
+* (DONE) error string retrieval
 * encodings
 * support for UTF-16 column types
 * quieten the debug logging

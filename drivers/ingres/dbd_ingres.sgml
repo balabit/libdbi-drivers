@@ -298,6 +298,20 @@
 		Only the first segment (up to 2000 bytes) is retrieved for LONG BLOB/CLOB columns.
 		This will be fixed in a subsequent release (such columns can store data up to 2GB).
 	</para>
+	<para>
+		Blanks are preserved in column values (except that DECIMAL and MONEY columns
+		are converted to strings, and then stripped of leading and trailing blanks).
+		Note that names returned by <function>dbi_conn_get_table_list()</function>
+		and <function>dbi_conn_get_db_list()</function> are padded with blanks
+		to a fixed width.
+	</para>
+	<para>
+		The Ingres OpenAPI may return multiple error messages for a given query/operation.
+		The <function>dbi_conn_error()</function> returns the error code only for the
+		last error message. The message text includes all messages. At verbosity level 2,
+		errors directly relating to libdbi function calls are logged. At verbosity 3,
+		all errors are logged including those caused by API calls made internally by the driver.
+	</para>
 </chapter>
 
 &freedoc-license;

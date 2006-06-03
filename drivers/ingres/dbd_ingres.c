@@ -69,8 +69,9 @@ static II_PTR envHandle = NULL;
 
 #define AUTOCOMMIT_ON(C) (((ingres_conn_t*)C->connection)->autoTranHandle != NULL)
 
-#define SAVE_ERROR(C,E) ingres_error(E, 0, &((ingres_conn_t*)C->connection)->errorCode, \
+#define SAVE_ERROR(C,E) ingres_error(E, dbi_verbosity>1, &((ingres_conn_t*)C->connection)->errorCode, \
 										   &((ingres_conn_t*)C->connection)->errorMsg)
+#define DEBUG_ERROR(E) ingres_error(E, dbi_verbosity>2, NULL, NULL)
 
 #define PRINT_VERBOSE if(dbi_verbosity>1) _verbose_handler
 #define PRINT_DEBUG if(dbi_verbosity>2) _verbose_handler
@@ -116,6 +117,7 @@ static void ingres_close(dbi_conn_t *conn, II_PTR hdl) {
 		PRINT_DEBUG(conn, "closing stmtHandle %#x...\n", hdl);
 		IIapi_close(&closeParm);
 		ingres_wait(conn, &closeParm.cl_genParm);
+		DEBUG_ERROR(closeParm.cl_genParm.gp_errorHandle);
 	}
 }
 
@@ -164,7 +166,7 @@ static time_t ingres_date(char *raw){
 			++p;
 
 		// skip space following date
-		while(isspace(*p))
+		while(*p == ' ')
 			++p;
 
 		// Ingres does not generate a time by itself, it's always preceded by a date.
@@ -187,7 +189,7 @@ static time_t ingres_date(char *raw){
 			unixtime.tm_sec = atoi(p); PRINT_DEBUG(NULL,"sec: %d\n",unixtime.tm_sec);
 	
 			/* check for a timezone suffix */
-			//while(isdigit(*p) || isspace(*p))
+			//while(isdigit(*p) || *p == ' ')
 			//	++p;
 		}else if(*p)
 			_verbose_handler(NULL,"bad time: '%s'",p);
@@ -269,25 +271,31 @@ void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
 
 static int ingres_option_num(dbi_conn_t *conn, IIAPI_SETCONPRMPARM *psc, II_LONG id, char *name){
 	const char *opt = dbi_conn_get_option(conn, name);
-
+	IIAPI_STATUS status;
+	
 	if(opt){
 		II_LONG val = atoi(opt);
 		psc->sc_paramID = id;
 		psc->sc_paramValue = &val; // works for Ingres 'long' and 'bool' types too, which are all int.
 		IIapi_setConnectParam(psc);
-		return ingres_wait(conn, &psc->sc_genParm) == IIAPI_ST_SUCCESS;
+		status = ingres_wait(conn, &psc->sc_genParm);
+		DEBUG_ERROR(psc->sc_genParm.gp_errorHandle);
+		return status == IIAPI_ST_SUCCESS;
 	}
 	return 1;
 }
 
 static int ingres_option_str(dbi_conn_t *conn, IIAPI_SETCONPRMPARM *psc, II_LONG id, char *name){
 	const char *opt = dbi_conn_get_option(conn, name);
+	IIAPI_STATUS status;
 
 	if(opt){
 		psc->sc_paramID = id;
 		psc->sc_paramValue = opt; // works for Ingres 'char' options too, of course
 		IIapi_setConnectParam(psc);
-		return ingres_wait(conn, &psc->sc_genParm) == IIAPI_ST_SUCCESS;
+		status = ingres_wait(conn, &psc->sc_genParm);
+		DEBUG_ERROR(psc->sc_genParm.gp_errorHandle);
+		return status == IIAPI_ST_SUCCESS;
 	}
 	return 1;
 }
@@ -347,6 +355,7 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 			acParm.ac_tranHandle = NULL;
 			IIapi_autocommit(&acParm);
 			status = ingres_wait(conn, &acParm.ac_genParm);
+			DEBUG_ERROR(acParm.ac_genParm.gp_errorHandle);
 			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
 				// stash the autocommit transaction handle
 				iconn->autoTranHandle = acParm.ac_tranHandle;
@@ -375,6 +384,7 @@ int dbd_disconnect(dbi_conn_t *conn) {
 			acParm.ac_tranHandle = iconn->autoTranHandle;
 			IIapi_autocommit(&acParm);
 			status = ingres_wait(conn, &acParm.ac_genParm);
+			DEBUG_ERROR(acParm.ac_genParm.gp_errorHandle);
 			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR)
 				PRINT_VERBOSE(conn, "...exited autocommit\n");
 			else
@@ -385,6 +395,7 @@ int dbd_disconnect(dbi_conn_t *conn) {
 		PRINT_VERBOSE(conn, "disconnecting...\n");
 		IIapi_disconnect( &disconnParm );
 		ingres_wait(conn, &disconnParm.dc_genParm);
+		DEBUG_ERROR(disconnParm.dc_genParm.gp_errorHandle);
 		free(conn->connection);
 		conn->connection = NULL;
 	}
@@ -486,22 +497,24 @@ static int ingres_results(dbi_result_t *result){
 						len = convParm.cv_dstValue.dv_length;
 						if(convParm.cv_status > IIAPI_ST_SUCCESS){
 							_verbose_handler(result->conn,"could not convertData from column type %d\n",desc[i].ds_dataType);
-							free(val);
 							break; // should do something more drastic
 						}else if(desc[i].ds_dataType == IIAPI_DTE_TYPE){
 							val[len] = 0;
 							data->d_datetime = ingres_date(val);
 							PRINT_DEBUG(result->conn,"  [%d] date string %d bytes\n", i,len);
-							free(val);
 							break;
 						}
-						// strip trailing blanks from converted value,
-						// since we had to overestimate the dst field width
+						// strip leading and trailing blanks from converted value
 						while(len && val[len-1] == ' ')
-							--len;							
-						val[len] = 0;
-						data->d_string = val; // use converted data block
+							--len;
+						for(j = 0; j < len && val[j] == ' '; ++j)
+							;
+						len -= j;
 						row->field_sizes[i] = len;
+						data->d_string = malloc(len+1); // use converted data block
+						memcpy(data->d_string, val+j, len);
+						data->d_string[len] = 0;
+						free(val);
 						PRINT_DEBUG(result->conn,"  [%d] converted string %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
 						break;
 					// FIXME: only first segment is currently fetched
@@ -540,8 +553,7 @@ static int ingres_results(dbi_result_t *result){
 					case IIAPI_FLT_TYPE:
 						// getColumns already copied data
 						PRINT_DEBUG(result->conn,"  [%d] copying %d bytes\n",i,databuf[i].dv_length);
-						memcpy(&row->field_values[i], databuf[i].dv_value, databuf[i].dv_length);
-						// memcpy() isn't particularly efficient for this. even a switch on length would probably be faster...
+						memcpy(&row->field_values[i], databuf[i].dv_value, 8); // constant permits compile-time optimisation
 						break;
 					default:
 						_verbose_handler(result->conn,"can't handle column type = %d\n",desc[i].ds_dataType);
@@ -609,19 +621,25 @@ const char* dbd_encoding_from_iana(const char *iana_encoding) {
 
 static int ingres_commit(dbi_conn_t *conn, II_PTR tranHandle){
 	IIAPI_COMMITPARM cmParm = {{NULL, NULL}};
+	IIAPI_STATUS status;
 	
     cmParm.cm_tranHandle = tranHandle;
 	IIapi_commit(&cmParm);
-    return ingres_wait(conn, &cmParm.cm_genParm) == IIAPI_ST_SUCCESS;
+    status = ingres_wait(conn, &cmParm.cm_genParm);
+	DEBUG_ERROR(cmParm.cm_genParm.gp_errorHandle);
+    return status == IIAPI_ST_SUCCESS;
 }
 
 static int ingres_rollback(dbi_conn_t *conn, II_PTR tranHandle){
 	IIAPI_ROLLBACKPARM rbParm = {{NULL, NULL}};
+	IIAPI_STATUS status;
 	
     rbParm.rb_tranHandle = tranHandle;
     rbParm.rb_savePointHandle = NULL;
 	IIapi_rollback(&rbParm);
-    return ingres_wait(conn, &rbParm.rb_genParm) == IIAPI_ST_SUCCESS;
+    status = ingres_wait(conn, &rbParm.rb_genParm);
+	DEBUG_ERROR(rbParm.rb_genParm.gp_errorHandle);
+    return status == IIAPI_ST_SUCCESS;
 }
 
 static dbi_result_t *ingres_sys_query(dbi_conn_t *conn, const char *sql) {

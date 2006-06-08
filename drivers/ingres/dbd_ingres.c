@@ -686,7 +686,7 @@ static int ingres_commit(dbi_conn_t *conn, II_PTR tranHandle){
     cmParm.cm_tranHandle = tranHandle;
 	IIapi_commit(&cmParm);
     status = ingres_wait(conn, &cmParm.cm_genParm);
-	DEBUG_ERROR(cmParm.cm_genParm.gp_errorHandle);
+	SAVE_ERROR(conn, cmParm.cm_genParm.gp_errorHandle);
     return status == IIAPI_ST_SUCCESS;
 }
 
@@ -699,7 +699,7 @@ static int ingres_rollback(dbi_conn_t *conn, II_PTR tranHandle){
     rbParm.rb_savePointHandle = NULL;
 	IIapi_rollback(&rbParm);
     status = ingres_wait(conn, &rbParm.rb_genParm);
-	DEBUG_ERROR(rbParm.rb_genParm.gp_errorHandle);
+	SAVE_ERROR(conn, rbParm.rb_genParm.gp_errorHandle);
     return status == IIAPI_ST_SUCCESS;
 }
 

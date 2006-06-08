@@ -76,6 +76,9 @@ static II_PTR envHandle = NULL;
 #define PRINT_VERBOSE if(dbi_verbosity>1) _verbose_handler
 #define PRINT_DEBUG if(dbi_verbosity>2) _verbose_handler
 
+#define IS_BLOB(T) ( (T) == IIAPI_LVCH_TYPE  || (T) == IIAPI_LBYTE_TYPE \
+					   || (T) == IIAPI_LNVCH_TYPE || (T) == IIAPI_LTXT_TYPE )
+
 typedef struct {
 	II_PTR connHandle;
 	II_PTR autoTranHandle;
@@ -345,8 +348,8 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	status = ingres_wait(conn, &connParm.co_genParm);
 	SAVE_ERROR(conn, connParm.co_genParm.gp_errorHandle);
 	if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
-		PRINT_VERBOSE(conn, "connected, target='%s', API level=%d\n",
-						 connParm.co_target, connParm.co_apiLevel);
+		PRINT_VERBOSE(conn, "connected, target='%s', API level=%d, BLOB sizeAdvise=%d\n",
+					  connParm.co_target, connParm.co_apiLevel, connParm.co_sizeAdvise);
 		iconn->connHandle = connParm.co_connHandle;
 		iconn->sizeAdvise = connParm.co_sizeAdvise;
 		if(!autocommit || atoi(autocommit)){ // enable auto-commit by default
@@ -402,19 +405,113 @@ int dbd_disconnect(dbi_conn_t *conn) {
 	return 0;
 }
 
+static int ingres_field(dbi_result_t *result, dbi_row_t *row, dbi_data_t *data, 
+						 int idx, IIAPI_DESCRIPTOR *pdesc, IIAPI_DATAVALUE *pdataval)
+{
+	IIAPI_CONVERTPARM convParm;
+	int j, len;
+	unsigned long count,limit;
+	char *val;
+	
+	switch(pdesc->ds_dataType){
+	//case IIAPI_HNDL_TYPE: // can't do anything with this
+	// 'national character sets' -- UTF-16 strings
+	case IIAPI_NCHA_TYPE:
+	case IIAPI_NVCH_TYPE:
+	case IIAPI_LNVCH_TYPE:
+	case IIAPI_DEC_TYPE:
+	case IIAPI_MNY_TYPE:
+	case IIAPI_DTE_TYPE:
+		// convert to string first
+		convParm.cv_srcDesc = *pdesc;
+		convParm.cv_srcValue = *pdataval;
+		convParm.cv_dstDesc.ds_dataType = IIAPI_CHA_TYPE;
+		convParm.cv_dstDesc.ds_nullable = FALSE;
+		convParm.cv_dstDesc.ds_length = pdesc->ds_length + pdesc->ds_precision + 32; // include plenty of slop
+		convParm.cv_dstDesc.ds_precision =
+		convParm.cv_dstDesc.ds_scale = 0;
+		convParm.cv_dstDesc.ds_columnType = IIAPI_COL_TUPLE;
+		convParm.cv_dstValue.dv_length = convParm.cv_dstDesc.ds_length;
+		convParm.cv_dstValue.dv_value = val = malloc(convParm.cv_dstValue.dv_length+1);
+		IIapi_convertData(&convParm);
+		len = convParm.cv_dstValue.dv_length;
+		if(convParm.cv_status > IIAPI_ST_SUCCESS){
+			_verbose_handler(result->conn,"could not convertData from column type %d\n",pdesc->ds_dataType);
+			return 0;
+		}else if(pdesc->ds_dataType == IIAPI_DTE_TYPE){
+			val[len] = 0;
+			data->d_datetime = ingres_date(val);
+			PRINT_DEBUG(result->conn,"  [%d] date string %d bytes\n", idx,len);
+			break;
+		}
+		// strip leading and trailing blanks from converted value
+		while(len && val[len-1] == ' ')
+			--len;
+		for(j = 0; j < len && val[j] == ' '; ++j)
+			;
+		len -= j;
+		row->field_sizes[idx] = len;
+		data->d_string = malloc(len+1); // use converted data block
+		memcpy(data->d_string, val+j, len);
+		data->d_string[len] = 0;
+		free(val);
+		PRINT_DEBUG(result->conn,"  [%d] converted string %d bytes (desc %d bytes)\n",idx,len,pdesc->ds_length);
+		break;
+	//case IIAPI_LBYTE_TYPE: // these are handled in ingres_results()
+	//case IIAPI_LVCH_TYPE:
+	//case IIAPI_LTXT_TYPE:
+	// variable length (first 2 bytes define length)
+	case IIAPI_VCH_TYPE:
+	case IIAPI_VBYTE_TYPE:
+	case IIAPI_TXT_TYPE:
+		//for(j=0;j<pdataval->dv_length;++j)
+		//	_verbose_handler(result->conn,"%02x ",((unsigned char*)pdataval->dv_value)[j]);
+		//_verbose_handler(result->conn,"\n");
+		// assume length (first 2 bytes of datum) is host native (short)
+		row->field_sizes[idx] = len = *(unsigned short*)pdataval->dv_value;
+		if((data->d_string = malloc(len+1))){
+			memcpy(data->d_string, (char*)pdataval->dv_value + 2, len);
+			data->d_string[len] = 0; // NUL-terminate it, in case someone wants to pretend it's a string
+		}
+		PRINT_DEBUG(result->conn,"  [%d] variable size %d bytes (desc %d bytes)\n",idx,len,pdesc->ds_length);
+		break;
+	// fixed string/binary types
+	case IIAPI_BYTE_TYPE:
+	case IIAPI_CHR_TYPE:
+	case IIAPI_CHA_TYPE:
+	case IIAPI_LOGKEY_TYPE:
+	case IIAPI_TABKEY_TYPE:
+		row->field_sizes[idx] = len = pdataval->dv_length;
+		data->d_string = pdataval->dv_value; // just copy pointer to the fetched block
+		pdataval->dv_value = malloc(pdesc->ds_length+1); // replace block for future rows
+		data->d_string[len] = 0; // NUL-terminate the string
+		PRINT_DEBUG(result->conn,"  [%d] fixed size %d bytes (desc %d bytes)\n",idx,pdataval->dv_length,pdesc->ds_length);
+		break;
+	// these are returned in native format, all sizes
+	case IIAPI_INT_TYPE:
+	case IIAPI_FLT_TYPE:
+		// getColumns already copied data
+		PRINT_DEBUG(result->conn,"  [%d] copying %d bytes\n",idx,pdataval->dv_length);
+		memcpy(data, pdataval->dv_value, 8); // constant permits compile-time optimisation
+		break;
+	default:
+		_verbose_handler(result->conn,"ingres_field(): can't handle column type = %d\n",pdesc->ds_dataType);
+		return 0;
+	}
+	return 1;
+}
+
 static int ingres_results(dbi_result_t *result){
 	ingres_result_t *pres = result->result_handle;
 	IIAPI_STATUS status;
 	IIAPI_GETCOLPARM gcParm = {{NULL, NULL}};
 	IIAPI_DESCRIPTOR *desc = pres->dataDesc;
 	IIAPI_DATAVALUE *databuf;
-	IIAPI_CONVERTPARM convParm;
 	dbi_row_t *row;
-	dbi_data_t *data;
 	dbi_row_t **resized;
-	int i, j, retval = 0, len;
-	unsigned long count,limit;
-	char *val;
+	int fieldidx, lastidx, i, j, len, isblob, cols, retval = 0;
+	unsigned long count,limit,bloblen,blobmax;
+	char *p, *blob;
 
 	// no random access, we have to fetch row data sequentially using getColumns
 	// therefore, grab all rows now.
@@ -430,12 +527,10 @@ static int ingres_results(dbi_result_t *result){
 
 	gcParm.gc_stmtHandle = pres->stmtHandle;
 	gcParm.gc_rowCount = 1;
-	gcParm.gc_columnCount = result->numfields;
-	gcParm.gc_columnData = databuf;
-	gcParm.gc_rowsReturned = 0;
-	gcParm.gc_moreSegments = 0;
-	PRINT_VERBOSE(result->conn,"result columnCount=%d, stmtHandle=%#x\n", 
-					 gcParm.gc_columnCount, gcParm.gc_stmtHandle);
+	//gcParm.gc_columnCount = result->numfields;
+	//gcParm.gc_columnData = databuf;
+	//gcParm.gc_rowsReturned = 0;
+	//gcParm.gc_moreSegments = 0;
     
 	limit = result->numrows_matched;
 	for(count = 0; ; ++count){
@@ -452,120 +547,84 @@ static int ingres_results(dbi_result_t *result){
 		}
 	
 		PRINT_VERBOSE(result->conn,"fetching row %d\n",count);
-		IIapi_getColumns( &gcParm );
-		status = ingres_wait(result->conn, &gcParm.gc_genParm);
-		if ( status == IIAPI_ST_NO_DATA ){ // normal completion of fetch
-			retval = 1;
-			break; 
-		}else if ( status > IIAPI_ST_NO_DATA ){
-			SAVE_ERROR(result->conn, gcParm.gc_genParm.gp_errorHandle);
-			_verbose_handler(result->conn,"getColumns returned status %d; aborting\n",status);
-			break;
-		}else if(gcParm.gc_moreSegments){
-			_verbose_handler(result->conn,"long/blob columns with >1 segment not yet supported\n");
-			//break;
-		}
 
 		if((row = _dbd_row_allocate(result->numfields))){
-			for(i = 0, data = row->field_values; i < result->numfields; ++i, ++data){
-				row->field_sizes[i] = 0;
-				if(databuf[i].dv_null){
-					_set_field_flag(row, i, DBI_VALUE_NULL, 1);
-					PRINT_DEBUG(result->conn,"  [%d] is NULL\n",i);
-				}else
-					switch(desc[i].ds_dataType){
-					//case IIAPI_HNDL_TYPE: // can't do anything with this
-					// 'national character sets' -- UTF-16 strings
-					case IIAPI_NCHA_TYPE:
-					case IIAPI_NVCH_TYPE:
-					case IIAPI_LNVCH_TYPE:
-					case IIAPI_DEC_TYPE:
-					case IIAPI_MNY_TYPE:
-					case IIAPI_DTE_TYPE:
-						// convert to string first
-						convParm.cv_srcDesc = desc[i];
-						convParm.cv_srcValue = databuf[i];
-						convParm.cv_dstDesc.ds_dataType = IIAPI_CHA_TYPE;
-						convParm.cv_dstDesc.ds_nullable = FALSE;
-						convParm.cv_dstDesc.ds_length = desc[i].ds_length + desc[i].ds_precision + 32; // include plenty of slop
-						convParm.cv_dstDesc.ds_precision =
-						convParm.cv_dstDesc.ds_scale = 0;
-						convParm.cv_dstDesc.ds_columnType = IIAPI_COL_TUPLE;
-						convParm.cv_dstValue.dv_length = convParm.cv_dstDesc.ds_length;
-						convParm.cv_dstValue.dv_value = val = malloc(convParm.cv_dstValue.dv_length+1);
-						IIapi_convertData(&convParm);
-						len = convParm.cv_dstValue.dv_length;
-						if(convParm.cv_status > IIAPI_ST_SUCCESS){
-							_verbose_handler(result->conn,"could not convertData from column type %d\n",desc[i].ds_dataType);
-							break; // should do something more drastic
-						}else if(desc[i].ds_dataType == IIAPI_DTE_TYPE){
-							val[len] = 0;
-							data->d_datetime = ingres_date(val);
-							PRINT_DEBUG(result->conn,"  [%d] date string %d bytes\n", i,len);
-							break;
-						}
-						// strip leading and trailing blanks from converted value
-						while(len && val[len-1] == ' ')
-							--len;
-						for(j = 0; j < len && val[j] == ' '; ++j)
-							;
-						len -= j;
-						row->field_sizes[i] = len;
-						data->d_string = malloc(len+1); // use converted data block
-						memcpy(data->d_string, val+j, len);
-						data->d_string[len] = 0;
-						free(val);
-						PRINT_DEBUG(result->conn,"  [%d] converted string %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
-						break;
-					// FIXME: only first segment is currently fetched
-					case IIAPI_LBYTE_TYPE:
-					case IIAPI_LVCH_TYPE:
-					case IIAPI_LTXT_TYPE:
-					// variable length (first 2 bytes define length)
-					case IIAPI_VCH_TYPE:
-					case IIAPI_VBYTE_TYPE:
-					case IIAPI_TXT_TYPE:
-						//for(j=0;j<databuf[i].dv_length;++j)
-						//	_verbose_handler(result->conn,"%02x ",((unsigned char*)databuf[i].dv_value)[j]);
-						//_verbose_handler(result->conn,"\n");
-						// assume length (first 2 bytes of datum) is host native (short)
-						row->field_sizes[i] = len = *(short*)databuf[i].dv_value;
-						if((data->d_string = malloc(len+1))){
-							memcpy(data->d_string, (char*)databuf[i].dv_value + 2, len);
-							data->d_string[len] = 0; // NUL-terminate it, in case someone wants to pretend it's a string
-						}
-						PRINT_DEBUG(result->conn,"  [%d] variable size %d bytes (desc %d bytes)\n",i,len,desc[i].ds_length);
-						break;
-					// fixed string/binary types
-					case IIAPI_BYTE_TYPE:
-					case IIAPI_CHR_TYPE:
-					case IIAPI_CHA_TYPE:
-					case IIAPI_LOGKEY_TYPE:
-					case IIAPI_TABKEY_TYPE:
-						row->field_sizes[i] = len = databuf[i].dv_length;
-						data->d_string = databuf[i].dv_value; // just copy pointer to the fetched block
-						databuf[i].dv_value = malloc(desc[i].ds_length+1); // replace block for future rows
-						data->d_string[len] = 0; // NUL-terminate the string
-						PRINT_DEBUG(result->conn,"  [%d] fixed size %d bytes (desc %d bytes)\n",i,databuf[i].dv_length,desc[i].ds_length);
-						break;
-					// these are returned in native format, all sizes
-					case IIAPI_INT_TYPE:
-					case IIAPI_FLT_TYPE:
-						// getColumns already copied data
-						PRINT_DEBUG(result->conn,"  [%d] copying %d bytes\n",i,databuf[i].dv_length);
-						memcpy(&row->field_values[i], databuf[i].dv_value, 8); // constant permits compile-time optimisation
-						break;
-					default:
-						_verbose_handler(result->conn,"can't handle column type = %d\n",desc[i].ds_dataType);
+
+			for(fieldidx = 0; fieldidx < result->numfields; ){
+				// skip over non-BLOB fields
+				for(lastidx = fieldidx; lastidx < result->numfields 
+										&& !IS_BLOB(desc[lastidx].ds_dataType); ++lastidx)
+					;
+
+				isblob = IS_BLOB(desc[fieldidx].ds_dataType);
+				if(isblob) ++lastidx;
+				gcParm.gc_columnCount = cols = lastidx - fieldidx;
+				gcParm.gc_columnData = &databuf[fieldidx];
+				
+				if(isblob){
+					bloblen = 0;
+					blob = malloc(blobmax = desc[fieldidx].ds_length);
+				}
+				do{
+					IIapi_getColumns( &gcParm );
+					status = ingres_wait(result->conn, &gcParm.gc_genParm);
+					if ( status == IIAPI_ST_NO_DATA ){ // normal completion of fetch
+						retval = 1;
+						goto rowsdone; 
+					}else if ( status > IIAPI_ST_NO_DATA ){
+						SAVE_ERROR(result->conn, gcParm.gc_genParm.gp_errorHandle);
+						_verbose_handler(result->conn,"getColumns returned status %d; aborting\n",status);
+						goto rowsdone; 
 					}
+					PRINT_DEBUG(result->conn,"getColumns fieldidx=%d columnCount=%d isblob=%d more=%d\n",
+								fieldidx,gcParm.gc_columnCount,isblob,gcParm.gc_moreSegments);
+					if(isblob){
+						// append returned segment to blob
+						len = *(unsigned short*)databuf[fieldidx].dv_value;
+						if(bloblen + len > blobmax){
+							// the idea here is to reduce the number of reallocs (typically memcopies).
+							// means, e.g., a 1MB BLOB can be fetched in 9 doublings (reallocs)
+							// otherwise, if we just added a segment size each time, we would realloc over 500 times!
+							blobmax *= 2;
+							if(p = realloc(blob, blobmax)){
+								blob = p;
+								PRINT_DEBUG(result->conn, "resized blob to %d bytes\n", blobmax);
+							}else{ // returned data for BLOB column will be short!
+								_verbose_handler(result->conn,"could not resize blob to %d\n",blobmax);
+								goto rowsdone;
+							}
+						}
+						memcpy(blob + bloblen, (char*)databuf[fieldidx].dv_value + 2, len);
+						bloblen += len;
+						PRINT_DEBUG(result->conn, "  [%d] BLOB segment %d bytes\n", fieldidx, len);
+					}
+				}while(gcParm.gc_moreSegments);
+				
+				// process the column(s) we got
+				for(i = fieldidx; i < lastidx; ++i){
+					row->field_sizes[i] = 0;
+					if(databuf[i].dv_null){
+						_set_field_flag(row, i, DBI_VALUE_NULL, 1);
+						PRINT_DEBUG(result->conn,"  [%d] is NULL\n",i);
+					}else if(isblob){
+						if(p = realloc(blob, bloblen)) // shrink block to actual length
+							blob = p;
+						row->field_values[fieldidx].d_string = blob;
+						row->field_sizes[fieldidx] = bloblen;
+					}else
+						ingres_field(result, row, &row->field_values[i], i, &desc[i], &databuf[i]);
+				}
+						
+				fieldidx += cols;
 			}
+
 			_dbd_row_finalize(result, row, count);
 		}else{
 			_verbose_handler(result->conn,"failed to allocate row; aborting\n");
 			break;
 		}
 	}
-	
+rowsdone:
 	// Don't need this handle any more.
 	ingres_close(result->conn, pres->stmtHandle);
 	pres->stmtHandle = NULL;

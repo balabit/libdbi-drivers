@@ -23,8 +23,7 @@ For more information about the Ingres(R) open source RDBMS, see http://ingres.co
 
 STATUS
 ------
-1-Jun-2006:
-	Ingres driver is mostly implemented. See TODO for missing/incomplete features.
+See TODO for missing/incomplete features.
 
 CONTACT INFO:
 -------------

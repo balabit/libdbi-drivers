@@ -31,8 +31,8 @@
 	<pubdate>$Date$</pubdate>
 	<revhistory>
       <revision>
-	<revnumber>0.2</revnumber>
-	<date>2006-05-31</date>
+	<revnumber>0.3</revnumber>
+	<date>2006-06-08</date>
       </revision>
 	</revhistory>
 	<copyright>
@@ -293,10 +293,6 @@
 		The driver respects <function>dbd_set_verbosity()</function> level in reporting messages.
 		At verbosity 1, only errors and abnormalities are reported;
 		at 2, more information is shown; at 3, detailed debugging information is shown.
-	</para>
-	<para>
-		Only the first segment (up to 2000 bytes) is retrieved for LONG BLOB/CLOB columns.
-		This will be fixed in a subsequent release (such columns can store data up to 2GB).
 	</para>
 	<para>
 		Blanks are preserved in column values (except that DECIMAL and MONEY columns

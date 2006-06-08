@@ -4,7 +4,7 @@ TODO:
 * (DONE) result set handling
 * (DONE) resolve date retrieval issue
 * (DONE) long clob/blob column types (LONG VARCHAR, LONG NVARCHAR, LONG BYTE)
-* figure out if transactional sessions (non-autocommit) can work
+* (DONE) fix multi-statement transactions
 * documentation
 * (DONE) error string retrieval
 * encodings

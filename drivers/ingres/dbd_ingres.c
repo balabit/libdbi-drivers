@@ -70,14 +70,15 @@ static II_PTR envHandle = NULL;
 #define AUTOCOMMIT_ON(C) (((ingres_conn_t*)C->connection)->autoTranHandle != NULL)
 
 #define SAVE_ERROR(C,E) ingres_error(E, dbi_verbosity>1, &((ingres_conn_t*)C->connection)->errorCode, \
-										   &((ingres_conn_t*)C->connection)->errorMsg)
+									 &((ingres_conn_t*)C->connection)->errorMsg)
 #define DEBUG_ERROR(E) ingres_error(E, dbi_verbosity>2, NULL, NULL)
+#define DRIVER_ERROR(C,E) _dbd_internal_error_handler(C,E,0)
 
 #define PRINT_VERBOSE if(dbi_verbosity>1) _verbose_handler
-#define PRINT_DEBUG if(dbi_verbosity>2) _verbose_handler
+#define PRINT_DEBUG   if(dbi_verbosity>2) _verbose_handler
 
 #define IS_BLOB(T) ( (T) == IIAPI_LVCH_TYPE  || (T) == IIAPI_LBYTE_TYPE \
-					   || (T) == IIAPI_LNVCH_TYPE || (T) == IIAPI_LTXT_TYPE )
+				  || (T) == IIAPI_LNVCH_TYPE || (T) == IIAPI_LTXT_TYPE )
 
 typedef struct {
 	II_PTR connHandle;
@@ -138,7 +139,7 @@ static time_t ingres_date(char *raw){
 	//	;
 	if(isdigit(*p)){
 		// process day
-		unixtime.tm_mday = atoi(p); PRINT_DEBUG(NULL,"day: %d ",unixtime.tm_mday);
+		unixtime.tm_mday = atoi(p);
 		while(*p && isdigit(*p))
 			++p;
 		if(!*p){ _verbose_handler(NULL,"date ended after day??",raw); return 0; }
@@ -147,7 +148,6 @@ static time_t ingres_date(char *raw){
 		// process month
 		if(isdigit(*p)){
 			unixtime.tm_mon = atoi(p)-1; /* months are 0 through 11 */
-			PRINT_DEBUG(NULL,"month: %d ",unixtime.tm_mon);
 			while(*p && *p != sep)
 				++p;
 		}else{
@@ -157,17 +157,18 @@ static time_t ingres_date(char *raw){
 			if(*p){
 				*p = 0;
 				unixtime.tm_mon = in_word_set(q,3)->index; // should work for long month names too
-				PRINT_DEBUG(NULL,"month: %s -> %d ",q,unixtime.tm_mon);
 				++p;
 			}
 		}
 		if(!*p){ _verbose_handler(NULL,"date ended after month??",raw); return 0; }
 		
 		// process year
-		unixtime.tm_year = atoi(p)-1900; PRINT_DEBUG(NULL,"year: %d\n",unixtime.tm_year);
+		unixtime.tm_year = atoi(p)-1900;
+
+		PRINT_DEBUG(NULL,"ingres_date: parsed date day=%d mon=%d yr=%d\n", unixtime.tm_mday, unixtime.tm_mon, unixtime.tm_year);
+
 		while(isdigit(*p))
 			++p;
-
 		// skip space following date
 		while(*p == ' ')
 			++p;
@@ -175,21 +176,23 @@ static time_t ingres_date(char *raw){
 		// Ingres does not generate a time by itself, it's always preceded by a date.
 		if(isdigit(*p)){ // time is present
 			// process hours
-			unixtime.tm_hour = atoi(p); PRINT_DEBUG(NULL,"hour: %d ",unixtime.tm_hour);
+			unixtime.tm_hour = atoi(p);
 			while(isdigit(*p))
 				++p;
 			if(!*p){ _verbose_handler(NULL,"time ended after hour??",raw); return 0; }
 			++p; // skip separator
 
 			// process minutes
-			unixtime.tm_min = atoi(p); PRINT_DEBUG(NULL,"min: %d ",unixtime.tm_min);
+			unixtime.tm_min = atoi(p);
 			while(isdigit(*p))
 				++p;
 			if(!*p){ _verbose_handler(NULL,"time ended after minute??",raw); return 0; }
 			++p; // skip separator
 
 			// process seconds
-			unixtime.tm_sec = atoi(p); PRINT_DEBUG(NULL,"sec: %d\n",unixtime.tm_sec);
+			unixtime.tm_sec = atoi(p); 
+			
+			PRINT_DEBUG(NULL,"ingres_date: parsed time %02d:%02d:%02d\n", unixtime.tm_hour, unixtime.tm_min, unixtime.tm_sec);
 	
 			/* check for a timezone suffix */
 			//while(isdigit(*p) || *p == ' ')
@@ -245,7 +248,7 @@ void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
 		for(count = 0;;){
 			IIapi_getErrorInfo(&eiParm);
 			if(eiParm.ge_status == IIAPI_ST_SUCCESS){
-				n = snprintf(buf, sizeof(buf), "%s-%s-%08X  %s\n",
+				n = snprintf(buf, sizeof(buf), "%s SQLSTATE:%s Code:%d  %s\n",
 							 typestr[eiParm.ge_type], eiParm.ge_SQLSTATE, 
 							 eiParm.ge_errorCode, eiParm.ge_message);
 				/*if(print)*/ PRINT_VERBOSE(NULL, buf);
@@ -348,7 +351,7 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	status = ingres_wait(conn, &connParm.co_genParm);
 	SAVE_ERROR(conn, connParm.co_genParm.gp_errorHandle);
 	if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
-		PRINT_VERBOSE(conn, "connected, target='%s', API level=%d, BLOB sizeAdvise=%d\n",
+		PRINT_VERBOSE(conn, "connected to '%s', API level=%d, BLOB sizeAdvise=%d\n",
 					  connParm.co_target, connParm.co_apiLevel, connParm.co_sizeAdvise);
 		iconn->connHandle = connParm.co_connHandle;
 		iconn->sizeAdvise = connParm.co_sizeAdvise;
@@ -527,10 +530,6 @@ static int ingres_results(dbi_result_t *result){
 
 	gcParm.gc_stmtHandle = pres->stmtHandle;
 	gcParm.gc_rowCount = 1;
-	//gcParm.gc_columnCount = result->numfields;
-	//gcParm.gc_columnData = databuf;
-	//gcParm.gc_rowsReturned = 0;
-	//gcParm.gc_moreSegments = 0;
     
 	limit = result->numrows_matched;
 	for(count = 0; ; ++count){
@@ -541,7 +540,7 @@ static int ingres_results(dbi_result_t *result){
 			if( (resized = realloc(result->rows, limit*sizeof(dbi_row_t*))) )
 				result->rows = resized;
 			else{
-				_verbose_handler(result->conn,"can't expand row array; aborting\n");
+				DRIVER_ERROR(result->conn,"can't expand row array; aborting\n");
 				break;
 			}
 		}
@@ -590,7 +589,7 @@ static int ingres_results(dbi_result_t *result){
 								blob = p;
 								PRINT_DEBUG(result->conn, "resized blob to %d bytes\n", blobmax);
 							}else{ // returned data for BLOB column will be short!
-								_verbose_handler(result->conn,"could not resize blob to %d\n",blobmax);
+								DRIVER_ERROR(result->conn, "could not resize blob; aborting\n");
 								goto rowsdone;
 							}
 						}
@@ -611,6 +610,7 @@ static int ingres_results(dbi_result_t *result){
 							blob = p;
 						row->field_values[fieldidx].d_string = blob;
 						row->field_sizes[fieldidx] = bloblen;
+						PRINT_DEBUG(result->conn,"  [%d] is BLOB totalling %d bytes\n",i,bloblen);
 					}else
 						ingres_field(result, row, &row->field_values[i], i, &desc[i], &databuf[i]);
 				}
@@ -620,7 +620,7 @@ static int ingres_results(dbi_result_t *result){
 
 			_dbd_row_finalize(result, row, count);
 		}else{
-			_verbose_handler(result->conn,"failed to allocate row; aborting\n");
+			DRIVER_ERROR(result->conn, "failed to allocate row; aborting\n");
 			break;
 		}
 	}
@@ -823,7 +823,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 	IIAPI_STATUS status;
 
 	if(!iconn || !iconn->connHandle){
-		_verbose_handler(conn,"whoa, query attempted without a connection\n");
+		DRIVER_ERROR(conn, "whoa, query attempted without a connection\n");
 		return NULL;
 	}
 
@@ -906,7 +906,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 }
 
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) {
-	_verbose_handler(conn, "dbd_query_null() not implemented\n"); //FIXME: use internal error handler (fix other instances too!)
+	DRIVER_ERROR(conn, "dbd_query_null() not implemented\n"); //FIXME: use internal error handler (fix other instances too!)
 	return NULL;
 }
 

@@ -227,87 +227,119 @@
 
 <chapter id="specific"><title>&proper-name;-specific Peculiarities</title>
 	<para>
-		This chapter lists known peculiarities of the &dbd-name; driver.
-		Wherever possible, nonstandard driver behavior is hidden by libdbi's
-		abstractions, but occasionally special considerations must be taken or
-		extra functionality may be utilized for particular drivers.
-	</para>
-	<para>
-		'Autocommit' mode is enabled by default for the DBMS connection.
-		In this mode, every query is committed as an individual transaction.
-		With autocommit disabled (see <literal>ingres_autocommit</literal>),
-		a transaction is begun by the first statement after connection, commit
-		or rollback. The transaction remains open until the next explicit commit,
-		rollback or disconnection (which implies commit). 
-		See Ingres OpenAPI and SQL documentation for more information.
-		The current version of the driver has some problems with autocommit disabled,
-		this needs to be investigated. (Without libdbi <function>commit()</function> 
-		and <function>rollback()</function> extension functions,
-		it may not be possible to resolve the issue.)
-	</para>
-	<para>
-		In the Ingres OpenAPI, result sets must be accessed sequentially.
-		Furthermore, Ingres does not provide the row count; this must be determined
-		by fetching rows until no more is available. For this reason, the driver
-		must fetch all result data into memory immediately after a query. Then
-		libdbi functions can be used to get random access to rows as usual.
-	</para>
-	<para>
-		<function>dbi_conn_sequence_last()</function> is not usable in Ingres' autocommit mode
-		(the default). To use sequences to identify INSERTed rows, first 
-		obtain the NEXT VALUE using <function>dbi_conn_sequence_next()</function> then use that 
-		sequence value directly in a separate INSERT transaction.
-	</para>
-	<para>
-		Parsing DATE columns into timestamp values will only work correctly when
-		returned values are in the default (US) date format; i.e.
-		<literal>dd-mmm-yyyy [hh:mm:ss]</literal> where <literal>mmm</literal>
-		is a partial month name. The parsing routine will accept
-		any separators and either a numeric or named month, but the D-M-Y
-		ordering is required. If needed, a workaround for date format
-		incompatibility is to format into a string and don't fetch as datetime.
-	</para>
-	<para>
-		Availability of certain Ingres features and column types (such as BIGINT)
-		depends on API level of the connection (logged
-		at connection time). This version of the driver requests API level 3,
-		but may actually connect at a lower level depending on your server.
-		See Ingres documentation for details.
-	</para>
-	<para>
-		<function>dbi_conn_get_engine_version_string()</function> returns a
-		string like <literal>II 9.0.4 (int.lnx/104)NPTL</literal>
-		(internally this is implemented as <literal>SELECT dbmsinfo('_version')</literal>.
-	</para>
-	<para>
-		<function>dbi_conn_get_table_list()</function> returns matching objects 
-		of all types - tables, views, indexes and partitions -
-		in the <literal>iitables</literal> catalog for the named database
-		(except those beginning with <literal>ii</literal>, which are reserved for Ingres).
-	</para>
-	<para>
-		The driver will not be loaded at all by <function>dbi_initialize()</function>
-		if the current user does not have permission to use the Ingres DBMS.
-	</para>
-	<para>
-		The driver respects <function>dbd_set_verbosity()</function> level in reporting messages.
-		At verbosity 1, only errors and abnormalities are reported;
-		at 2, more information is shown; at 3, detailed debugging information is shown.
-	</para>
-	<para>
-		Blanks are preserved in column values (except that DECIMAL and MONEY columns
-		are converted to strings, and then stripped of leading and trailing blanks).
-		Note that names returned by <function>dbi_conn_get_table_list()</function>
-		and <function>dbi_conn_get_db_list()</function> are padded with blanks
-		to a fixed width.
-	</para>
-	<para>
-		The Ingres OpenAPI may return multiple error messages for a given query/operation.
-		The <function>dbi_conn_error()</function> returns the error code only for the
-		last error message. The message text includes all messages. At verbosity level 2,
-		errors directly relating to libdbi function calls are logged. At verbosity 3,
-		all errors are logged including those caused by API calls made internally by the driver.
-	</para>
+			This chapter lists known peculiarities of the &dbd-name; driver.
+			Wherever possible, nonstandard driver behavior is hidden by libdbi's
+			abstractions, but occasionally special considerations must be taken or
+			extra functionality may be utilized for particular drivers.
+		</para>
+<variablelist>
+	<varlistentry>
+		<term>dbi_conn_new() requires DBMS privileges</term>
+		<listitem>
+			<para>The driver will not be loaded at all by <function>dbi_initialize()</function>
+			if the current user does not have permission to use the Ingres DBMS.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>Autocommit</term>
+		<listitem>
+			<para>'Autocommit' mode is enabled by default for the DBMS connection.
+			In this mode, every query is committed as an individual transaction.
+			With autocommit disabled (see <literal>ingres_autocommit</literal>),
+			a transaction is begun by the first statement after connection, commit
+			or rollback. The transaction remains open until the next explicit commit,
+			rollback or disconnection (which implies commit). 
+			See Ingres OpenAPI and SQL documentation for more information.</para>
+			
+			<para>The current version of the driver has some problems with autocommit disabled,
+			this needs to be investigated. (Without libdbi <function>commit()</function> 
+			and <function>rollback()</function> extension functions,
+			it may not be possible to resolve the issue.)</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>Handling of result sets</term>
+		<listitem>
+			<para>In the Ingres OpenAPI, result sets must be accessed sequentially.
+			Furthermore, Ingres does not provide the row count; this must be determined
+			by fetching rows until no more is available. For this reason, the driver
+			must fetch all result data into memory immediately after a query. Then
+			libdbi functions can be used to get random access to rows as usual.</para>
+			
+			<para>A workaround, for example if your result sets
+			are very large, would be to use SELECT for random access; for example,
+			query once to get a set of key values, then issue SELECTs on individual rows
+			or smaller subsets of rows.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>SEQUENCE accessors</term>
+		<listitem>
+			<para><function>dbi_conn_sequence_last()</function> is not usable in Ingres' autocommit mode
+			(the default). To use sequences to identify INSERTed rows, first 
+			obtain the NEXT VALUE using <function>dbi_conn_sequence_next()</function> then use that 
+			sequence value directly in a separate INSERT transaction.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>DATE parsing</term>
+		<listitem>
+			<para>Parsing DATE columns into timestamp values will only work correctly when
+			returned values are in the default (US) date format; i.e.
+			<literal>dd-mmm-yyyy [hh:mm:ss]</literal> where <literal>mmm</literal>
+			is a partial month name. The parsing routine will accept
+			any separators and either a numeric or named month, but the D-M-Y
+			ordering is required. If needed, a workaround for date format
+			incompatibility is to format into a string and don't fetch as datetime.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>Version string format</term>
+		<listitem>
+			<para><function>dbi_conn_get_engine_version_string()</function> returns a
+			string like <literal>II 9.0.4 (int.lnx/104)NPTL</literal>
+			(internally this is implemented as <literal>SELECT dbmsinfo('_version')</literal>.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>Getting database and table lists</term>
+		<listitem>
+			<para><function>dbi_conn_get_table_list()</function> returns matching objects 
+			of all types - tables, views, indexes and partitions -
+			in the <literal>iitables</literal> catalog for the named database
+			(except those beginning with <literal>ii</literal>, which are reserved for Ingres).
+			These names are space padded fixed width fields.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>Logging verbosity</term>
+		<listitem>
+			<para>The driver respects <function>dbd_set_verbosity()</function> level in reporting messages.
+			At verbosity 1, only errors and abnormalities are reported;
+			at 2, more information is shown; at 3, detailed debugging information is shown.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>Blank handling</term>
+		<listitem>
+			<para>Blanks are preserved in column values (except that DECIMAL and MONEY columns
+			are converted to strings, and then stripped of leading and trailing blanks).
+			Note that names returned by <function>dbi_conn_get_table_list()</function>
+			and <function>dbi_conn_get_db_list()</function> are padded with blanks
+			to a fixed width.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>Error messages</term>
+		<listitem>
+			<para>The Ingres OpenAPI may return multiple error messages for a given query/operation.
+			The <function>dbi_conn_error()</function> returns the error code only for the
+			last error message, but the message text will include all relevant messages. At verbosity level 2,
+			errors directly relating to libdbi function calls are logged. At verbosity 3,
+			all errors are logged including those caused by API calls made internally by the driver.</para>
+		</listitem>
+	</varlistentry>
+</variablelist>
 </chapter>
 
 &freedoc-license;

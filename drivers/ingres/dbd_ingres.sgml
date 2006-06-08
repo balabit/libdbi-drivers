@@ -244,17 +244,18 @@
 		<term>Autocommit</term>
 		<listitem>
 			<para>'Autocommit' mode is enabled by default for the DBMS connection.
-			In this mode, every query is committed as an individual transaction.
-			With autocommit disabled (see <literal>ingres_autocommit</literal>),
-			a transaction is begun by the first statement after connection, commit
-			or rollback. The transaction remains open until the next explicit commit,
-			rollback or disconnection (which implies commit). 
-			See Ingres OpenAPI and SQL documentation for more information.</para>
+			In this mode, every query is committed as an individual transaction.</para>
 			
-			<para>The current version of the driver has some problems with autocommit disabled,
-			this needs to be investigated. (Without libdbi <function>commit()</function> 
-			and <function>rollback()</function> extension functions,
-			it may not be possible to resolve the issue.)</para>
+			<para>With autocommit disabled (see <literal>ingres_autocommit</literal>),
+			a transaction is begun by the first query statement after connection, commit
+			or rollback. The transaction remains open until the next explicit commit,
+			rollback or disconnection (which implies commit). Commit and rollback
+			cannot be done using an OpenAPI query, but must use separate API functions.
+			To work around this, the Ingres driver makes a specific check
+			for COMMIT and ROLLBACK queries and calls the appropriate API function
+			instead of issuing the query.</para>
+			
+			<para>See Ingres OpenAPI and SQL documentation for more information.</para>
 		</listitem>
 	</varlistentry>
 	<varlistentry>

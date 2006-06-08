@@ -67,7 +67,7 @@ static II_PTR envHandle = NULL;
 #define SYS_CATALOGS	"iidbdb" // database name for system catalogs
 #define NO_AUTOCOMMIT	"0" // mnemonic value for option
 
-#define AUTOCOMMIT_ON(C) (((ingres_conn_t*)C->connection)->autoTranHandle != NULL)
+#define AUTOCOMMIT_ON(C) (((ingres_conn_t*)C->connection)->autocommit)
 
 #define SAVE_ERROR(C,E) ingres_error(E, dbi_verbosity>1, &((ingres_conn_t*)C->connection)->errorCode, \
 									 &((ingres_conn_t*)C->connection)->errorMsg)
@@ -82,11 +82,12 @@ static II_PTR envHandle = NULL;
 
 typedef struct {
 	II_PTR connHandle;
-	II_PTR autoTranHandle;
+	II_PTR currTran;
 	II_LONG sizeAdvise; // advised buffer size for blob (long) types
 	dbi_conn_t *sysConn; // used for querying system catalogs
 	II_LONG errorCode;
 	char *errorMsg;
+	int autocommit;
 } ingres_conn_t;
 
 typedef struct {
@@ -95,10 +96,9 @@ typedef struct {
 } ingres_result_t;
 
 /* forward declarations of internal functions */
-static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PTR *tranHandle);
+static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement);
 static void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned int *attribs);
 static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocommit);
-static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PTR *tranHandle);
 void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg);
 
 // months.gperf.c
@@ -248,7 +248,7 @@ void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
 		for(count = 0;;){
 			IIapi_getErrorInfo(&eiParm);
 			if(eiParm.ge_status == IIAPI_ST_SUCCESS){
-				n = snprintf(buf, sizeof(buf), "%s SQLSTATE:%s Code:%d  %s\n",
+				n = snprintf(buf, sizeof(buf), "%s SQLSTATE:%s Code:%06X  %s\n",
 							 typestr[eiParm.ge_type], eiParm.ge_SQLSTATE, 
 							 eiParm.ge_errorCode, eiParm.ge_message);
 				/*if(print)*/ PRINT_VERBOSE(NULL, buf);
@@ -317,7 +317,7 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	// at least to track the error handle.
 	conn->connection = iconn = malloc(sizeof(ingres_conn_t));
 	iconn->connHandle = NULL;
-	iconn->autoTranHandle = NULL;
+	iconn->currTran = NULL;
 	iconn->sysConn = NULL;
 	iconn->errorCode = 0;
 	iconn->errorMsg = NULL;
@@ -355,7 +355,7 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 					  connParm.co_target, connParm.co_apiLevel, connParm.co_sizeAdvise);
 		iconn->connHandle = connParm.co_connHandle;
 		iconn->sizeAdvise = connParm.co_sizeAdvise;
-		if(!autocommit || atoi(autocommit)){ // enable auto-commit by default
+		if((iconn->autocommit = !autocommit || atoi(autocommit))){ // enable auto-commit by default
 			// set autocommit mode
 			acParm.ac_connHandle = connParm.co_connHandle;
 			acParm.ac_tranHandle = NULL;
@@ -364,8 +364,8 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 			DEBUG_ERROR(acParm.ac_genParm.gp_errorHandle);
 			if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
 				// stash the autocommit transaction handle
-				iconn->autoTranHandle = acParm.ac_tranHandle;
-				PRINT_VERBOSE(conn, "...enabled autocommit\n");
+				iconn->currTran = acParm.ac_tranHandle;
+				PRINT_VERBOSE(conn, "...enabled autocommit, tranHandle=%#x\n", acParm.ac_tranHandle);
 			}else
 				PRINT_VERBOSE(conn, "...FAILED to enable autocommit\n");
 		}
@@ -384,10 +384,10 @@ int dbd_disconnect(dbi_conn_t *conn) {
 		if(iconn->sysConn)
 			dbi_conn_close(iconn->sysConn);
 
-		if(iconn->autoTranHandle){
+		if(iconn->autocommit){
 			// exit autocommit mode
 			acParm.ac_connHandle = iconn->connHandle;
-			acParm.ac_tranHandle = iconn->autoTranHandle;
+			acParm.ac_tranHandle = iconn->currTran;
 			IIapi_autocommit(&acParm);
 			status = ingres_wait(conn, &acParm.ac_genParm);
 			DEBUG_ERROR(acParm.ac_genParm.gp_errorHandle);
@@ -610,7 +610,7 @@ static int ingres_results(dbi_result_t *result){
 							blob = p;
 						row->field_values[fieldidx].d_string = blob;
 						row->field_sizes[fieldidx] = bloblen;
-						PRINT_DEBUG(result->conn,"  [%d] is BLOB totalling %d bytes\n",i,bloblen);
+						PRINT_DEBUG(result->conn,"  [%d] is BLOB of %d bytes\n",i,bloblen);
 					}else
 						ingres_field(result, row, &row->field_values[i], i, &desc[i], &databuf[i]);
 				}
@@ -682,6 +682,7 @@ static int ingres_commit(dbi_conn_t *conn, II_PTR tranHandle){
 	IIAPI_COMMITPARM cmParm = {{NULL, NULL}};
 	IIAPI_STATUS status;
 	
+	PRINT_DEBUG(conn, "COMMIT tranHandle=%#x\n", tranHandle);
     cmParm.cm_tranHandle = tranHandle;
 	IIapi_commit(&cmParm);
     status = ingres_wait(conn, &cmParm.cm_genParm);
@@ -693,6 +694,7 @@ static int ingres_rollback(dbi_conn_t *conn, II_PTR tranHandle){
 	IIAPI_ROLLBACKPARM rbParm = {{NULL, NULL}};
 	IIAPI_STATUS status;
 	
+	PRINT_DEBUG(conn, "ROLLBACK tranHandle=%#x\n", tranHandle);
     rbParm.rb_tranHandle = tranHandle;
     rbParm.rb_savePointHandle = NULL;
 	IIapi_rollback(&rbParm);
@@ -716,16 +718,15 @@ static dbi_result_t *ingres_sys_query(dbi_conn_t *conn, const char *sql) {
 			return NULL;
 		}
 	}
-	res = ingres_query(iconn->sysConn, sql, &tranHandle);
-	PRINT_DEBUG(conn,"ingres_sys_query: tranHandle=%#x\n",tranHandle);
+	res = ingres_query(iconn->sysConn, sql);
 	if(!res) _verbose_handler(conn,"no result for '%s'??\n",sql);
-	ingres_rollback(iconn->sysConn, tranHandle);
+	ingres_rollback(iconn->sysConn, ((ingres_conn_t*)iconn->sysConn->connection)->currTran);
 	return res;
 }
 
 char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring) {
 	char *str = "0";
-	dbi_result_t *res = ingres_query(conn, "SELECT dbmsinfo('_version')", NULL);
+	dbi_result_t *res = ingres_query(conn, "SELECT dbmsinfo('_version')");
 	if(res && dbi_result_next_row(res)){
 		strncpy(versionstring, dbi_result_get_string_idx(res,1), VERSIONSTRING_LENGTH);
 		versionstring[VERSIONSTRING_LENGTH-1] = 0; // make sure of NUL-termination
@@ -757,14 +758,14 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 		_verbose_handler(conn,"dbd_list_tables: can't connect to '%s'\n",db);
 	else{
 		if(!pattern || asprintf(&sql, "%s AND table_name LIKE '%s'",select,pattern) > 0){
-			res = ingres_query(newconn, sql, &tranHandle);
+			res = ingres_query(newconn, sql);
 			if(pattern) free(sql);
 		}
 		if(res) // remove result set from connection's list
 			;// dbi_result_disjoin(res); FIXME: this crashes us later for no discernible reason
 		else
 			_verbose_handler(conn,"dbd_list_tables: no result for '%s'??\n",sql);
-		ingres_rollback(newconn, tranHandle);
+		ingres_rollback(newconn, ((ingres_conn_t*)newconn->connection)->currTran);
 		//dbi_conn_close(newconn); // FIXME: until disjoin works, don't close; leave connection around (bad)
 	}
 	return res;
@@ -809,9 +810,9 @@ size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char* orig, size_t from
 	return DBI_LENGTH_ERROR;
 }
 
-// note transaction handle is returned in tranHandle parameter, if not NULL
-// this is only really of use for non-Autocommit connections (such as system catalog access).
-static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PTR *tranHandle) {
+// note for non-Autocommit connections (such as system catalog access),
+// transaction handle is returned in tranHandle parameter, if not NULL
+static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement) {
 	ingres_conn_t *iconn = conn->connection;
 	dbi_result_t *res = NULL;
 	ingres_result_t *pres = NULL;
@@ -826,18 +827,30 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 		DRIVER_ERROR(conn, "whoa, query attempted without a connection\n");
 		return NULL;
 	}
+	
+	if(!strncasecmp(statement, "COMMIT", 6)){
+		if(ingres_commit(conn, iconn->currTran))
+			iconn->currTran = NULL;
+		return NULL;
+	}else if(!strncasecmp(statement, "ROLLBACK", 8)){
+		if(ingres_rollback(conn, iconn->currTran))
+			iconn->currTran = NULL;
+		return NULL;
+	}
 
 	queryParm.qy_connHandle = iconn->connHandle;
 	queryParm.qy_queryType = IIAPI_QT_QUERY;
 	queryParm.qy_queryText = statement;
 	queryParm.qy_parameters = FALSE;
-	queryParm.qy_tranHandle = iconn->autoTranHandle; // will be NULL if we're not using autocommit
+	queryParm.qy_tranHandle = iconn->currTran;
 	queryParm.qy_stmtHandle = NULL;
+	PRINT_DEBUG(conn, "query tranHandle IN=%#x\n", queryParm.qy_tranHandle);
 	IIapi_query( &queryParm );
 	status = ingres_wait(conn, &queryParm.qy_genParm);
 	SAVE_ERROR(conn, queryParm.qy_genParm.gp_errorHandle);
 
-	if(tranHandle) *tranHandle = queryParm.qy_tranHandle;
+	iconn->currTran = queryParm.qy_tranHandle;
+	PRINT_DEBUG(conn, "query tranHandle OUT=%#x\n", queryParm.qy_tranHandle);
 
 	if(status == IIAPI_ST_NO_DATA)
 		_verbose_handler(conn,"(IIAPI_ST_NO_DATA: expected data, but none returned)\n");
@@ -902,7 +915,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement, II_PT
 }
 
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
-	return ingres_query(conn, statement, NULL);
+	return ingres_query(conn, statement);
 }
 
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) {
@@ -952,7 +965,7 @@ unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) {
 	dbi_result_t *res;
 
 	asprintf(&sql, "SELECT CURRENT VALUE FOR %s", sequence);
-	res = ingres_query(conn, sql, NULL);
+	res = ingres_query(conn, sql);
 	free(sql);
 	if(res && dbi_result_next_row(res))
 		seq = dbi_result_get_int_idx(res,1);
@@ -969,16 +982,13 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) {
 	long seq = 0;
 	char *sql;
 	dbi_result_t *res;
-	II_PTR tran;
 
 	asprintf(&sql, "SELECT NEXT VALUE FOR %s", sequence);
-	res = ingres_query(conn, sql, &tran);
+	res = ingres_query(conn, sql);
 	free(sql);
 	if(res && dbi_result_next_row(res))
 		seq = dbi_result_get_int_idx(res,1);
 	if(res) dbi_result_free(res);
-	//if(!AUTOCOMMIT_ON(conn))  // you probably don't want this hack
-	//	ingres_commit(conn, tran);
 	return seq;
 }
 
@@ -986,7 +996,7 @@ int dbd_ping(dbi_conn_t *conn) {
 	long test = 0;
 	dbi_result_t *res;
 
-	res = ingres_query(conn, "SELECT 1", NULL);
+	res = ingres_query(conn, "SELECT 1");
 	if(res && dbi_result_next_row(res))
 		test = dbi_result_get_int_idx(res,1);
 	if(res) dbi_result_free(res);

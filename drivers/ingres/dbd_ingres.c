@@ -69,30 +69,30 @@ static II_PTR envHandle = NULL;
 
 #define AUTOCOMMIT_ON(C) (((ingres_conn_t*)C->connection)->autocommit)
 
-#define SAVE_ERROR(C,E) ingres_error(E, dbi_verbosity>1, \
+#define SAVE_ERROR(C,E)	ingres_error(E, dbi_verbosity>1, \
 									 &((ingres_conn_t*)C->connection)->errorCode, \
 									 &((ingres_conn_t*)C->connection)->errorMsg)
-#define DEBUG_ERROR(E) ingres_error(E, dbi_verbosity>2, NULL, NULL)
+#define DEBUG_ERROR(E)	ingres_error(E, dbi_verbosity>2, NULL, NULL)
 #define DRIVER_ERROR(C,E) _dbd_internal_error_handler(C,E,0)
 
-#define PRINT_VERBOSE if(dbi_verbosity>1) _verbose_handler
-#define PRINT_DEBUG   if(dbi_verbosity>2) _verbose_handler
+#define PRINT_VERBOSE	if(dbi_verbosity>1) _verbose_handler
+#define PRINT_DEBUG		if(dbi_verbosity>2) _verbose_handler
 
 #define IS_BLOB(T) ( (T) == IIAPI_LVCH_TYPE  || (T) == IIAPI_LBYTE_TYPE \
 				  || (T) == IIAPI_LNVCH_TYPE || (T) == IIAPI_LTXT_TYPE )
 
 typedef struct {
 	II_PTR connHandle;
-	II_PTR currTran;
-	II_LONG sizeAdvise; // advised buffer size for blob (long) types
+	II_PTR currTran;     // current transaction, or the autocommit tranHandle
+	II_LONG sizeAdvise;  // advised buffer size for blob (long) types
 	dbi_conn_t *sysConn; // used for querying system catalogs
-	II_LONG errorCode;
-	char *errorMsg;
-	int autocommit;
+	II_LONG errorCode;   // last error code fetched by SAVE_ERROR
+	char *errorMsg;      // last error message fetched by SAVE_ERROR
+	int autocommit;      // whether autocommit is enabled for this connection
 } ingres_conn_t;
 
 typedef struct {
-	II_PTR stmtHandle; // statement handle returned by associated query
+	II_PTR stmtHandle;   // statement handle returned by associated query
 	IIAPI_DESCRIPTOR *dataDesc; // filled by getDescriptor after query
 } ingres_result_t;
 
@@ -166,7 +166,8 @@ static time_t ingres_date(char *raw){
 		// process year
 		unixtime.tm_year = atoi(p)-1900;
 
-		PRINT_DEBUG(NULL,"ingres_date: parsed date day=%d mon=%d yr=%d\n", unixtime.tm_mday, unixtime.tm_mon, unixtime.tm_year);
+		PRINT_DEBUG(NULL,"ingres_date: parsed date day=%d mon=%d yr=%d\n",
+					unixtime.tm_mday, unixtime.tm_mon, unixtime.tm_year);
 
 		while(isdigit(*p))
 			++p;
@@ -193,7 +194,8 @@ static time_t ingres_date(char *raw){
 			// process seconds
 			unixtime.tm_sec = atoi(p); 
 			
-			PRINT_DEBUG(NULL,"ingres_date: parsed time %02d:%02d:%02d\n", unixtime.tm_hour, unixtime.tm_min, unixtime.tm_sec);
+			PRINT_DEBUG(NULL,"ingres_date: parsed time %02d:%02d:%02d\n",
+						unixtime.tm_hour, unixtime.tm_min, unixtime.tm_sec);
 	
 			/* check for a timezone suffix */
 			//while(isdigit(*p) || *p == ' ')
@@ -324,10 +326,10 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	iconn->sysConn = NULL;
 	iconn->errorCode = 0;
 	iconn->errorMsg = NULL;
-		
+
 	scParm.sc_connHandle = NULL; // later, envHandle, but currently that causes connect to fail (?!)
 
-    // see OpenAPI reference for meaning of these options. Numeric codes in iiapi.h
+	// see OpenAPI reference for meaning of these options. Numeric codes in iiapi.h
 	ingres_option_num(conn, &scParm, IIAPI_CP_CENTURY_BOUNDARY, "ingres_century_bdry"); // interpretation of 2-digit years
 	ingres_option_num(conn, &scParm, IIAPI_CP_DATE_FORMAT, "ingres_date_format");
 	ingres_option_str(conn, &scParm, IIAPI_CP_DECIMAL_CHAR, "ingres_decimal_char"); // seems to affect input format, not output?
@@ -371,8 +373,8 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 				PRINT_VERBOSE(conn, "...FAILED to enable autocommit\n");
 		}
 		return 0;
-    }
-    return -1;
+	}
+	return -1;
 }
 
 int dbd_disconnect(dbi_conn_t *conn) {
@@ -380,8 +382,8 @@ int dbd_disconnect(dbi_conn_t *conn) {
 	IIAPI_DISCONNPARM disconnParm = {{NULL, NULL}};
 	IIAPI_AUTOPARM acParm = {{NULL, NULL}};
 	IIAPI_STATUS status;
-    
-    if(iconn){
+
+	if(iconn){
 		if(iconn->sysConn)
 			dbi_conn_close(iconn->sysConn);
 
@@ -410,7 +412,7 @@ int dbd_disconnect(dbi_conn_t *conn) {
 }
 
 static int ingres_field(dbi_result_t *result, dbi_row_t *row, dbi_data_t *data, 
-						 int idx, IIAPI_DESCRIPTOR *pdesc, IIAPI_DATAVALUE *pdataval)
+						int idx, IIAPI_DESCRIPTOR *pdesc, IIAPI_DATAVALUE *pdataval)
 {
 	IIAPI_CONVERTPARM convParm;
 	int j, len;
@@ -526,7 +528,7 @@ static int ingres_results(dbi_result_t *result){
 
 	gcParm.gc_stmtHandle = pres->stmtHandle;
 	gcParm.gc_rowCount = 1;
-    
+
 	limit = result->numrows_matched;
 	for(count = 0; ; ++count){
 	
@@ -679,11 +681,11 @@ static int ingres_commit(dbi_conn_t *conn, II_PTR tranHandle){
 	IIAPI_STATUS status;
 	
 	PRINT_DEBUG(conn, "COMMIT tranHandle=%#x\n", tranHandle);
-    cmParm.cm_tranHandle = tranHandle;
+	cmParm.cm_tranHandle = tranHandle;
 	IIapi_commit(&cmParm);
-    status = ingres_wait(conn, &cmParm.cm_genParm);
+	status = ingres_wait(conn, &cmParm.cm_genParm);
 	SAVE_ERROR(conn, cmParm.cm_genParm.gp_errorHandle);
-    return status == IIAPI_ST_SUCCESS;
+	return status == IIAPI_ST_SUCCESS;
 }
 
 static int ingres_rollback(dbi_conn_t *conn, II_PTR tranHandle){
@@ -691,12 +693,12 @@ static int ingres_rollback(dbi_conn_t *conn, II_PTR tranHandle){
 	IIAPI_STATUS status;
 	
 	PRINT_DEBUG(conn, "ROLLBACK tranHandle=%#x\n", tranHandle);
-    rbParm.rb_tranHandle = tranHandle;
-    rbParm.rb_savePointHandle = NULL;
+	rbParm.rb_tranHandle = tranHandle;
+	rbParm.rb_savePointHandle = NULL;
 	IIapi_rollback(&rbParm);
-    status = ingres_wait(conn, &rbParm.rb_genParm);
+	status = ingres_wait(conn, &rbParm.rb_genParm);
 	SAVE_ERROR(conn, rbParm.rb_genParm.gp_errorHandle);
-    return status == IIAPI_ST_SUCCESS;
+	return status == IIAPI_ST_SUCCESS;
 }
 
 static dbi_result_t *ingres_sys_query(dbi_conn_t *conn, const char *sql) {
@@ -787,14 +789,15 @@ size_t dbd_conn_quote_string(dbi_conn_t *conn, const char *orig, char *dest) {
 	return dbd_quote_string(conn->driver, orig, dest);
 }
 
-size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char* orig, size_t from_length, unsigned char **ptr_dest) {
+size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char* orig,
+						size_t from_length, unsigned char **ptr_dest) {
 	static char *hex = "0123456789ABCDEF";
 	size_t to_length = from_length*2 + 4;
 	unsigned char *p = malloc(to_length), *q;
 	if(*ptr_dest = p){
 		*p++ = 'X';
 		*p++ = '\'';
-		for(q=orig;from_length--;){
+		for(q=orig; from_length--;){
 			*p++ = hex[(*q) >> 4];
 			*p++ = hex[(*q) & 0xf];
 			++q;
@@ -824,6 +827,7 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement) {
 		return NULL;
 	}
 	
+	// special-case the transaction statements to respective API functions
 	if(!strncasecmp(statement, "COMMIT", 6)){
 		if(ingres_commit(conn, iconn->currTran)){
 			iconn->currTran = NULL;
@@ -859,8 +863,8 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement) {
 
 		gdParm.gd_stmtHandle = queryParm.qy_stmtHandle;
 		IIapi_getDescriptor(&gdParm);
-    	status = ingres_wait(conn, &gdParm.gd_genParm);
-    	SAVE_ERROR(conn, gdParm.gd_genParm.gp_errorHandle);
+		status = ingres_wait(conn, &gdParm.gd_genParm);
+		SAVE_ERROR(conn, gdParm.gd_genParm.gp_errorHandle);
 		if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
 			// if descriptorCount is zero, no data can be expected
 			// create result struct anyway
@@ -871,7 +875,9 @@ static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement) {
 				IIapi_getQueryInfo(&gqParm);
 				status = ingres_wait(conn, &gqParm.gq_genParm);
 				SAVE_ERROR(conn, gqParm.gq_genParm.gp_errorHandle);
-				if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR && (gqParm.gq_mask & IIAPI_GQ_ROW_COUNT)){
+				if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR 
+				   && (gqParm.gq_mask & IIAPI_GQ_ROW_COUNT))
+				{
 					affectedRows = gqParm.gq_rowCount;
 					PRINT_VERBOSE(conn,"getQueryInfo: row count = %d\n",affectedRows);
 				}else
@@ -919,7 +925,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 }
 
 dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, size_t st_length) {
-	DRIVER_ERROR(conn, "dbd_query_null() not implemented\n"); //FIXME: use internal error handler (fix other instances too!)
+	DRIVER_ERROR(conn, "dbd_query_null() not implemented\n");
 	return NULL;
 }
 

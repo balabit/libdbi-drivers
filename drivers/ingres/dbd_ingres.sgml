@@ -234,10 +234,16 @@
 		</para>
 <variablelist>
 	<varlistentry>
-		<term>dbi_conn_new() requires DBMS privileges</term>
+		<term>Ingres environment variables must be set</term>
 		<listitem>
 			<para>The driver will not be loaded at all by <function>dbi_initialize()</function>
-			if the current user does not have permission to use the Ingres DBMS.</para>
+			if the Ingres environment variables are not set (e.g. by <literal>~/.ingIIbash</literal>).
+			If the current user or specified user does not have appropriate Ingres privileges,
+			the connection will fail ("User authorization check failed" or similar).</para>
+			
+			<para>When connecting, the driver uses the values of the
+			<literal>dbname</literal>, <literal>username</literal> 
+			and <literal>password</literal> options, if set.</para>
 		</listitem>
 	</varlistentry>
 	<varlistentry>
@@ -271,10 +277,15 @@
 			are very large, would be to use SELECT for random access; for example,
 			query once to get a set of key values, then issue SELECTs on individual rows
 			or smaller subsets of rows.</para>
+			
+			<para>If your result set or BLOB data is likely to exhaust memory,
+			and workarounds such as the above are not appropriate, then you will
+			need to use OpenAPI directly to access them sequentially or by segments,
+			instead of using libdbi and this driver.</para>
 		</listitem>
 	</varlistentry>
 	<varlistentry>
-		<term>SEQUENCE accessors</term>
+		<term>SEQUENCE functions and autocommit</term>
 		<listitem>
 			<para><function>dbi_conn_sequence_last()</function> is not usable in Ingres' autocommit mode
 			(the default). To use sequences to identify INSERTed rows, first 
@@ -291,7 +302,8 @@
 			is a partial month name. The parsing routine will accept
 			any separators and either a numeric or named month, but the D-M-Y
 			ordering is required. If needed, a workaround for date format
-			incompatibility is to format into a string and don't fetch as datetime.</para>
+			incompatibility is to format into a string using a SQL function
+			such as <function>date_gmt(date)</function>.</para>
 		</listitem>
 	</varlistentry>
 	<varlistentry>

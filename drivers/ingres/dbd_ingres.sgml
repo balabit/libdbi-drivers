@@ -324,7 +324,7 @@
 		<term>Blank handling</term>
 		<listitem>
 			<para>Blanks are preserved in column values (except that DECIMAL and MONEY columns
-			are converted to strings, and then stripped of leading and trailing blanks).
+			are converted to strings, and then stripped of trailing blanks).
 			Note that names returned by <function>dbi_conn_get_table_list()</function>
 			and <function>dbi_conn_get_db_list()</function> are padded with blanks
 			to a fixed width.</para>

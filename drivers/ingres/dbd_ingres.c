@@ -440,11 +440,12 @@ static int ingres_field(dbi_result_t *result, dbi_row_t *row, dbi_data_t *data,
 		convParm.cv_dstValue.dv_length = convParm.cv_dstDesc.ds_length;
 		convParm.cv_dstValue.dv_value = val = malloc(convParm.cv_dstValue.dv_length+1);
 		IIapi_convertData(&convParm);
-		len = convParm.cv_dstValue.dv_length;
 		if(convParm.cv_status > IIAPI_ST_SUCCESS){
 			_verbose_handler(result->conn,"could not convertData from column type %d\n",pdesc->ds_dataType);
 			return 0;
-		}else if(pdesc->ds_dataType == IIAPI_DTE_TYPE){
+		}
+		len = convParm.cv_dstValue.dv_length;
+		if(pdesc->ds_dataType == IIAPI_DTE_TYPE){
 			val[len] = 0;
 			data->d_datetime = ingres_date(val);
 			PRINT_DEBUG(result->conn,"  [%d] date string %d bytes\n", idx,len);
@@ -454,9 +455,9 @@ static int ingres_field(dbi_result_t *result, dbi_row_t *row, dbi_data_t *data,
 			while(len && val[len-1] == ' ')
 				--len;
 		}
+		val[len] = 0;
 		row->field_sizes[idx] = len;
 		data->d_string = val; // use converted data block
-		data->d_string[len] = 0;
 		PRINT_DEBUG(result->conn,"  [%d] converted string %d bytes (desc %d bytes)\n",idx,len,pdesc->ds_length);
 		break;
 	//case IIAPI_LBYTE_TYPE: // these are handled in ingres_results()
@@ -466,9 +467,6 @@ static int ingres_field(dbi_result_t *result, dbi_row_t *row, dbi_data_t *data,
 	case IIAPI_VCH_TYPE:
 	case IIAPI_VBYTE_TYPE:
 	case IIAPI_TXT_TYPE:
-		//for(j=0;j<pdataval->dv_length;++j)
-		//	_verbose_handler(result->conn,"%02x ",((unsigned char*)pdataval->dv_value)[j]);
-		//_verbose_handler(result->conn,"\n");
 		// assume length (first 2 bytes of datum) is host native (short)
 		row->field_sizes[idx] = len = *(unsigned short*)pdataval->dv_value;
 		if((data->d_string = malloc(len+1))){

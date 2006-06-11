@@ -67,13 +67,13 @@ static II_PTR envHandle = NULL;
 #define SYS_CATALOGS	"iidbdb" // database name for system catalogs
 #define NO_AUTOCOMMIT	"0" // mnemonic value for option
 
-#define AUTOCOMMIT_ON(C) (((ingres_conn_t*)C->connection)->autocommit)
+#define AUTOCOMMIT_ON(conn)		(((ingres_conn_t*)conn->connection)->autocommit)
 
-#define SAVE_ERROR(C,E)	ingres_error(E, dbi_verbosity>1, \
-									 &((ingres_conn_t*)C->connection)->errorCode, \
-									 &((ingres_conn_t*)C->connection)->errorMsg)
-#define DEBUG_ERROR(E)	ingres_error(E, dbi_verbosity>2, NULL, NULL)
-#define DRIVER_ERROR(C,E) _dbd_internal_error_handler(C,E,0)
+#define SAVE_ERROR(conn,errhdl)	ingres_error(errhdl, dbi_verbosity>1, \
+									 &((ingres_conn_t*)conn->connection)->errorCode, \
+									 &((ingres_conn_t*)conn->connection)->errorMsg)
+#define DEBUG_ERROR(errhdl)		ingres_error(errhdl, dbi_verbosity>2, NULL, NULL)
+#define DRIVER_ERROR(conn,msg)	_dbd_internal_error_handler(conn,msg,0)
 
 #define PRINT_VERBOSE	if(dbi_verbosity>1) _verbose_handler
 #define PRINT_DEBUG		if(dbi_verbosity>2) _verbose_handler
@@ -100,7 +100,8 @@ typedef struct {
 static dbi_result_t *ingres_query(dbi_conn_t *conn, const char *statement);
 static void ingres_classify_field(IIAPI_DESCRIPTOR *ds, unsigned short *type, unsigned int *attribs);
 static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocommit);
-void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg);
+static void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg);
+static int ingres_envoption_num(dbi_conn_t *conn, II_LONG id, char *name);
 
 // months.gperf.c
 struct month *in_word_set (register const char *str, register unsigned int len);
@@ -224,20 +225,24 @@ int dbd_initialize(dbi_driver_t *driver) {
 	 * be added to the list of available drivers. */
 	IIAPI_INITPARM  initParm;
 
-	initParm.in_version = IIAPI_VERSION_3;
+	initParm.in_version = IIAPI_VERSION_4;
 	initParm.in_timeout = -1;
 	IIapi_initialize( &initParm );
-	envHandle = initParm.in_envHandle;
-	PRINT_DEBUG(NULL, "initialize: envHandle=%#x\n",envHandle);
-	return (initParm.in_status >= IIAPI_ST_SUCCESS 
-			&& initParm.in_status < IIAPI_ST_ERROR) - 1;
+	if(initParm.in_status >= IIAPI_ST_SUCCESS && initParm.in_status < IIAPI_ST_ERROR){
+		envHandle = initParm.in_envHandle;
+		return 0;
+	}else{
+		fputs("failed to initialise Ingres driver\n", stderr);
+		return -1;
+	}
+	// FIXME: need to call terminate at driver shutdown.
 }
 
 int dbd_connect(dbi_conn_t *conn) {
 	return ingres_connect(conn, NULL, dbi_conn_get_option(conn, "ingres_autocommit"));
 }
 
-void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
+static void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
 	static char *typestr[] = {"0","ERROR","WARNING","MESSAGE"};
 	char *p, buf[0x200];
 	int count, n, size=0x200;
@@ -254,7 +259,15 @@ void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
 				n = snprintf(buf, sizeof(buf), "%s SQLSTATE:%s Code:%06X  %s\n",
 							 typestr[eiParm.ge_type], eiParm.ge_SQLSTATE, 
 							 eiParm.ge_errorCode, eiParm.ge_message);
-				/*if(print)*/ PRINT_VERBOSE(NULL, buf);
+				/*
+				if(eiParm.ge_serverInfoAvail)
+					n += snprintf(buf+n, sizeof(buf)-n,
+						"svr_id_error=%d svr_local_error=%d svr_id_server=%d svr_server_type=%d svr_severity=%d svr_parmCount=%d\n",
+						eiParm.ge_serverInfo->svr_id_error,  eiParm.ge_serverInfo->svr_local_error, 
+						eiParm.ge_serverInfo->svr_id_server, eiParm.ge_serverInfo->svr_server_type,
+						eiParm.ge_serverInfo->svr_severity,  eiParm.ge_serverInfo->svr_parmCount);
+				*/
+				if(print) _verbose_handler(NULL, buf);
 				if(errno) *errno = eiParm.ge_errorCode; // store last error
 				if(errmsg){
 					if(count+n >= size){
@@ -276,6 +289,21 @@ void ingres_error(II_PTR errorHandle, int print, int *errno, char **errmsg){
 		if(errmsg) *errmsg = NULL;
 		if(errno) *errno = 0;
 	}
+}
+
+static int ingres_envoption_num(dbi_conn_t *conn, II_LONG id, char *name){
+	const char *opt = dbi_conn_get_option(conn, name);
+	IIAPI_SETENVPRMPARM setEPParm;
+
+	if(opt){
+		II_LONG val = atoi(opt);
+		setEPParm.se_envHandle = envHandle;
+		setEPParm.se_paramID = id;
+		setEPParm.se_paramValue = &val;
+		IIapi_setEnvParam(&setEPParm);
+		return setEPParm.se_status == IIAPI_ST_SUCCESS;
+	}
+	return 1;
 }
 
 static int ingres_option_num(dbi_conn_t *conn, IIAPI_SETCONPRMPARM *psc, II_LONG id, char *name){
@@ -319,16 +347,20 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	PRINT_DEBUG(NULL, "ingres_connect: envHandle=%#x\n",envHandle);
 
 	// we need this structure whether connection succeeds or not,
-	// at least to track the error handle.
+	// at least to track errors.
 	conn->connection = iconn = malloc(sizeof(ingres_conn_t));
 	iconn->connHandle = NULL;
 	iconn->currTran = NULL;
 	iconn->sysConn = NULL;
 	iconn->errorCode = 0;
 	iconn->errorMsg = NULL;
+	iconn->autocommit = FALSE;
 
-	scParm.sc_connHandle = NULL; // later, envHandle, but currently that causes connect to fail (?!)
+	scParm.sc_connHandle = NULL; // FIXME: should be envHandle, but currently that causes connect to fail (?!)
 
+	// set environment options (as distinct from connection options)
+	//ingres_envoption_num(conn, IIAPI_EP_MAX_SEGMENT_LEN, "ingres_blobsegment"); // size of returned BLOB segments
+		
 	// see OpenAPI reference for meaning of these options. Numeric codes in iiapi.h
 	ingres_option_num(conn, &scParm, IIAPI_CP_CENTURY_BOUNDARY, "ingres_century_bdry"); // interpretation of 2-digit years
 	ingres_option_num(conn, &scParm, IIAPI_CP_DATE_FORMAT, "ingres_date_format");
@@ -344,7 +376,8 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	ingres_option_str(conn, &scParm, IIAPI_CP_TIMEZONE, "ingres_timezone");
 
 	connParm.co_target = db ? db : dbi_conn_get_option(conn, "dbname");
-	connParm.co_connHandle = scParm.sc_connHandle;
+	connParm.co_connHandle = scParm.sc_connHandle; // if any options were set above, this is now a valid connHandle
+	PRINT_DEBUG(NULL, "ingres_connect: co_connHandle=%#x\n",connParm.co_connHandle);
 	connParm.co_tranHandle = NULL;
 	connParm.co_username = dbi_conn_get_option(conn, "username");
 	connParm.co_password = dbi_conn_get_option(conn, "password");
@@ -353,13 +386,14 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 	IIapi_connect(&connParm);
 	status = ingres_wait(conn, &connParm.co_genParm);
 	SAVE_ERROR(conn, connParm.co_genParm.gp_errorHandle);
+	iconn->connHandle = connParm.co_connHandle;
 	if(status >= IIAPI_ST_SUCCESS && status < IIAPI_ST_ERROR){
 		PRINT_VERBOSE(conn, "connected to '%s', API level=%d, BLOB sizeAdvise=%d\n",
 					  connParm.co_target, connParm.co_apiLevel, connParm.co_sizeAdvise);
-		iconn->connHandle = connParm.co_connHandle;
 		iconn->sizeAdvise = connParm.co_sizeAdvise;
-		if((iconn->autocommit = !autocommit || atoi(autocommit))){ // enable auto-commit by default
+		if(!autocommit || atoi(autocommit)){ // enable auto-commit by default
 			// set autocommit mode
+			iconn->autocommit = TRUE;
 			acParm.ac_connHandle = connParm.co_connHandle;
 			acParm.ac_tranHandle = NULL;
 			IIapi_autocommit(&acParm);
@@ -373,7 +407,8 @@ static int ingres_connect(dbi_conn_t *conn, const char *db, const char *autocomm
 				PRINT_VERBOSE(conn, "...FAILED to enable autocommit\n");
 		}
 		return 0;
-	}
+	}else // API doc says must disconnect or abort on error.
+		dbd_disconnect(conn);
 	return -1;
 }
 
@@ -400,10 +435,12 @@ int dbd_disconnect(dbi_conn_t *conn) {
 				PRINT_VERBOSE(conn, "...FAILED to exit autocommit\n");
 		}
 
-		disconnParm.dc_connHandle = iconn->connHandle;
-		IIapi_disconnect( &disconnParm );
-		ingres_wait(conn, &disconnParm.dc_genParm);
-		DEBUG_ERROR(disconnParm.dc_genParm.gp_errorHandle);
+		if(iconn->connHandle){
+			disconnParm.dc_connHandle = iconn->connHandle;
+			IIapi_disconnect( &disconnParm );
+			ingres_wait(conn, &disconnParm.dc_genParm);
+			DEBUG_ERROR(disconnParm.dc_genParm.gp_errorHandle);
+		}
 		free(conn->connection);
 		conn->connection = NULL;
 		PRINT_VERBOSE(conn, "disconnected.\n");

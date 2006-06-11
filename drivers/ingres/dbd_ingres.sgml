@@ -252,7 +252,7 @@
 			<para>'Autocommit' mode is enabled by default for the DBMS connection.
 			In this mode, every query is committed as an individual transaction.</para>
 			
-			<para>With autocommit disabled (see <literal>ingres_autocommit</literal>),
+			<para>With autocommit disabled (see <literal>ingres_autocommit</literal> connection option),
 			a transaction is begun by the first query statement after connection, commit
 			or rollback. The transaction remains open until the next explicit commit,
 			rollback or disconnection (which implies commit). Commit and rollback
@@ -350,6 +350,13 @@
 			last error message, but the message text will include all relevant messages. At verbosity level 2,
 			errors directly relating to libdbi function calls are logged. At verbosity 3,
 			all errors are logged including those caused by API calls made internally by the driver.</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>Connection options</term>
+		<listitem>
+			<para>All Ingres option values are specified as strings (using 
+			<function>dbi_conn_set_option()</function>).</para>
 		</listitem>
 	</varlistentry>
 </variablelist>

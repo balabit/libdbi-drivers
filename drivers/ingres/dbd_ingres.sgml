@@ -355,8 +355,17 @@
 	<varlistentry>
 		<term>Connection options</term>
 		<listitem>
-			<para>All Ingres option values are specified as strings (using 
-			<function>dbi_conn_set_option()</function>).</para>
+			<para>All Ingres option values are specified as <emphasis>strings</emphasis> 
+			(using <function>dbi_conn_set_option()</function>).</para>
+		</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term><literal>ingres_blobsegment</literal> option</term>
+		<listitem>
+			<para>This option specifies the size of individual segments
+			returned for BLOB columns (by default this is approx 2000 bytes).
+			If your BLOBs are large, increasing this value reduces the number
+			of API calls required by the Ingres driver.</para>
 		</listitem>
 	</varlistentry>
 </variablelist>

@@ -350,6 +350,10 @@
 			last error message, but the message text will include all relevant messages. At verbosity level 2,
 			errors directly relating to libdbi function calls are logged. At verbosity 3,
 			all errors are logged including those caused by API calls made internally by the driver.</para>
+			
+			<para>Environment variables <literal>II_API_TRACE</literal> and
+			<literal>II_API_LOG</literal> control logging by the API itself. 
+			See Chapter 6 of the Ingres OpenAPI User Guide for details.</para>
 		</listitem>
 	</varlistentry>
 	<varlistentry>

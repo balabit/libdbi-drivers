@@ -457,6 +457,7 @@ size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char* orig,
 	return DBI_LENGTH_ERROR;
 }
 
+
 /* ---------- result handling ---------- */
 
 static time_t ingres_date(char *raw){
@@ -1022,6 +1023,7 @@ static dbi_result_t *ingres_sys_query(dbi_conn_t *conn, const char *sql) {
 	ingres_rollback(iconn->sysConn, ((ingres_conn_t*)iconn->sysConn->connection)->currTran);
 	return res;
 }
+
 
 /* ---------- DBMS queries ---------- */
 

@@ -1,13 +1,17 @@
 AUTOMAKE_OPTIONS = foreign
 
 if HAVE_FREETDS
-
+if BUILDDOCS
 # don't use docdir, doc_DATA. This way we keep the HTML in separate subdirs
 # for each driver
 docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
 htmldir = $(docdir)dbd_freetds
 #doc_DATA = dbd_freetds.pdf
 #html_DATA =  dbd_freetds/* 
+else
+docdir =
+htmldir =
+endif
 
 freetds_ltlibs = libdbdfreetds.la
 freetds_ldflags = -module -avoid-version

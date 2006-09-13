@@ -4,10 +4,17 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_ORACLE
 
+if BUILDDOCS
 docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
 htmldir = $(docdir)/dbd_oracle
 doc_DATA = dbd_oracle.pdf
 html_DATA = dbd_oracle/* 
+else
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
+endif
 
 oracle_ltlibs = libdbdoracle.la
 oracle_ldflags = -module -avoid-version

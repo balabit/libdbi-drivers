@@ -2,12 +2,19 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_MYSQL
 
+if BUILDDOCS
 # don't use docdir, doc_DATA. This way we keep the HTML in separate subdirs
 # for each driver
 docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
 htmldir = $(docdir)/dbd_mysql
 doc_DATA = dbd_mysql.pdf
 html_DATA = dbd_mysql/* 
+else
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
+endif
 
 mysql_ltlibs = libdbdmysql.la
 mysql_ldflags = -module -avoid-version

@@ -2,10 +2,17 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_PGSQL
 
+if BUILDDOCS
 docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
 htmldir = $(docdir)/dbd_pgsql
 doc_DATA = dbd_pgsql.pdf
 html_DATA = dbd_pgsql/* 
+else
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
+endif
 
 pgsql_ltlibs = libdbdpgsql.la
 pgsql_ldflags = -module -avoid-version

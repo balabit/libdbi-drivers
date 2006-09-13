@@ -4,10 +4,17 @@ AUTOMAKE_OPTIONS = foreign
 
 if HAVE_SQLITE
 
+if BUILDDOCS
 docdir = $(datadir)/doc/$(PACKAGE)-$(VERSION)
 htmldir = $(docdir)/dbd_sqlite
 doc_DATA = dbd_sqlite.pdf
 html_DATA = dbd_sqlite/* 
+else
+docdir =
+htmldir =
+doc_DATA =
+html_DATA =
+endif
 
 sqlite_ltlibs = libdbdsqlite.la
 sqlite_ldflags = -module -avoid-version

@@ -35,10 +35,12 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_drop_table(dbi_conn conn);
 int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n);
 
 int main(int argc, char **argv) {
   dbi_driver driver;
   dbi_conn conn;
+  int testnumber = 1;
   const char *errmsg;
   unsigned int dbengine_version;
   char versionstring[VERSIONSTRING_LENGTH];
@@ -93,8 +95,8 @@ int main(int argc, char **argv) {
 
   printf("\nSuccessfully connected!\n\tUsing database engine version %d (numeric) and %s (string)\n", dbengine_version, versionstring);
 
-  /* Test 1: list available databases */
-  printf("\nTest 1: List databases: \n");
+  /* Test: list available databases */
+  printf("\nTest %d: List databases: \n", testnumber++);
 	
   if (test_list_db(&cinfo, conn)) {
     dbi_conn_close(conn);
@@ -102,8 +104,8 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 2: create database */
-  printf("\nTest 2: Create database %s using default encoding: \n", cinfo.dbname);
+  /* Test: create database */
+  printf("\nTest %d: Create database %s using default encoding: \n", testnumber++, cinfo.dbname);
 	
   if (test_create_db(&cinfo, conn, NULL)) {
     dbi_conn_close(conn);
@@ -111,8 +113,8 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 3: select database */
-  printf("\nTest 3: Select database: \n");
+  /* Test: select database */
+  printf("\nTest %d: Select database: \n", testnumber++);
 
   if (test_select_db(&cinfo, conn)) {
     dbi_conn_close(conn);
@@ -120,14 +122,14 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 4: get encoding */
-  printf("\nTest 4: Get encoding: \n");
+  /* Test: get encoding */
+  printf("\nTest %d: Get encoding: \n", testnumber++);
 	
   printf("\tThe database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
 
-  /* Test 5: create table */
-  printf("\nTest 5: Create table: \n");
+  /* Test: create table */
+  printf("\nTest %d: Create table: \n", testnumber++);
 	
   if (test_create_table(&cinfo, conn)) {
     dbi_conn_close(conn);
@@ -135,8 +137,8 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 6: list tables */
-  printf("\nTest 6: List tables: \n");
+  /* Test: list tables */
+  printf("\nTest %d: List tables: \n", testnumber++);
 	
   if (test_list_tables(&cinfo, conn)) {
     dbi_conn_close(conn);
@@ -144,8 +146,8 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 7: insert row */
-  printf("\nTest 7: Insert row: \n");
+  /* Test: insert row */
+  printf("\nTest %d: Insert row: \n", testnumber++);
 
   if (test_insert_row(&cinfo, conn)) {
     dbi_conn_close(conn);
@@ -153,8 +155,8 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 8: retrieve data */
-  printf("\nTest 8: Retrieve data: \n");
+  /* Test: retrieve data */
+  printf("\nTest %d: Retrieve data: \n", testnumber++);
 	
   if (test_retrieve_data(&cinfo, conn)) {
     dbi_conn_close(conn);
@@ -162,8 +164,8 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 9: drop table */
-  printf("\nTest 9: Drop table: \n");
+  /* Test: drop table */
+  printf("\nTest %d: Drop table: \n", testnumber++);
 	
   if (test_drop_table(conn)) {
     dbi_conn_close(conn);
@@ -171,8 +173,8 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 10: drop database */
-  printf("\nTest 10: Drop database:\n");
+  /* Test: drop database */
+  printf("\nTest %d: Drop database:\n", testnumber++);
 	
   if (test_drop_db(&cinfo, conn)) {
     dbi_conn_close(conn);
@@ -180,10 +182,26 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  /* Test 11: test character encoding conversion */
-  printf("\nTest 11: Character encoding conversion:\n");
+  /* Test: test character encoding conversion */
+  printf("\nTest %d: Character encoding conversion:\n", testnumber++);
 	
   if (test_convert_encoding(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+
+  /* Test: test error message handling */
+  printf("\nTest %d: Error message handling:\n", testnumber++);
+
+  if (test_error_messages(&cinfo, conn, 1)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
+
+  if (test_error_messages(&cinfo, conn, 2)) {
     dbi_conn_close(conn);
     dbi_shutdown();
     exit(1);
@@ -221,8 +239,8 @@ int main(int argc, char **argv) {
 	
     printf("\nSuccessfully connected using an UTF-8 encoding!\n");
 	
-    /* Test 12: create UTF-8 database */
-    printf("\nTest 12: Create database %s with encoding UTF-8: \n", cinfo.dbname);
+    /* Test: create UTF-8 database */
+    printf("\nTest %d: Create database %s with encoding UTF-8: \n", testnumber++, cinfo.dbname);
 	
     if (test_create_db(&cinfo, conn, "UTF-8")) {
       dbi_conn_close(conn);
@@ -230,8 +248,8 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    /* Test 13: select UTF-8 database */
-    printf("\nTest 13: Select UTF-8 database: \n");
+    /* Test: select UTF-8 database */
+    printf("\nTest %d: Select UTF-8 database: \n", testnumber++);
 
     if (test_select_db(&cinfo, conn)) {
       dbi_conn_close(conn);
@@ -239,13 +257,13 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    /* Test 14: get encoding of UTF-8 database */
-    printf("\nTest 14: Get encoding of UTF-8 database: \n");
+    /* Test: get encoding of UTF-8 database */
+    printf("\nTest %d: Get encoding of UTF-8 database: \n", testnumber++);
 	
     printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
-    /* Test 15: drop UTF-8 database */
-    printf("\nTest 15: Drop UTF-8 database: \n");
+    /* Test: drop UTF-8 database */
+    printf("\nTest %d: Drop UTF-8 database: \n", testnumber++);
 	
     if (test_drop_db(&cinfo, conn)) {
       dbi_conn_close(conn);
@@ -282,8 +300,8 @@ int main(int argc, char **argv) {
 	
     printf("\nSuccessfully connected using a ISO-8859-1 encoding!\n");
 	
-    /* Test 16: create ISO-8859-1 database */
-    printf("\nTest 16: Create database %s with encoding ISO-8859-1: \n", cinfo.dbname);
+    /* Test: create ISO-8859-1 database */
+    printf("\nTest %d: Create database %s with encoding ISO-8859-1: \n", testnumber++, cinfo.dbname);
 	
     if (test_create_db(&cinfo, conn, "ISO-8859-1")) {
       dbi_conn_close(conn);
@@ -291,8 +309,8 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    /* Test 17: select ISO-8859-1 database */
-    printf("\nTest 17: Select ISO-8859-1 database: \n");
+    /* Test: select ISO-8859-1 database */
+    printf("\nTest %d: Select ISO-8859-1 database: \n", testnumber++);
 
     if (test_select_db(&cinfo, conn)) {
       dbi_conn_close(conn);
@@ -300,8 +318,8 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    /* Test 18: get encoding of ISO-8859-1 database */
-    printf("\nTest 18: Get encoding of ISO-8859-1 database: \n");
+    /* Test: get encoding of ISO-8859-1 database */
+    printf("\nTest %d: Get encoding of ISO-8859-1 database: \n", testnumber++);
 	
     printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
@@ -334,8 +352,8 @@ int main(int argc, char **argv) {
 	
     printf("\nSuccessfully connected to ISO-8859-1 database using UTF-8 encoding!\n");
 	
-    /* Test 19: get encoding of ISO-8859-1 database */
-    printf("\nTest 19: Get encoding of ISO-8859-1 database using UTF-8 encoding: \n");
+    /* Test: get encoding of ISO-8859-1 database */
+    printf("\nTest %d: Get encoding of ISO-8859-1 database using UTF-8 encoding: \n", testnumber++);
 	
     printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
@@ -369,13 +387,13 @@ int main(int argc, char **argv) {
 	
     printf("\nSuccessfully connected to ISO-8859-1 database using \"auto\" encoding!\n");
 	
-    /* Test 20: get encoding of ISO-8859-1 database */
-    printf("\nTest 20: Get encoding of ISO-8859-1 database using \"auto\" encoding: \n");
+    /* Test: get encoding of ISO-8859-1 database */
+    printf("\nTest %d: Get encoding of ISO-8859-1 database using \"auto\" encoding: \n", testnumber++);
 	
     printf("The database encoding appears to be: %s\n", dbi_conn_get_encoding(conn));
 
-    /* Test 21: drop ISO-8859-1 database */
-    printf("\nTest 21: Drop ISO-8859-1 database: \n");
+    /* Test: drop ISO-8859-1 database */
+    printf("\nTest %d: Drop ISO-8859-1 database: \n", testnumber++);
 	
     if (test_drop_db(&cinfo, conn)) {
       dbi_conn_close(conn);
@@ -1613,3 +1631,24 @@ int test_convert_encoding(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   }
   return 0;
 }
+
+/* returns 0 on success, 1 on error */
+int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n) {
+  char query[QUERY_LEN+1];
+  const char *errmsg;
+  dbi_result result;
+
+  snprintf(query, QUERY_LEN, "%d SYNTAX ERROR", n);
+
+  if ((result = dbi_conn_query(conn, query)) == NULL) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\tHeck! The error message reads: %s\n", errmsg);
+    return 0;
+  }
+  else {
+    printf("\tOk. In this case, this is an error\n");
+    dbi_result_free(result);
+    return 1;
+  }
+}
+

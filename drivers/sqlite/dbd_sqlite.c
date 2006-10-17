@@ -519,7 +519,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 			       &errmsg);
 
   if (query_res) {
-    _error_handler(conn, errflag);
+    _dbd_internal_error_handler(conn, errmsg, query_res);
     return NULL;
   }
 	
@@ -713,7 +713,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 					curr_table);
     
     if (query_res || !table_numrows) {
-      _error_handler(conn, errflag);
+      _dbd_internal_error_handler(conn, errmsg, query_res);
 /*       printf("field not found\n"); */
       return 0;
     }
@@ -920,7 +920,7 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) {
     result++;
   }
   if (conn->error_message) {
-    *errstr = conn->error_message;
+    *errstr = strdup(conn->error_message);
     result += 2;
   }
   return result;

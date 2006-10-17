@@ -622,7 +622,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
     /* table now points to the table name; find the end of table */
     item = table;
-    while (*item && *item != ' ' && *item != ',') {
+    while (*item && *item != ' ' && *item != ',' && *item != ';') {
       item++;
     }
     strncpy(curr_table, table, item-table);

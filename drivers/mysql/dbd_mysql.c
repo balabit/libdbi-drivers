@@ -256,7 +256,13 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	  dbires = dbi_conn_query(conn, sql_cmd);
 
 	  if (dbires && dbi_result_next_row(dbires)) {
-	    schemastring = dbi_result_get_binary_idx(dbires, 2);
+	    /* 4.x apparently returns these values as binary, 5.x as string */
+	    if (dbi_result_get_field_type_idx(dbires, 2) == DBI_TYPE_STRING) {
+	      schemastring = dbi_result_get_string_idx(dbires, 2);
+	    }
+	    else {
+	      schemastring = dbi_result_get_binary_idx(dbires, 2);
+	    }
 
 	    if (schemastring && *schemastring) {
 	      my_enc = strstr(schemastring, "CHARACTER SET");
@@ -275,7 +281,12 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 	  dbires1 = dbi_conn_query(conn, sql_cmd);
 
 	  if (dbires1 && dbi_result_next_row(dbires1)) {
-	    my_enc = dbi_result_get_binary_idx(dbires1, 2);
+	    if (dbi_result_get_field_type_idx(dbires1, 2) == DBI_TYPE_STRING) {
+	      my_enc = dbi_result_get_string_idx(dbires1, 2);
+	    }
+	    else {
+	      my_enc = dbi_result_get_binary_idx(dbires1, 2);
+	    }
 	  }
 
 /* 	  my_enc = mysql_character_set_name(mycon); */
@@ -289,7 +300,12 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
 
 
 	    if (dbires2 && dbi_result_next_row(dbires2)) {
-	      my_enc = dbi_result_get_binary_idx(dbires2, 2);
+	      if (dbi_result_get_field_type_idx(dbires2, 2) == DBI_TYPE_STRING) {
+		my_enc = dbi_result_get_string_idx(dbires2, 2);
+	      }
+	      else {
+		my_enc = dbi_result_get_binary_idx(dbires2, 2);
+	      }
 	    }
 	  }
 

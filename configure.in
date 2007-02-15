@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(drivers/sqlite/dbd_sqlite.c)
 AM_MAINTAINER_MODE
 
-AM_INIT_AUTOMAKE(libdbi-drivers, 0.8.2-pre1)
+AM_INIT_AUTOMAKE(libdbi-drivers, 0.8.2)
 AM_CONFIG_HEADER(config.h)
 
 dnl library versioning currently unnecessary...
@@ -164,7 +164,52 @@ fi
 
 AC_SUBST(docs_subdirs)
 
-AM_CONDITIONAL(BUILDDOCS, test x$docs_subdirs != "x")
+AM_CONDITIONAL(BUILDDOCS, test "x$docs_subdirs" != "x")
+
+dnl ===========================================
+dnl See whether to link libdbi into the drivers
+dnl ===========================================
+
+ac_libdbi="NO"
+AC_ARG_ENABLE(libdbi,
+	[  --enable-libdbi       link drivers against libdbi.],
+	[  ac_libdbi="YES" ])
+
+if test "$ac_libdbi" = "YES"; then
+   LIBADD_LIBDBI=-ldbi
+
+else
+   LIBADD_LIBDBI=""
+fi
+
+dnl ===========================================
+dnl check for the libdbi library if required
+dnl ===========================================
+
+ac_dbi_libdir="no"
+
+AC_ARG_WITH(dbi-libdir,
+	[  --with-dbi-libdir       Specifies where the libdbi library files are.],
+	[  ac_dbi_libdir="$withval" ])
+
+if test "$ac_libdbi" = "YES"; then
+   AC_MSG_CHECKING(for libdbi library)
+   if test "$ac_dbi_libdir" = "no"; then
+	   dbi_libdirs="/usr/lib /usr/local/lib /sw/lib"
+	   libdbi_libs="libdbi.so libdbi.a"
+	   AC_FIND_FILE($libdbi_libs, $dbi_libdirs, ac_dbi_libdir)
+	   if test "$ac_dbi_libdir" = "no"; then
+		   AC_MSG_RESULT(no)
+		   AC_MSG_ERROR([Invalid libdbi directory - include files not found.])
+	   fi
+   fi
+
+   AC_MSG_RESULT([yes: libs in $ac_dbi_libdir])
+   LIBADD_LIBDBI="$LIBADD_LIBDBI -L$ac_dbi_libdir"
+	
+   AC_SUBST(LIBADD_LIBDBI)
+
+fi
 
 dnl ==============================
 dnl Checks for header files

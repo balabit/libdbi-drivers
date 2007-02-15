@@ -37,7 +37,7 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @SQLITE3_INCLUD
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(sqlite3_ltlibs)
-libdbdsqlite3_la_LDFLAGS = $(sqlite3_ldflags) @SQLITE3_LDFLAGS@ @SQLITE3_LIBS@
+libdbdsqlite3_la_LDFLAGS = $(sqlite3_ldflags) @SQLITE3_LDFLAGS@ @SQLITE3_LIBS@ @LIBADD_LIBDBI@
 libdbdsqlite3_la_SOURCES = $(sqlite3_sources)
 libdbdsqlite3_la_DEPENDENCIES = dbd_sqlite3.h
 

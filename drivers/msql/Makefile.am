@@ -37,7 +37,7 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include @DBI_INCLUDE@ @MSQL_INCLUDE@
 
 libdir = $(driverdir)
 lib_LTLIBRARIES = $(msql_ltlibs)
-libdbdmsql_la_LDFLAGS = $(msql_ldflags) @MSQL_LDFLAGS@ @MSQL_LIBS@
+libdbdmsql_la_LDFLAGS = $(msql_ldflags) @MSQL_LDFLAGS@ @MSQL_LIBS@ @LIBADD_LIBDBI@
 libdbdmsql_la_SOURCES = $(msql_sources)
 libdbdmsql_la_DEPENDENCIES = dbd_msql.h
 

@@ -36,7 +36,7 @@ AC_ARG_WITH(dbi-incdir,
 	[  ac_dbi_incdir="$withval" ])
 
 if test "$ac_dbi_incdir" = "no"; then
-	dbi_incdirs="/usr/include /usr/local/include /sw/include/"
+	dbi_incdirs="/usr/include /usr/local/include /sw/include"
 	AC_FIND_FILE(dbi/dbi.h, $dbi_incdirs, ac_dbi_incdir)
 	if test "$ac_dbi_incdir" = "no"; then
 		AC_MSG_RESULT(no)

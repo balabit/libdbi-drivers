@@ -2,6 +2,47 @@ libdbi-drivers NEWS file
 ========================
 
 _____________________________________
+0.8.2 (the "Payday in a Pub" release)
+
+- to avoid possible conflicts with database client libraries (think
+  package names!) all driver libraries were renamed from libname.suffix
+  to libdbdlibname.suffix. E.g. the MySQL shared library was renamed from
+  mysql.so to libdbdmysql.so. Unless your package manager does this
+  automatically, it is recommended to clean out old driver libraries
+  from /usr/local/lib/dbd (or wherever they ended up).
+  Remember that this change affects only the library names. The driver
+  names (the ones your program uses to load particular drivers) did
+  *not* change 
+- assorted fixes in the oracle driver
+- the mysql driver now supports the BIT and NEWDECIMAL types
+  introduced in MySQL 5.0.3
+- added a new (experimental) Ingres 2006 driver
+- the "--disable-docs" configure switch now allows to build
+  libdbi-drivers without having the sgml toolchain installed
+- plugged a few memory holes
+- fixed a segfault in the error message handling code of sqlite/sqlite3
+- improved compatibility with older PostgreSQL versions
+- sqlite and sqlite3 now grok semicolons in query strings
+- you can now optionally link the drivers against libdbi by using the
+  "--enable-libdbi" configure switch. This sounds weird at first, but it
+  allows to load libdbi into a dlopen'ed module, like this:
+
+  Parent => dl_open(module) => dl_open(libdbi) => dl_open(driver)
+
+  Drivers compiled with this option should work ok in the regular
+  context (your app linked against libdbi) as well.
+
+
+__________________________
+0.8.1 (the "Lost" release)
+
+Due to a lack of attention there was no release information added at
+the time of the 0.8.1 release. It is therefore entirely obscure what
+made us feel like wrapping up a new release, but rest assured that
+this code was better than before (if you really need to know, use the
+CVS logs or the CVS web interface).
+
+_____________________________________
 0.8.0 (the "Whatsername" release)
 
 - and then there were 7: sqlite3, firebird, and oracle were

@@ -101,7 +101,7 @@ int dbd_initialize(dbi_driver_t *driver) {
    * this is called right after dbd_register_driver().
    * return -1 on error, 0 on success. if -1 is returned, the driver will not
    * be added to the list of available drivers. */
-	
+
   return 0;
 }
 
@@ -177,9 +177,11 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
     strcpy(db_fullpath, dbdir);
   }
   if (db_fullpath[strlen(db_fullpath)-1] != *dirsep) {
+    /* db_fullpath length was checked above */
     strcat(db_fullpath, dirsep);
   }
   if (dbname && *dbname) {
+    /* db_fullpath length was checked above */
     strcat(db_fullpath, dbname);
   }
 
@@ -246,8 +248,10 @@ int dbd_disconnect(dbi_conn_t *conn) {
 int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx) {
   dbi_row_t *row = NULL;
 
-  if (result->result_state == NOTHING_RETURNED) return 0;
-	
+  if (result->result_state == NOTHING_RETURNED) {
+    return 0;
+  }
+
   if (result->result_state == ROWS_RETURNED) {
     /* get row here */
     row = _dbd_row_allocate(result->numfields);
@@ -280,12 +284,6 @@ const char *dbd_get_encoding(dbi_conn_t *conn){
   /* encoding is a compile-time option with the sqlite3
      library. Instead of using the sqlite3-provided string, we use the
      iana.org names */
-/*   if (!strcmp(sqlite3_encoding, "UTF-8")) { */
-/*     return sqlite3_encoding_UTF8; */
-/*   } */
-/*   else { */
-/*     return sqlite3_encoding_ISO8859; */
-/*   } */
 
   encoding = dbi_conn_get_option(conn, "encoding");
 
@@ -1240,3 +1238,4 @@ static size_t sqlite3_escape_string(char *to, const char *from, size_t length)
   *to=0;
   return (size_t) (to-to_start);
 }
+

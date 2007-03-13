@@ -129,6 +129,7 @@ int dbd_initialize(dbi_driver_t *driver) {
 int dbd_connect(dbi_conn_t *conn) {
 	MYSQL *mycon;
 	char* sql_cmd;
+	unsigned long client_flags = 0;
 
 	const char *host = dbi_conn_get_option(conn, "host");
 	const char *username = dbi_conn_get_option(conn, "username");
@@ -138,15 +139,25 @@ int dbd_connect(dbi_conn_t *conn) {
 	int port = dbi_conn_get_option_numeric(conn, "port");
 	/* mysql specific options */
 	const char *unix_socket = dbi_conn_get_option(conn, "mysql_unix_socket");
-	int compression = dbi_conn_get_option_numeric(conn, "mysql_compression");
-
-	int _compression = (compression > 0) ? CLIENT_COMPRESS : 0;
+	/* we honor the mysql_compression flag for the sake of
+	   backwards compatibility. Newer code should use the
+	   mysql_client_whatever flags instead */
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_compression") > 0) ? CLIENT_COMPRESS : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_compress") > 0) ? CLIENT_COMPRESS : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_found_rows") > 0) ? CLIENT_FOUND_ROWS : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_ignore_SPACE") > 0) ? CLIENT_IGNORE_SPACE : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_interactive") > 0) ? CLIENT_INTERACTIVE : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_local_files") > 0) ? CLIENT_LOCAL_FILES : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_multi_statements") > 0) ? CLIENT_MULTI_STATEMENTS : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_multi_results") > 0) ? CLIENT_MULTI_RESULTS : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_no_schema") > 0) ? CLIENT_NO_SCHEMA : 0;
+	client_flags |= (dbi_conn_get_option_numeric(conn, "mysql_client_odbc") > 0) ? CLIENT_ODBC : 0;
 	
 	mycon = mysql_init(NULL);
 	if (!mycon) {
 		return -1;
 	}
-	else if (!mysql_real_connect(mycon, host, username, password, dbname, port, unix_socket, _compression)) {
+	else if (!mysql_real_connect(mycon, host, username, password, dbname, port, unix_socket, client_flags)) {
 		conn->connection = (void *)mycon; // still need this set so _error_handler can grab information
 		_error_handler(conn, DBI_ERROR_DBD);
 		mysql_close(mycon);

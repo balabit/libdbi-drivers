@@ -138,9 +138,57 @@
 	</listitem>
       </varlistentry>
       <varlistentry>
-	<term>mysql_compression (numeric)</term>
+	<term>mysql_client_compress (numeric)</term>
 	<listitem>
 	  <para>A value larger than zero causes the client/server communication to be compressed. Set this to zero to use no data compression.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_client_found_rows (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero causes the server to return the number of matched rows, not the number of affected rows.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_client_ignore_space (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero causes the server to accept spaces after function names.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_client_interactive (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero causes the client/server communication to use interactive_timeout instead of wait_timeout before closing an inactive connection.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_client_local_files (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero enables LOAD DATA LOCAL handling.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_client_multi_statements (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero causes server to accept multiple SQL statements in a single string, separated by semicolons (requires MySQL 4.1 or later).</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_client_multi_results (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero tells the server that the client can handle multiple result sets from multiple statements. This flag is automatically set if you use mysql_client_multi_statements (requires MySQL 4.1 or later).</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_client_no_schema (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero tells the server not to accept the db_name.tbl_name.col_name syntax..</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>mysql_client_odbc (numeric)</term>
+	<listitem>
+	  <para>A value larger than zero causes the server to behave more ODBC-friendly.</para>
 	</listitem>
       </varlistentry>
     </variablelist>

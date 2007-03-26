@@ -106,6 +106,27 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db);
 char *pg_encoding_to_char(int encoding_id);
 
 
+/* these are helpers for dbd_real_connect */
+#define CONNINFO_APPEND_ESCAPED(conninfo, fmt, key, value )          \
+    do {                                                             \
+        size_t orig_size = strlen( value );                          \
+        char *value_escaped = malloc( 2 * orig_size + 1 );           \
+        _dbd_escape_chars( value_escaped, value, orig_size, "\\'" ); \
+        CONNINFO_APPEND( conninfo, fmt, key, value_escaped );        \
+        free( value_escaped );                                       \
+    } while(0)
+
+#define CONNINFO_APPEND(conninfo, fmt, key, value )                  \
+    do {                                                             \
+        char *tmp = conninfo;                                        \
+        if( conninfo ) {                                             \
+            asprintf( &conninfo, "%s " fmt, tmp, key, value );       \
+            free( tmp );                                             \
+        }                                                            \
+        else                                                         \
+            asprintf( &conninfo, fmt, key, value );                  \
+	} while(0)
+
 /* real code starts here */
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, const char ***_reserved_words) {
 	/* this is the first function called after the driver module is loaded into memory */
@@ -128,21 +149,54 @@ int dbd_connect(dbi_conn_t *conn) {
 }
 
 int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
-	const char *host = dbi_conn_get_option(conn, "host");
-	const char *username = dbi_conn_get_option(conn, "username");
-	const char *password = dbi_conn_get_option(conn, "password");
 	const char *dbname;
 	const char *encoding = dbi_conn_get_option(conn, "encoding");
-	int port = dbi_conn_get_option_numeric(conn, "port");
-
-	/* pgsql specific options */
-	const char *options = dbi_conn_get_option(conn, "pgsql_options");
-	const char *tty = dbi_conn_get_option(conn, "pgsql_tty");
 
 	PGconn *pgconn;
-	char *port_str;
-	char *conninfo;
-	char *conninfo_kludge;
+	char *conninfo = NULL;
+
+	const char *optname = NULL;
+	const char *pgopt;
+	const char *optval;
+	int         optval_num;
+
+	/* PQconnectdb accepts additional options as a string of
+	   "key=value" pairs. Assemble that string from the option
+	   list */
+	while(( pgopt = optname = dbi_conn_get_option_list( conn, optname ) ))
+	{
+		/* Ignore "encoding" and "dbname"; we'll deal with them later */
+	  if ( !strcmp( pgopt, "encoding" ) || !strcmp( pgopt, "dbname" ) ) {
+	    continue;
+	  }
+
+	  /* Map "username" to "user" */
+	  else if( !strcmp( pgopt, "username" ) ) {
+	    pgopt = "user";
+	  }
+
+	  /* Map "pgsql_foo" to "foo" */
+	  else if( !strncmp( pgopt, "pgsql_", 6 ) ) {
+	    pgopt += 6;
+	  }
+
+	  /* Accept these non-pgsql_ options but discard all others */
+	  else if (strcmp(pgopt, "password")
+		   && strcmp(pgopt, "host")
+		   && strcmp(pgopt, "port")) {
+	    continue;
+	  }
+
+	  optval     = dbi_conn_get_option( conn, optname );
+	  optval_num = dbi_conn_get_option_numeric( conn, optname );
+
+	  if( optval ) {
+	    CONNINFO_APPEND_ESCAPED( conninfo, "%s='%s'", pgopt, optval );
+	  }
+	  else {
+	    CONNINFO_APPEND( conninfo, "%s='%d'", pgopt, optval_num );
+	  }
+	}
 
 	if (db && *db) {
 	  dbname = db;
@@ -151,32 +205,11 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	  dbname = dbi_conn_get_option(conn, "dbname");
 	}
 
-	if (port > 0) {
-	  asprintf(&port_str, "%d", port);
-	}
-	else {
-	  port_str = NULL;
-	}
+	if( dbname )
+		CONNINFO_APPEND_ESCAPED( conninfo, "%s='%s'", "dbname", dbname );
 
-	/* YUCK YUCK YUCK YUCK YUCK. stupid libpq. */
-	if (host && port_str) asprintf(&conninfo_kludge, "host='%s' port='%s'", host, port_str);
-	else if (host) asprintf(&conninfo_kludge, "host='%s'", host);
-	else if (port_str) asprintf(&conninfo_kludge, "port='%s'", port_str);
-	else conninfo_kludge = NULL;
-
-	if (port_str) free(port_str);
-	
-	asprintf(&conninfo, "%s dbname='%s' user='%s' password='%s' options='%s' tty='%s'",
-		conninfo_kludge ? conninfo_kludge : "", /* if we pass a NULL directly to the %s it will show up as "(null)" */
-		dbname ? dbname : "",
-		username ? username : "",
-		password ? password : "",
-		options ? options : "",
-		tty ? tty : "");
-
-	if (conninfo_kludge) free(conninfo_kludge);
-
-	pgconn = PQconnectdb(conninfo);
+	/* send an empty string instead of NULL if there are no options */
+	pgconn = PQconnectdb(conninfo ? conninfo : "");
 	if (conninfo) free(conninfo);
 	if (!pgconn) return -1;
 

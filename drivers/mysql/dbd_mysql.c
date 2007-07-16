@@ -38,6 +38,10 @@ long long atoll(const char *str);
 long long strtoll(const char *nptr, char **endptr, int base);
 #endif
 
+#ifdef __MINGW32__
+#include <winsock.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

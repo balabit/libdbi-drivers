@@ -95,12 +95,13 @@ int dbd_connect(dbi_conn_t *conn)
 	const char *username =  dbi_conn_get_option(conn, "username");
 	const char *password =  dbi_conn_get_option(conn, "password");
 	const char *sid      =  dbi_conn_get_option(conn, "dbname");
-  
+	sword status;
+
 	if(! sid ) sid = getenv("ORACLE_SID");
 
 	/* OCI Environment Allocation */
 
-	if(OCIEnvCreate ((OCIEnv **) &(Oconn->env), OCI_OBJECT, (dvoid *)0, 0, 0, 0, (size_t)0, (dvoid **)0)) {
+	if(OCIEnvCreate ((OCIEnv **) &(Oconn->env), OCI_DEFAULT, (dvoid *)0, 0, 0, 0, (size_t)0, (dvoid **)0)) {
 		_dbd_internal_error_handler(conn, "Connect::Unable to initialize environment", 0);
 		return -2;
 	}
@@ -119,10 +120,11 @@ int dbd_connect(dbi_conn_t *conn)
 		_dbd_internal_error_handler(conn, "Connect::Unable to allocate SERVICE handlers.", 0);
 		return -2;
 	}
-	if( OCILogon(Oconn->env, Oconn->err, &(Oconn->svc), (CONST OraText*) username, 
-		     strlen(username),(CONST OraText*) password, strlen(password), sid, strlen(sid))) {
-		_dbd_internal_error_handler(conn, "Connect::Unable to login to the database.", 0);
-		return -2;
+	if( (status = OCILogon(Oconn->env, Oconn->err, &(Oconn->svc), (CONST OraText*) username, 
+			       strlen(username),(CONST OraText*) password, strlen(password), sid, strlen(sid)))) {
+	  _checkerr(Oconn->err, status);
+	  _dbd_internal_error_handler(conn, "Connect::Unable to login to the database.", 0);
+	  return -2;
 	}
 
 	conn->connection = (void *)Oconn;
@@ -290,17 +292,22 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
 	
 	if( OCIStmtPrepare(stmt, Oconn->err, (char  *) statement,
 			   (ub4) st_length, (ub4) OCI_NTV_SYNTAX, (ub4) OCI_DEFAULT)) {
+                OCIHandleFree(stmt, OCI_HTYPE_STMT);
 		return NULL;
 	}
 	
 	OCIAttrGet(stmt, OCI_HTYPE_STMT, (dvoid *) &stmttype,
 		   (ub4 *) 0, (ub4) OCI_ATTR_STMT_TYPE, Oconn->err);
 	
-	OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
+	status = OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
 		       (ub4) (stmttype == OCI_STMT_SELECT ? 0 : 1), 
 		       (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
 		       MY_OCI_STMT_SCROLLABLE_READONLY);
 
+	if( status != OCI_SUCCESS) {
+	  OCIHandleFree(stmt, OCI_HTYPE_STMT);
+	  return NULL;
+	}
        
 	if( stmttype == OCI_STMT_SELECT) { 
 
@@ -355,7 +362,6 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
                 OCIAttrGet(param, (ub4) OCI_DTYPE_PARAM,
                            &otype,(ub4 *) 0, (ub4) OCI_ATTR_DATA_TYPE,
                            (OCIError *) Oconn->err  );
-fprintf(stderr, "***%s()->%d\n", __func__, otype);
 
                 OCIAttrGet((dvoid*) param, (ub4) OCI_DTYPE_PARAM,
                            (dvoid**) &col_name,(ub4 *) &col_name_len, (ub4) OCI_ATTR_NAME,

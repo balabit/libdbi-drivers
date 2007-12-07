@@ -1,7 +1,7 @@
 
 libdbi-drivers - drivers for libdbi, a database abstraction
 layer implemented in C
-Copyright (C) 2001-2004, Markus Hoenicka
+Copyright (C) 2001-2007, Markus Hoenicka
 http://libdbi-drivers.sourceforge.net
 
 
@@ -67,11 +67,12 @@ If you are using libdbi on a platform not listed here, please notify the
 mailing list! (see below)
 
 
-MODIFICATIONS AND REDISTRIBUTION (GPL):
+MODIFICATIONS AND REDISTRIBUTION (LGPL):
 ----------------------------------------
 
-See the GNU General Public License, available in the distribution file
-COPYING or visit http://www.gnu.org for more details.
+See the GNU Lesser General Public License, available in the
+distribution file COPYING or visit http://www.gnu.org for more
+details.
 
 
 DOCUMENTATION:

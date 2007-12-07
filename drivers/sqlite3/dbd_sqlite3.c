@@ -1,25 +1,25 @@
 /*
  * libdbi-drivers - database drivers for libdbi, a database independent
  * abstraction layer for C.
- * Copyright (C) 2002, Markus Hoenicka
+ * Copyright (C) 2002-2007, Markus Hoenicka
  * http://libdbi-drivers.sourceforge.net
  * 
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *  
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- * 
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * dbd_sqlite3.c: SQLite3 database support (using libsqlite3)
- * Copyright (C) 2005, Markus Hoenicka <mhoenicka@users.sourceforge.net>
+ * Copyright (C) 2005-2007, Markus Hoenicka <mhoenicka@users.sourceforge.net>
  * http://libdbi-drivers.sourceforge.net
  * 
  * $Id$
@@ -204,11 +204,11 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
        access rights or an existing database is corrupted or created
        with an incompatible version */
     if (sq_errmsg) {
-      _dbd_internal_error_handler(conn, sq_errmsg, sqlite3_errcode);
+      _dbd_internal_error_handler(conn, sq_errmsg, (const int) sqlite3_errcode);
       free(sq_errmsg);
     }
     else {
-      _dbd_internal_error_handler(conn, "could not open database", sqlite3_errcode);
+      _dbd_internal_error_handler(conn, "could not open database", (const int) sqlite3_errcode);
     }
     return -1;
   }
@@ -408,7 +408,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
 	}	  
 
 	if (sq_errmsg) {
-	  _dbd_internal_error_handler(conn, sq_errmsg, retval);
+	  _dbd_internal_error_handler(conn, sq_errmsg, (const int) retval);
 	  free(sq_errmsg);
 	  break;
 	}

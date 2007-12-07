@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(drivers/sqlite/dbd_sqlite.c)
 AM_MAINTAINER_MODE
 
-AM_INIT_AUTOMAKE(libdbi-drivers, 0.8.2-1)
+AM_INIT_AUTOMAKE(libdbi-drivers, 0.8.3)
 AM_CONFIG_HEADER(config.h)
 
 dnl library versioning currently unnecessary...
@@ -170,10 +170,10 @@ dnl ===========================================
 dnl See whether to link libdbi into the drivers
 dnl ===========================================
 
-ac_libdbi="NO"
+ac_libdbi="YES"
 AC_ARG_ENABLE(libdbi,
-	[  --enable-libdbi       link drivers against libdbi.],
-	[  ac_libdbi="YES" ])
+	[  --disable-libdbi       do not link drivers against libdbi.],
+	[  ac_libdbi="NO" ])
 
 if test "$ac_libdbi" = "YES"; then
    LIBADD_LIBDBI=-ldbi

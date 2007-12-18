@@ -37,21 +37,24 @@ CC = gcc
 DEBUG = -g -Wall -D__NO_MATH_INLINES -fsigned-char
 MSQL_LIBS = -L /usr/local/lib -L /usr/local/msql3/lib -ldbi -lmsql -liberty -lz
 MYSQL_LIBS = -L /usr/local/lib -ldbi -lmysqlclient -liberty -lz
-PGSQL_LIBS = -L /usr/local/lib -ldbi -ldbi -lpq -liberty
-SQLITE_LIBS = -L /usr/local/lib -ldbi -ldbi -lsqlite -liberty
+PGSQL_LIBS = -L /usr/local/lib -ldbi -lpq -liberty
+SQLITE_LIBS = -L /usr/local/lib -ldbi -lsqlite -liberty
+SQLITE3_LIBS = -L /usr/local/lib -ldbi -lsqlite3 -liberty
 driverdir = ${exec_prefix}/lib/dbd
 
 LIBMSQL_DLL_NAME = libdbdmsql.dll
 LIBMYSQL_DLL_NAME = libdbdmysql.dll
 LIBPGSQL_DLL_NAME = libdbdpgsql.dll
 LIBSQLITE_DLL_NAME = libdbdsqlite.dll
+LIBSQLITE3_DLL_NAME = libdbdsqlite3.dll
 
 LIBMSQL_DLL_EXP_LIB = libdbdmsql.dll.a
 LIBMYSQL_DLL_EXP_LIB = libdbdmysql.dll.a
 LIBPGSQL_DLL_EXP_LIB = libdbdpgsql.dll.a
 LIBSQLITE_DLL_EXP_LIB = libdbdsqlite.dll.a
+LIBSQLITE3_DLL_EXP_LIB = libdbdsqlite3.dll.a
 
-all: libmysql-dll libpgsql-dll libsqlite-dll libmsql-dll
+all: libmysql-dll libpgsql-dll libsqlite-dll libsqlite3-dll libmsql-dll
 
 libmsql-dll: $(top_srcdir)/drivers/msql/dbd_msql.o 
 	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/msql/.libs/$(LIBMSQL_DLL_EXP_LIB) -o $(top_srcdir)/drivers/msql/.libs/$(LIBMSQL_DLL_NAME) -L$(top_srcdir)/src/.libs $(LDFLAGS) $(top_srcdir)/drivers/msql/*.o $(MSQL_LIBS)
@@ -65,7 +68,10 @@ libpgsql-dll: $(top_srcdir)/drivers/pgsql/dbd_pgsql.o
 libsqlite-dll: $(top_srcdir)/drivers/sqlite/dbd_sqlite.o 
 	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) -o $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME)  $(LDFLAGS) $(top_srcdir)/drivers/sqlite/*.o $(SQLITE_LIBS)
 
-install: install-libmysql install-libpgsql install-libsqlite install-libmsql
+libsqlite3-dll: $(top_srcdir)/drivers/sqlite3/dbd_sqlite3.o 
+	$(CC) -shared -Wl,--out-implib=$(top_srcdir)/drivers/sqlite3/.libs/$(LIBSQLITE3_DLL_EXP_LIB) -o $(top_srcdir)/drivers/sqlite3/.libs/$(LIBSQLITE3_DLL_NAME)  $(LDFLAGS) $(top_srcdir)/drivers/sqlite3/*.o $(SQLITE3_LIBS)
+
+install: install-libmysql install-libpgsql install-libsqlite install-libsqlite3 install-libmsql
 
 install-libmsql:
 	cp $(top_srcdir)/drivers/msql/.libs/$(LIBMSQL_DLL_NAME) $(driverdir) && \
@@ -83,8 +89,13 @@ install-libsqlite:
 	cp $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_NAME) $(driverdir) && \
 	cp $(top_srcdir)/drivers/sqlite/.libs/$(LIBSQLITE_DLL_EXP_LIB) $(driverdir)
 
+install-libsqlite3:
+	cp $(top_srcdir)/drivers/sqlite3/.libs/$(LIBSQLITE3_DLL_NAME) $(driverdir) && \
+	cp $(top_srcdir)/drivers/sqlite3/.libs/$(LIBSQLITE3_DLL_EXP_LIB) $(driverdir)
 
-.PHONY: libdbdmysql.dll libdbdpgsql.dll libdbdsqlite.dll libdbdmsql.dll install install-libmysql install-libpgsql install-libsqlite
+
+
+.PHONY: libdbdmysql.dll libdbdpgsql.dll libdbdsqlite.dll libdbdsqlite3.dll libdbdmsql.dll install install-libmysql install-libpgsql install-libsqlite install-libsqlite3
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

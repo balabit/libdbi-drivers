@@ -14,7 +14,7 @@
 #include <dbi/dbd.h>
 
 #include <ibase.h>
-#include <gds.h>
+/* #include <gds.h> */
 
 #include "dbd_firebird.h"
 #include "utility.h"
@@ -24,15 +24,16 @@ char version[MAXLEN];
 
 int _dbd_real_connect(dbi_conn_t *conn, char *enc) 
 {
-	char dpb_buffer[256], *dpb; 
+	char dpb_buffer[256], *dpb, *p, *fb_encoding; 
 	char dbase[256];
 	short dpb_length; 
 
 	char db_fullpath[PATH_MAX];
 
-        isc_db_handle db = NULL; /* database handle */
-        isc_tr_handle trans = NULL; /* transaction handle */
+        isc_db_handle db = 0L; /* database handle */
+        isc_tr_handle trans = 0L; /* transaction handle */
 	ibase_conn_t *iconn = (ibase_conn_t * ) malloc(sizeof(ibase_conn_t));
+	ISC_STATUS status_vector[ISC_STATUS_LENGTH];
 
 	const char *dbname =  dbi_conn_get_option(conn, "dbname");
 	const char *host =  dbi_conn_get_option(conn, "host");
@@ -48,28 +49,57 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 	*dpb++ = isc_dpb_num_buffers;
 	*dpb++ = 1;
 	*dpb++ = 90;
+	
+	*dpb++ = isc_dpb_user_name;
+	*dpb++ = strlen(username);
+	for (p = username; *p; *dpb++ = *p++);
+
+	*dpb++ = isc_dpb_password;
+	*dpb++ = strlen(password);
+	for (p = password; *p; *dpb++ = *p++);
+
+	*dpb++ = isc_dpb_lc_ctype;
+	fb_encoding = dbd_encoding_from_iana(encoding);
+	*dpb++ = strlen(fb_encoding);
+	for (p = fb_encoding; *p; *dpb++ = *p++);
+
 	dpb_length = dpb - dpb_buffer;
 	dpb = dpb_buffer;
 
-	isc_expand_dpb(&dpb, &dpb_length,
-		       isc_dpb_user_name, username,
-		       isc_dpb_password, password,
-		       isc_dpb_lc_ctype, dbd_encoding_from_iana(encoding),
-		       NULL);
+	/* could be used here, but is tagged deprecated */
+/* 	isc_expand_dpb(&dpb, &dpb_length, */
+/* 		       isc_dpb_user_name, username, */
+/* 		       isc_dpb_password, password, */
+/* 		       isc_dpb_lc_ctype, dbd_encoding_from_iana(encoding), */
+/* 		       NULL); */
 
+	
 	if (!dbname) {
 		_dbd_internal_error_handler(conn, "no database specified", 0);
 		return -1;
 	}
 	
 	_firebird_populate_db_string( conn, dbname, db_fullpath );
-	snprintf(dbase, 256, "%s:%s", ( (host == NULL || *host == '\0') 
-				        ? "localhost" : host) , db_fullpath);
+	if (host == NULL || !*host || !strcmp(host, "localhost")) {
+		snprintf(dbase, 256, "%s", db_fullpath);
+	}
+	else {
+		snprintf(dbase, 256, "%s:%s", host, db_fullpath);
+	}
 
-	if ( isc_attach_database(iconn->status, strlen(dbase), dbase, &db, dpb_length, dpb_buffer) ||
-	     isc_start_transaction(iconn->status, &trans, 1, &db, 0, NULL)) {
+/* 	printf("dbase went to: %s<<; host: %s, username: %s, passwd: %s, encoding: %s; dbp:%s<<\n", dbase, host, username, password, encoding, dpb); */
+/* 	fflush(stdout); */
+	isc_attach_database(status_vector, strlen(dbase), dbase, &db, dpb_length, dpb);
+	if (status_vector[0] == 1 && status_vector[1]) {
+		char msg[512];
+		long* pvector = status_vector;
 		dealocate_iconn( iconn );
+		isc_interprete(msg, &pvector);
+		_dbd_internal_error_handler(conn, msg, 0);
 		return -1;
+	}
+	else {
+		isc_start_transaction(status_vector, &trans, 1, &db, 0, NULL);
 	}
 
 	iconn->trans = trans;

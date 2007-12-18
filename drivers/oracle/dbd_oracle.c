@@ -838,23 +838,31 @@ static size_t oracle_escape_string(char *to, const char *from, size_t length)
 
 time_t _oradate_to_time_t (char *obuff)
 {
- struct  tm tmt;
- char    stime[101], *cp = NULL;
- time_t  loct = 0L;
+  struct  tm tmt;
+/*  char    stime[101], *cp = NULL; */
+/*  time_t  loct = 0L; */
 
-   memset(stime, 0, sizeof(stime));
+/*    memset(stime, 0, sizeof(stime)); */
    
-   sprintf(stime, "%04d%02d%02d%02d%02d%02d", 
-   //             |         YYYY           |                  
-                (obuff[0]-100)*100 + (obuff[1]-100),
-   //                 | month |   day   |
-                      obuff[2], obuff[3], 
-   //            |  HH     |   MM      |   SS       |
-		 obuff[4]-1, obuff[5]-1, obuff[6]-1);   
+/*    sprintf(stime, "%04d%02d%02d%02d%02d%02d",  */
+/*    //             |         YYYY           |                   */
+/*                 (obuff[0]-100)*100 + (obuff[1]-100), */
+/*    //                 | month |   day   | */
+/*                       obuff[2], obuff[3],  */
+/*    //            |  HH     |   MM      |   SS       | */
+/* 		 obuff[4]-1, obuff[5]-1, obuff[6]-1);    */
 
-   cp = strptime(stime, "%Y%m%d%H%M%S", &tmt);
+/*    cp = strptime(stime, "%Y%m%d%H%M%S", &tmt); */
 
-   loct = mktime(&tmt);
+  memset(&tmt, 0, sizeof(tmt));
+  tmt.tm_sec = obuff[6]-1;
+  tmt.tm_min = obuff[5]-1;
+  tmt.tm_hour = obuff[4]-1;
+  tmt.tm_mday = obuff[3];
+  tmt.tm_mon = obuff[2];
+  tmt.tm_year = (obuff[0]-100)*100 + (obuff[1]-100);
+
+  loct = mktime(&tmt);
    
-   return(loct);
+  return(loct);
 }

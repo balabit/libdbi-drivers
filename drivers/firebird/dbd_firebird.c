@@ -45,13 +45,16 @@
 
 
 #include <ibase.h>
-#include <gds.h>
+/* #include <gds.h>*/
 
 
 #include "dbd_firebird.h"
 #include "firebird_charsets.h"
 #include "utility.h"
 
+#ifndef FB_ALIGN
+#  define FB_ALIGN(n,b) ((n+1) & ~1)
+#endif
 
 static const dbi_info_t driver_info = {
         "firebird",
@@ -204,7 +207,7 @@ char *dbd_get_engine_version(dbi_conn_t *conn, char *versionstring)
 	char *stop;
 
 	/* Firebird make some easy things hard ... this is one of them ... */
-	isc_version(&(iconn->db), _get_firebird_version, NULL);
+	isc_version(&(iconn->db), (isc_callback)_get_firebird_version, NULL);
 
 	/* version now contains something like:
 	   Firebird/linux Intel (access method), version "LI-V1.5.1.4500 Firebird 1.5"
@@ -462,7 +465,7 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
 {
         ibase_conn_t *iconn = conn->connection;
         
-	TEXT errbuf[MAXLEN];
+	ISC_SCHAR errbuf[MAXLEN];
 	long sqlcode;
 
 	if ( conn->connection == NULL) {

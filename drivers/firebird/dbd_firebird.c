@@ -42,20 +42,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-
 #include <ibase.h>
-/* #include <gds.h>*/
-
 
 #include "dbd_firebird.h"
 #include "firebird_charsets.h"
 #include "utility.h"
 
+/* is this correct? Firebird 1.5 used this instead:
+   #define FB_ALIGN(n,b) ((n+b-1)&~(b-1)) */
 #ifndef FB_ALIGN
 #  define FB_ALIGN(n,b) ((n+1) & ~1)
 #endif
 
+/* firebird versions prior to 2.0 do not typedef ISC_SCHAR but use TEXT
+   instead. ISC_SCHAR's presence is checked for by the configure
+   script */
+#ifndef HAVE_ISC_SCHAR
+#define ISC_SCHAR TEXT
+#endif
+	
 static const dbi_info_t driver_info = {
         "firebird",
 	"Firebird/Interbase database support",
@@ -93,12 +98,11 @@ int dbd_connect(dbi_conn_t *conn)
 
 int dbd_disconnect(dbi_conn_t *conn) 
 {
-	
 	ibase_conn_t *iconn = conn->connection;
     
 	if(iconn != NULL) {
-		isc_commit_transaction(iconn->status, &(iconn->trans));
-		isc_detach_database(iconn->status, &(iconn->db));
+		isc_commit_transaction(iconn->status_vector, &(iconn->trans));
+		isc_detach_database(iconn->status_vector, &(iconn->db));
 		
 		dealocate_iconn(iconn);
 	}
@@ -126,11 +130,12 @@ int dbd_fetch_row(dbi_result_t *result, unsigned long long rowidx)
 
 int dbd_free_query(dbi_result_t *result) 
 {
-        ISC_STATUS_ARRAY status;
+	dbi_conn_t *conn = dbi_result_get_conn(result);
+	ibase_conn_t *iconn = conn->connection;
 	ibase_stmt_t *istmt = result->result_handle;
 	
 	if(istmt != NULL) {
-		isc_dsql_free_statement(status, &(istmt->stmt), DSQL_drop);
+		isc_dsql_free_statement(iconn->status_vector, &(istmt->stmt), DSQL_drop);
 		free(istmt->osqlda);
 		free(istmt);
 	}
@@ -340,7 +345,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	unsigned long long numrows = 0, affectedrows = 0;
 	ibase_conn_t *iconn = conn->connection;
 
-       if (isc_dsql_allocate_statement(iconn->status, &(iconn->db), &stmt)) {
+       if (isc_dsql_allocate_statement(iconn->status_vector, &(iconn->db), &stmt)) {
 	       return NULL;
        }
        
@@ -348,33 +353,33 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
        sqlda->sqln = 1;
        sqlda->version = 1;
 
-       if (isc_dsql_prepare(iconn->status, &(iconn->trans), &stmt, 0, (char *)statement, 3, sqlda)) {
+       if (isc_dsql_prepare(iconn->status_vector, &(iconn->trans), &stmt, 0, (char *)statement, 3, sqlda)) {
 	       free(sqlda);
-	       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+	       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 	       return NULL;
        }
 
-       if (!isc_dsql_sql_info(iconn->status, &stmt, sizeof(stmt_info), stmt_info,
+       if (!isc_dsql_sql_info(iconn->status_vector, &stmt, sizeof(stmt_info), stmt_info,
 			      sizeof(info_buffer), info_buffer)) {
 	       l = (short) isc_vax_integer((char *) info_buffer + 1, 2);
 	       statement_type = isc_vax_integer((char *) info_buffer + 3, l); 
        }
        /* Execute a non-select statement.*/
        if (!sqlda->sqld) {
-	       if (isc_dsql_execute(iconn->status, &(iconn->trans), &stmt , SQL_DIALECT_V6, NULL)) {
+	       if (isc_dsql_execute(iconn->status_vector, &(iconn->trans), &stmt , SQL_DIALECT_V6, NULL)) {
 		       free(sqlda);
-		       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+		       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 		       return NULL;
 	       }
 	       /* Commit DDL statements if that is what sql_info says */
 	       if (iconn->trans && (statement_type == isc_info_sql_stmt_ddl)) {
 
-		       if (isc_commit_transaction(iconn->status, &(iconn->trans))) {
+		       if (isc_commit_transaction(iconn->status_vector, &(iconn->trans))) {
 			       free(sqlda);
-			       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+			       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 			       return NULL;
 		       }
-		       isc_start_transaction(iconn->status, &(iconn->trans), 1, &(iconn->db), 0, NULL);
+		       isc_start_transaction(iconn->status_vector, &(iconn->trans), 1, &(iconn->db), 0, NULL);
 	       }
        } else {
 	       
@@ -391,9 +396,9 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 		       sqlda->sqln = num_cols;
 		       sqlda->version = 1;
 		       
-		       if (isc_dsql_describe(iconn->status, &stmt, SQL_DIALECT_V6, sqlda)) {
+		       if (isc_dsql_describe(iconn->status_vector, &stmt, SQL_DIALECT_V6, sqlda)) {
 			       free(sqlda);
-			       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+			       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 			       return NULL;
 		       }
 		       
@@ -417,9 +422,9 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 		       offset += sizeof  (short);
 	       }
 	       
-	       if (isc_dsql_execute(iconn->status, &(iconn->trans), &stmt, SQL_DIALECT_V6, NULL)) {
+	       if (isc_dsql_execute(iconn->status_vector, &(iconn->trans), &stmt, SQL_DIALECT_V6, NULL)) {
 		       free(sqlda);
-		       isc_dsql_free_statement(iconn->status, &stmt, DSQL_drop);
+		       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 		       return NULL;
 	       }       
        }
@@ -446,8 +451,8 @@ const char *dbd_select_db(dbi_conn_t *conn, const char *db)
 	}
 
 	if (iconn) {
-		isc_commit_transaction(iconn->status, &(iconn->trans));
-                isc_detach_database(iconn->status, &(iconn->db));
+		isc_commit_transaction(iconn->status_vector, &(iconn->trans));
+                isc_detach_database(iconn->status_vector, &(iconn->db));
 		if(conn->current_db) free(conn->current_db);
 		free(iconn);
 		iconn = NULL;
@@ -474,7 +479,7 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
 	}
 	
 	 
-	sqlcode = isc_sqlcode(iconn->status); 
+	sqlcode = isc_sqlcode(iconn->status_vector); 
 	isc_sql_interprete(sqlcode, errbuf, sizeof(errbuf)); 
 	*errstr = strdup(errbuf);
 	  
@@ -498,7 +503,7 @@ int dbd_ping(dbi_conn_t *conn)
 	char buf[100];
 	ibase_conn_t *iconn = conn->connection;
         
-	if (isc_database_info(iconn->status, &(iconn->db), 0, NULL, sizeof(buf), buf)) {
+	if (isc_database_info(iconn->status_vector, &(iconn->db), 0, NULL, sizeof(buf), buf)) {
 		free(iconn);
 		if (conn->current_db ) free(conn->current_db);
 		if(! dbd_connect(conn)) return 0;

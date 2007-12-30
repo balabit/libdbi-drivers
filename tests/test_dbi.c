@@ -456,11 +456,11 @@ int init_db(struct CONNINFO* ptr_cinfo) {
       fprintf(stderr, "Could not create initial database\n");
       return 1;
     }
-    snprintf(command, 1024, "sudo chmod 666 %s/%s", ptr_cinfo->dbdir, ptr_cinfo->dbname);
-    if (system(command)) {
-      fprintf(stderr, "Could not set database permissions\n");
-      return 1;
-    }
+/*     snprintf(command, 1024, "sudo chmod 666 %s/%s", ptr_cinfo->dbdir, ptr_cinfo->dbname); */
+/*     if (system(command)) { */
+/*       fprintf(stderr, "Could not set database permissions\n"); */
+/*       return 1; */
+/*     } */
   }
   
   return 0;

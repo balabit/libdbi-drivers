@@ -2,8 +2,9 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(drivers/sqlite/dbd_sqlite.c)
 AM_MAINTAINER_MODE
 
-AM_INIT_AUTOMAKE(libdbi-drivers, 0.8.3)
+AM_INIT_AUTOMAKE(libdbi-drivers, 0.8.3-pre1)
 AM_CONFIG_HEADER(config.h)
+AC_LIBTOOL_WIN32_DLL
 
 dnl library versioning currently unnecessary...
 dnl dnl Library versioning
@@ -235,8 +236,6 @@ AC_OUTPUT([
 	tests/Makefile
 	])
 dnl doc/Makefile
-
-echo "If make check fails with a linker error, reconfigure with --with-ltdl"
 
 if test "$ac_mysql" = "NO" && test "$ac_pgsql" = "NO" && test "$ac_sqlite" = "NO" \
 	&& test "$ac_sqlite3" = "NO" && test "$ac_msql" = "NO" && test "$ac_oracle" = "NO" \

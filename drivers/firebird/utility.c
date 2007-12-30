@@ -230,7 +230,7 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 	ibase_stmt_t *istmt = result->result_handle;
 	ibase_conn_t *iconn = (ibase_conn_t *)result->conn->connection;
 
-	fetch_stat = isc_dsql_fetch(iconn->status, &(istmt->stmt), SQL_DIALECT_V6, istmt->osqlda);
+	fetch_stat = isc_dsql_fetch(iconn->status_vector, &(istmt->stmt), SQL_DIALECT_V6, istmt->osqlda);
 
 	if (fetch_stat != 0) {
 		result->numrows_matched--;
@@ -341,16 +341,16 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 		case DBI_TYPE_BINARY:
 			bid = *(ISC_QUAD *) var.sqldata;
 			
-			isc_open_blob2( iconn->status, &(iconn->db), &(iconn->trans), &blob_handle, &bid, 0, NULL );
-			blob_stat = isc_get_segment( iconn->status, &blob_handle,  &actual_seg_len,  
+			isc_open_blob2( iconn->status_vector, &(iconn->db), &(iconn->trans), &blob_handle, &bid, 0, NULL );
+			blob_stat = isc_get_segment( iconn->status_vector, &blob_handle,  &actual_seg_len,  
 						     sizeof(blob_segment), blob_segment  );
 
 			data->d_string = malloc(sizeof(actual_seg_len));
 			memcpy(data->d_string, blob_segment, actual_seg_len);
 			row->field_sizes[curfield] = actual_seg_len;
 
-			while (blob_stat == 0 || iconn->status[1] == isc_segment) { 
-				blob_stat = isc_get_segment(iconn->status, &blob_handle, 
+			while (blob_stat == 0 || iconn->status_vector[1] == isc_segment) { 
+				blob_stat = isc_get_segment(iconn->status_vector, &blob_handle, 
 							    &actual_seg_len, 
 							    sizeof(blob_segment), blob_segment); 
 
@@ -361,7 +361,7 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 				       blob_segment, actual_seg_len);
 				row->field_sizes[curfield] += actual_seg_len;
 			} 
-			isc_close_blob(iconn->status, &blob_handle);
+			isc_close_blob(iconn->status_vector, &blob_handle);
 			row->field_sizes[curfield] = _dbd_decode_binary(data->d_string, data->d_string);
 			break;
 				
@@ -393,7 +393,7 @@ unsigned long long return_generator_value(dbi_conn_t *conn, const char *sequence
 	result = dbd_query(conn, sql_cmd);
 
 	istmt = result->result_handle;
-	if(! isc_dsql_fetch(iconn->status, &(istmt->stmt), SQL_DIALECT_V6, istmt->osqlda) ) {
+	if(! isc_dsql_fetch(iconn->status_vector, &(istmt->stmt), SQL_DIALECT_V6, istmt->osqlda) ) {
 		retval = *(long *) istmt->osqlda->sqlvar[0].sqldata;
 	}
 	dbi_result_free(result);

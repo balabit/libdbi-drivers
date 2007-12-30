@@ -1,12 +1,11 @@
 #ifndef __DBD_FIREBIRD_H
 #define __DBD_FIREBIRD_H
 
-	
 typedef struct ibase_conn_s
 {
   isc_db_handle db;             /* database handle */
   isc_tr_handle trans;          /* transaction handle */
-  ISC_STATUS_ARRAY status;
+  ISC_STATUS status_vector[ISC_STATUS_LENGTH];
   const char *charset;
 } ibase_conn_t;
 

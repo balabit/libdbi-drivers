@@ -450,7 +450,8 @@ if test "$ac_firebird" = "yes"; then
 		firebird_incdirs="/opt/firebird/include /usr/include /usr/local/include /usr/include/firebird /usr/local/include/firebird /usr/local/firebird/include /opt/firebird/include"
 		AC_FIND_FILE(ibase.h, $firebird_incdirs, ac_firebird_incdir)
 		firebird_libdirs="/opt/firebird/lib /usr/lib /usr/local/lib /usr/lib/firebird /usr/local/lib/firebird /usr/local/firebird/lib /opt/firebird/lib"
-		AC_FIND_FILE(libfbclient.so, $firebird_libdirs, ac_firebird_libdir)
+dnl		AC_FIND_FILE(libfbclient.so, $firebird_libdirs, ac_firebird_libdir)
+		AC_FIND_FILE(libfbembed.so, $firebird_libdirs, ac_firebird_libdir)
 		if test "$ac_firebird_incdir" = "no"; then
 			AC_MSG_RESULT(no)
 			AC_MSG_ERROR([Invalid Firebird/Interbase directory - include files not found.])
@@ -465,10 +466,23 @@ if test "$ac_firebird" = "yes"; then
 	
 	dnl libfbclient needs pthreads
 	AC_SEARCH_LIBS(pthread_create, c_r pthread,,)
+	CFLAGS="$CFLAGS -I$ac_firebird_incdir"
 
-	FIREBIRD_LIBS="-lfbclient"
+	dnl firebird versions prior to 2.0 do not define ISC_SCHAR
+	AC_MSG_CHECKING(for ISC_SCHAR type definition)
+	AC_COMPILE_IFELSE(AC_LANG_PROGRAM(
+	[[#include <ibase.h>]],
+	[[ISC_SCHAR c;]]),
+
+	[AC_DEFINE([HAVE_ISC_SCHAR], ["1"], [Define to 1 if ibase.h defines ISC_SCHAR])
+	SCHAR_MSG="yes"],
+	[SCHAR_MSG="no"])
+	AC_MSG_RESULT([$SCHAR_MSG])
+
+dnl	FIREBIRD_LIBS="-lfbclient"
+	FIREBIRD_LIBS="-lfbembed"
 	FIREBIRD_INCLUDE="-I$ac_firebird_incdir"
-	FIREBIRD_LDFLAGS=-L$ac_firebird_libdir
+	FIREBIRD_LDFLAGS="-L$ac_firebird_libdir"
 	
 	AC_SUBST(FIREBIRD_LIBS)
 	AC_SUBST(FIREBIRD_INCLUDE)

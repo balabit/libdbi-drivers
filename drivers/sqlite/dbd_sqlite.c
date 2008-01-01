@@ -100,6 +100,7 @@ int dbd_initialize(dbi_driver_t *driver) {
    * return -1 on error, 0 on success. if -1 is returned, the driver will not
    * be added to the list of available drivers. */
 	
+  _dbd_register_driver_cap(driver, "safe_dlclose", 1);
   return 0;
 }
 

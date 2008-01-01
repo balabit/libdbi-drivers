@@ -81,6 +81,7 @@ void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_
 
 int dbd_initialize(dbi_driver_t *driver) 
 {
+        _dbd_register_driver_cap(driver, "safe_dlclose", 1);
         return 0;
 }
 

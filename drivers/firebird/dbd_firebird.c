@@ -87,7 +87,8 @@ void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_
 
 int dbd_initialize(dbi_driver_t *driver) 
 {
-         return 0;
+	_dbd_register_driver_cap(driver, "safe_dlclose", 0);
+	return 0;
 }
 
 int dbd_connect(dbi_conn_t *conn) 
@@ -478,8 +479,8 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
 		return 1;
 	}
 	
-	 
-	sqlcode = isc_sqlcode(iconn->status_vector); 
+	sqlcode = isc_sqlcode(iconn->status_vector);
+/* 	printf("sqlcode went to %ld<<status_vector[0]:%ld<<status_vector[1]:%ld<<\n", sqlcode, iconn->status_vector[0], iconn->status_vector[1]); */
 	isc_sql_interprete(sqlcode, errbuf, sizeof(errbuf)); 
 	*errstr = strdup(errbuf);
 	  

@@ -81,6 +81,7 @@ void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_
 
 int dbd_initialize(dbi_driver_t *driver) 
 {
+        _dbd_register_driver_cap(driver, "safe_dlclose", 1);
 
 	return OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  
 			     (dvoid * (*)(dvoid *, size_t)) 0,

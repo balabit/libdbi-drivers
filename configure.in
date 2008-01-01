@@ -87,28 +87,6 @@ dnl ==============================
 dnl Check for libraries
 dnl ==============================
 
-dnl start test
-dnl functions to load dynamic libraries
-use_ltdl=no
-AC_ARG_WITH(ltdl,
-	[  --with-ltdl	          Use libtool's libltdl to load runtime modules [no]],
-	[  use_ltdl=$withval ])
-	
-if test "x$use_ltdl" = xyes; then
-AC_CHECK_HEADERS([ltdl.h], [AC_CHECK_LIB([ltdl],[lt_dlopen],[LIBADD_DL=-lltdl])])
-else
-AC_CHECK_HEADERS([mach-o/dyld.h],[AC_CHECK_FUNCS([NSLinkModule], [
-       LIBADD_DL=""
-       dlsym_prefix=_
-       ])],
-[
-AC_CHECK_HEADERS([dlfcn.h])
-AC_CHECK_FUNCS([dlopen],[LIBADD_DL=],
-		[AC_CHECK_LIB([dl],[dlopen],[LIBADD_DL=-ldl],[])])])
-fi
-AC_SUBST(LIBADD_DL)
-dnl end test
-
 dnl framework and database engine client libraries
 AC_CHECK_DBI
 AC_CHECK_MYSQL

@@ -434,7 +434,7 @@ int init_db(struct CONNINFO* ptr_cinfo) {
   int boolean = access("/etc/debian-version", F_OK) & access("/etc/debian_version", F_OK);
 
   if (!strcmp(ptr_cinfo->drivername, "firebird")) {
-    if (!strcmp(ptr_cinfo->hostname, "localhost")) {
+    if (!*(ptr_cinfo->hostname)) {
       snprintf(command, 1024, 
 	       "echo \"CREATE DATABASE \'%s/%s\';\""
 	       "| %s -e -pas %s "
@@ -556,6 +556,7 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
     fgets(ptr_cinfo->hostname, 256, stdin);
     if (*(ptr_cinfo->hostname) == '\n') {
       if (!strcmp(ptr_cinfo->drivername, "pgsql")
+	  || !strcmp(ptr_cinfo->drivername, "firebird")
 	  || !strcmp(ptr_cinfo->drivername, "msql")) {
 	*(ptr_cinfo->hostname) = '\0';
       } 
@@ -618,6 +619,7 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
   }
   else  if (!strcmp(ptr_cinfo->drivername, "firebird")){
     dbi_conn_set_option(conn, "firebird_dbdir", ptr_cinfo->dbdir);
+    dbi_conn_set_option(conn, "host", ptr_cinfo->hostname);
     dbi_conn_set_option(conn, "username", ptr_cinfo->username);
     dbi_conn_set_option(conn, "password", ptr_cinfo->password);
   }

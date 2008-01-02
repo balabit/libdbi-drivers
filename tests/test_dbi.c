@@ -23,21 +23,31 @@ struct CONNINFO {
   char version[64];
 };
 
+struct TABLEINFO {
+  int have_double;
+  int have_longlong;
+  int have_ulonglong;
+  int have_datetime;
+  int have_datetime_tz;
+  int have_time_tz;
+};
+
 char string_to_quote[] = "Can \'we\' \"quote\" this properly?";
 
 unsigned char binary_to_quote[] = {'A', 'B', '\0', 'C', '\'', 'D'};
 size_t binary_to_quote_length = 6;
 
+void init_tinfo(struct TABLEINFO* ptr_tinfo);
 int init_db(struct CONNINFO* ptr_cinfo);
 int ask_for_conninfo(struct CONNINFO* ptr_cinfo);
 int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding, const char* db);
 int test_list_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_create_db(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* encoding);
 int test_select_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
-int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, dbi_conn conn);
 int test_list_tables(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn);
-int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, dbi_conn conn);
 int test_drop_table(dbi_conn conn);
 int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n);
@@ -51,6 +61,9 @@ int main(int argc, char **argv) {
   char versionstring[VERSIONSTRING_LENGTH];
 
   struct CONNINFO cinfo;
+  struct TABLEINFO tinfo;
+
+  init_tinfo(&tinfo);
 
   if (ask_for_conninfo(&cinfo)) {
     exit(1);
@@ -136,7 +149,7 @@ int main(int argc, char **argv) {
   /* Test: create table */
   printf("\nTest %d: Create table: \n", testnumber++);
 	
-  if (test_create_table(&cinfo, conn)) {
+  if (test_create_table(&cinfo, &tinfo, conn)) {
     dbi_conn_close(conn);
     dbi_shutdown();
     exit(1);
@@ -163,7 +176,7 @@ int main(int argc, char **argv) {
   /* Test: retrieve data */
   printf("\nTest %d: Retrieve data: \n", testnumber++);
 	
-  if (test_retrieve_data(&cinfo, conn)) {
+  if (test_retrieve_data(&cinfo, &tinfo, conn)) {
     dbi_conn_close(conn);
     dbi_shutdown();
     exit(1);
@@ -750,7 +763,7 @@ int test_select_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 }
 
 /* returns 0 on success, 1 on error */
-int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, dbi_conn conn) {
   char query[QUERY_LEN+1];
   const char *errmsg;
   dbi_result result;
@@ -779,6 +792,12 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_time_tz TIME,"
 	     "id INT AUTO_INCREMENT,"
 	     "PRIMARY KEY (id))");
+    ptr_tinfo->have_double = 1;
+    ptr_tinfo->have_longlong = 1;
+    ptr_tinfo->have_ulonglong = 1;
+    ptr_tinfo->have_datetime = 1;
+    ptr_tinfo->have_datetime_tz = 1;
+    ptr_tinfo->have_time_tz = 1;
   }
   else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
     /* PostgreSQL does not have a 1-byte integer, use smallint
@@ -805,6 +824,12 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_time TIME,"
 	     "the_time_tz TIME WITH TIME ZONE,"
 	     "id SERIAL PRIMARY KEY)");
+    ptr_tinfo->have_double = 1;
+    ptr_tinfo->have_longlong = 1;
+    ptr_tinfo->have_ulonglong = 1;
+    ptr_tinfo->have_datetime = 1;
+    ptr_tinfo->have_datetime_tz = 1;
+    ptr_tinfo->have_time_tz = 1;
   } 
   else if (!strcmp(ptr_cinfo->drivername, "msql")) {
     snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
@@ -825,6 +850,9 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_time TIME,"
 	     "the_time_tz TIME,"
 	     "id INT)");		
+    ptr_tinfo->have_longlong = 1;
+    ptr_tinfo->have_ulonglong = 1;
+    ptr_tinfo->have_time_tz = 1;
   }
   else if (!strcmp(ptr_cinfo->drivername, "sqlite")
 	   || !strcmp(ptr_cinfo->drivername, "sqlite3")){
@@ -850,6 +878,12 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_time TIME,"
 	     "the_time_tz TIME,"
 	     "id INTEGER AUTO INCREMENT)");
+    ptr_tinfo->have_double = 1;
+    ptr_tinfo->have_longlong = 1;
+    ptr_tinfo->have_ulonglong = 1;
+    ptr_tinfo->have_datetime = 1;
+    ptr_tinfo->have_datetime_tz = 1;
+    ptr_tinfo->have_time_tz = 1;
   }
   else if (!strcmp(ptr_cinfo->drivername, "firebird")) {
         snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
@@ -867,12 +901,11 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 		 "the_null_string VARCHAR(255), "
 		 "the_binary_string BLOB,"
 		 "the_datetime TIMESTAMP, "
-		 "the_datetime_tz TIMESTAMP, "
 		 "the_date DATE,"
 		 "the_time TIME,"
-		 "the_time_tz TIME,"
 		 "id INTEGER NOT NULL PRIMARY KEY)");
-
+    ptr_tinfo->have_double = 1;
+    ptr_tinfo->have_datetime = 1;
   }
   else if (!strcmp(ptr_cinfo->drivername, "freetds")) {
      snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
@@ -896,6 +929,10 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	      "the_time DATETIME,"
 	      "id INT IDENTITY,"
 	      "CONSTRAINT tr_test_datatypes PRIMARY KEY (id))");
+    ptr_tinfo->have_double = 1;
+    ptr_tinfo->have_longlong = 1;
+    ptr_tinfo->have_ulonglong = 1;
+    ptr_tinfo->have_datetime = 1;
   } 
   else if (!strcmp(ptr_cinfo->drivername, "ingres")) {
      snprintf(query, QUERY_LEN, "CREATE TABLE test_datatypes ( "
@@ -922,6 +959,10 @@ int test_create_table(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	      "the_date DATE,"
 	      "the_time DATE,"
 	      "id INT NOT NULL CONSTRAINT id_key PRIMARY KEY)");
+    ptr_tinfo->have_double = 1;
+    ptr_tinfo->have_longlong = 1;
+    ptr_tinfo->have_ulonglong = 1;
+    ptr_tinfo->have_datetime = 1;
   } 
 
 
@@ -1055,7 +1096,8 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_null_string,"
 	     "the_binary_string,  "
 	     "the_datetime,"
-	     "the_date, the_time,"
+	     "the_date,"
+	     "the_time,"
 	     "id) "
 	     "VALUES ("
 	     "-127,"
@@ -1186,7 +1228,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 }
 
 /* returns 0 on success, 1 on error */
-int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, dbi_conn conn) {
   const char *errmsg;
   dbi_result result;
 
@@ -1293,9 +1335,10 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     }
 
 
-    if( !strcmp(ptr_cinfo->drivername, "firebird")) {
-      printf("the_ulonglong: test skipped for this driver.\n");
-    } else {
+    if (!ptr_tinfo->have_longlong) {
+      printf("the_longlong: test skipped for this driver.\n");
+    }
+    else {
       the_longlong = dbi_result_get_longlong(result, "the_longlong");
       errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
       if (errflag) {
@@ -1303,22 +1346,24 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       }
     }
 
-    if( !strcmp(ptr_cinfo->drivername, "firebird")) {
+    if (!ptr_tinfo->have_ulonglong) {
       printf("the_ulonglong: test skipped for this driver.\n");
-    } else {
+    }
+    else {
       the_ulonglong = dbi_result_get_ulonglong(result, "the_ulonglong");
       errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
       if (errflag) {
 	printf("the_ulonglong errflag=%d\n", errflag);
       }
     }
+
     the_float = dbi_result_get_float(result, "the_float");
     errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
     if (errflag) {
       printf("the_float errflag=%d\n", errflag);
     }
 
-    if(!strcmp(ptr_cinfo->drivername, "msql")) {
+    if(!ptr_tinfo->have_double) {
       printf("the_double: test skipped for this driver.\n");
     }
     else {
@@ -1357,7 +1402,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       printf("the_binary_string errflag=%d\n", errflag);
     }
 
-    if(!strcmp(ptr_cinfo->drivername, "msql")) {
+    if(!ptr_tinfo->have_datetime) {
       printf("the_datetime: test skipped for this driver.\n");
     }
     else {
@@ -1366,12 +1411,31 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       if (errflag) {
 	printf("the_datetime errflag=%d\n", errflag);
       }
+      ptr_tm = gmtime(&the_datetime);
+      year_dt = ptr_tm->tm_year+1900;
+      mon_dt = ptr_tm->tm_mon+1;
+      day_dt = ptr_tm->tm_mday;
+      hour_dt = ptr_tm->tm_hour;
+      min_dt = ptr_tm->tm_min;
+      sec_dt = ptr_tm->tm_sec;
+    }
 
+    if(!ptr_tinfo->have_datetime_tz) {
+      printf("the_datetime_tz: test skipped for this driver.\n");
+    }
+    else {
       the_datetime_tz = dbi_result_get_datetime(result, "the_datetime_tz");
       errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
       if (errflag) {
 	printf("the_datetime_tz errflag=%d\n", errflag);
       }
+      ptr_tm = gmtime(&the_datetime_tz);
+      year_dt_tz = ptr_tm->tm_year+1900;
+      mon_dt_tz = ptr_tm->tm_mon+1;
+      day_dt_tz = ptr_tm->tm_mday;
+      hour_dt_tz = ptr_tm->tm_hour;
+      min_dt_tz = ptr_tm->tm_min;
+      sec_dt_tz = ptr_tm->tm_sec;
     }
 
     /* then retrieve the field lengths */
@@ -1430,41 +1494,36 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       		 the_conn_string, the_empty_string, the_null_string, the_date, the_time);
 
     }
-    else {
+    else { /* not msql */
 
-      ptr_tm = gmtime(&the_datetime);
-      year_dt = ptr_tm->tm_year+1900;
-      mon_dt = ptr_tm->tm_mon+1;
-      day_dt = ptr_tm->tm_mday;
-      hour_dt = ptr_tm->tm_hour;
-      min_dt = ptr_tm->tm_min;
-      sec_dt = ptr_tm->tm_sec;
-	
-      ptr_tm = gmtime(&the_datetime_tz);
-      year_dt_tz = ptr_tm->tm_year+1900;
-      mon_dt_tz = ptr_tm->tm_mon+1;
-      day_dt_tz = ptr_tm->tm_mday;
-      hour_dt_tz = ptr_tm->tm_hour;
-      min_dt_tz = ptr_tm->tm_min;
-      sec_dt_tz = ptr_tm->tm_sec;
-	
+      printf("requesting date\n");
       the_date_dt = dbi_result_get_datetime(result, "the_date");
       errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
       if (errflag) {
 	printf("the_date errflag=%d\n", errflag);
       }
 			
+      printf("requesting time\n");
       the_time_dt = dbi_result_get_datetime(result, "the_time");
       errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
       if (errflag) {
 	printf("the_time errflag=%d\n", errflag);
       }
-			
-      the_time_dt_tz = dbi_result_get_datetime(result, "the_time_tz");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
-      if (errflag) {
-	printf("the_time_tz errflag=%d\n", errflag);
+
+      if (!ptr_tinfo->have_time_tz) {
+	printf("time_tz: test skipped for this driver\n");
+      }
+      else {
+	the_time_dt_tz = dbi_result_get_datetime(result, "the_time_tz");
+	errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+	if (errflag) {
+	  printf("the_time_tz errflag=%d\n", errflag);
 /* 	printf("type went to %d, attribs went to %d\n", dbi_result_get_field_type(result, "the_time_tz"), dbi_result_get_field_attribs(result, "the_time_tz")); */
+	  ptr_tm_time = gmtime(&the_time_dt_tz);
+	  hour_tz = ptr_tm_time->tm_hour;
+	  min_tz = ptr_tm_time->tm_min;
+	  sec_tz = ptr_tm_time->tm_sec;
+	}
       }
 			
       ptr_tm_date = gmtime(&the_date_dt);
@@ -1476,11 +1535,6 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       hour = ptr_tm_time->tm_hour;
       min = ptr_tm_time->tm_min;
       sec = ptr_tm_time->tm_sec;
-
-      ptr_tm_time = gmtime(&the_time_dt_tz);
-      hour_tz = ptr_tm_time->tm_hour;
-      min_tz = ptr_tm_time->tm_min;
-      sec_tz = ptr_tm_time->tm_sec;
 
       if (!strcmp(ptr_cinfo->drivername, "firebird")) {
 	printf("the_short: in:-32768 out:%hd<<\n"
@@ -1672,5 +1726,14 @@ int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n) {
     dbi_result_free(result);
     return 1;
   }
+}
+
+void init_tinfo(struct TABLEINFO* ptr_tinfo) {
+  ptr_tinfo->have_double = 0;
+  ptr_tinfo->have_longlong = 0;
+  ptr_tinfo->have_ulonglong = 0;
+  ptr_tinfo->have_datetime = 0;
+  ptr_tinfo->have_datetime_tz = 0;
+  ptr_tinfo->have_time_tz = 0;
 }
 

@@ -80,10 +80,8 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 	}
 	
 	_firebird_populate_db_string( conn, dbname, db_fullpath );
-	/* todo: if host is set to localhost, we should use that
-	   instead of attempting a local connection. This way the user
-	   has the choice of going local or network */
-	if (host == NULL || !*host || !strcmp(host, "localhost")) {
+
+	if (host == NULL || !*host) {
 		snprintf(dbase, 256, "%s", db_fullpath);
 	}
 	else {

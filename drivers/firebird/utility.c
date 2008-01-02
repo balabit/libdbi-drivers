@@ -52,14 +52,14 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 	
 	*dpb++ = isc_dpb_user_name;
 	*dpb++ = strlen(username);
-	for (p = username; *p; *dpb++ = *p++);
+	for (p = (char*)username; *p; *dpb++ = *p++);
 
 	*dpb++ = isc_dpb_password;
 	*dpb++ = strlen(password);
-	for (p = password; *p; *dpb++ = *p++);
+	for (p = (char*)password; *p; *dpb++ = *p++);
 
 	*dpb++ = isc_dpb_lc_ctype;
-	fb_encoding = dbd_encoding_from_iana(encoding);
+	fb_encoding = (char*)dbd_encoding_from_iana(encoding);
 	*dpb++ = strlen(fb_encoding);
 	for (p = fb_encoding; *p; *dpb++ = *p++);
 
@@ -80,6 +80,9 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 	}
 	
 	_firebird_populate_db_string( conn, dbname, db_fullpath );
+	/* todo: if host is set to localhost, we should use that
+	   instead of attempting a local connection. This way the user
+	   has the choice of going local or network */
 	if (host == NULL || !*host || !strcmp(host, "localhost")) {
 		snprintf(dbase, 256, "%s", db_fullpath);
 	}
@@ -87,8 +90,8 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 		snprintf(dbase, 256, "%s:%s", host, db_fullpath);
 	}
 
-/* 	printf("dbase went to: %s<<; host: %s, username: %s, passwd: %s, encoding: %s; dbp:%s<<\n", dbase, host, username, password, encoding, dpb); */
-/* 	fflush(stdout); */
+/*  	printf("dbase went to: %s<<; host: %s, username: %s, passwd: %s, encoding: %s; dbp:%s<<\n", dbase, host, username, password, encoding, dpb); */
+/*  	fflush(stdout); */
 	isc_attach_database(status_vector, strlen(dbase), dbase, &db, dpb_length, dpb);
 	if (status_vector[0] == 1 && status_vector[1]) {
 		char msg[512];
@@ -227,7 +230,7 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 	char date_s[25];
 	unsigned int sizeattrib;
 	dbi_data_t *data = NULL;
-	ibase_stmt_t *istmt = result->result_handle;
+	ibase_stmt_t *istmt = (ibase_stmt_t *)result->result_handle;
 	ibase_conn_t *iconn = (ibase_conn_t *)result->conn->connection;
 
 	fetch_stat = isc_dsql_fetch(iconn->status_vector, &(istmt->stmt), SQL_DIALECT_V6, istmt->osqlda);
@@ -250,7 +253,6 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 			continue;
 		}
 		
-		
 		switch ( result->field_types[curfield] ) {
 		case DBI_TYPE_STRING: 
 			if(result->field_attribs[curfield] & DBI_STRING_FIXEDSIZE) {
@@ -259,8 +261,9 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 			} else {
 				vary_t *vary = NULL;
 				vary = (vary_t *) var.sqldata;
-				vary->vary_string[vary->vary_length] = '\0';
-				data->d_string = strdup(vary->vary_string);
+				data->d_string = malloc(vary->vary_length+1);
+				memcpy(data->d_string, vary->vary_string, vary->vary_length);
+				data->d_string[vary->vary_length] = '\0';
 				row->field_sizes[curfield] = (unsigned long long) vary->vary_length;
 			}
 			break;
@@ -295,37 +298,9 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 		case DBI_TYPE_DATETIME:
 			sizeattrib = _isolate_attrib(result->field_attribs[curfield], DBI_DATETIME_DATE, DBI_DATETIME_TIME);
 			
-			switch(sizeattrib) {
-			case DBI_DATETIME_TIME: 
-				isc_decode_sql_time((ISC_TIME *)var.sqldata, &times);
-/* 				sprintf(date_s, "%02d:%02d:%02d.%04d", */
-/* 					times.tm_hour, */
-/* 					times.tm_min, */
-/* 					times.tm_sec, */
-/* 					(*((ISC_TIME *)var.sqldata)) % 10000); */
-				sprintf(date_s, "%02d:%02d:%02d",
-					times.tm_hour,
-					times.tm_min,
-					times.tm_sec);
-				break;
-				
-			case DBI_DATETIME_DATE:
-				isc_decode_sql_date((ISC_DATE *)var.sqldata, &times);
-				sprintf(date_s, "%04d-%02d-%02d",
-					times.tm_year + 1900,
-					times.tm_mon+1,
-					times.tm_mday);
-				break;
-			default:
+			if (sizeattrib&DBI_DATETIME_TIME
+			    && sizeattrib&DBI_DATETIME_DATE) {
  				isc_decode_timestamp((ISC_TIMESTAMP *)var.sqldata, &times);
-/* 				sprintf(date_s, "%04d-%02d-%02d %02d:%02d:%02d.%04d", */
-/* 					times.tm_year + 1900, */
-/* 					times.tm_mon+1, */
-/* 					times.tm_mday, */
-/* 					times.tm_hour, */
-/* 					times.tm_min, */
-/* 					times.tm_sec, */
-/* 					((ISC_TIMESTAMP *)var.sqldata)->timestamp_time % 10000); */
 				sprintf(date_s, "%04d-%02d-%02d %02d:%02d:%02d",
 					times.tm_year + 1900,
 					times.tm_mon+1,
@@ -333,7 +308,20 @@ int _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowid
 					times.tm_hour,
 					times.tm_min,
 					times.tm_sec);
-				break;	
+			}
+			else if (sizeattrib&DBI_DATETIME_TIME) {
+				isc_decode_sql_time((ISC_TIME *)var.sqldata, &times);
+				sprintf(date_s, "%02d:%02d:%02d",
+					times.tm_hour,
+					times.tm_min,
+					times.tm_sec);
+			}
+			else {
+				isc_decode_sql_date((ISC_DATE *)var.sqldata, &times);
+				sprintf(date_s, "%04d-%02d-%02d",
+					times.tm_year + 1900,
+					times.tm_mon+1,
+					times.tm_mday);
 			}
 			data->d_datetime = _dbd_parse_datetime(date_s, sizeattrib);		
 			break;

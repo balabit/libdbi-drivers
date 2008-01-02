@@ -52,6 +52,7 @@
    #define FB_ALIGN(n,b) ((n+b-1)&~(b-1)) */
 #ifndef FB_ALIGN
 #  define FB_ALIGN(n,b) ((n+1) & ~1)
+/* #define FB_ALIGN(n,b) ((n+b-1)&~(b-1)) */
 #endif
 
 /* firebird versions prior to 2.0 do not typedef ISC_SCHAR but use TEXT
@@ -342,7 +343,8 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	long statement_type;
 	short num_cols, i;
 	short length, alignment, type, offset;
-	long buffer[MAXLEN];
+/* 	long buffer[MAXLEN*8]; */
+	void* buffer = NULL;
 	unsigned long long numrows = 0, affectedrows = 0;
 	ibase_conn_t *iconn = conn->connection;
 
@@ -350,11 +352,17 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	       return NULL;
        }
        
-       sqlda = (XSQLDA *) malloc(XSQLDA_LENGTH (1));
+       sqlda = (XSQLDA *) malloc(XSQLDA_LENGTH(1));
        sqlda->sqln = 1;
        sqlda->version = 1;
 
        if (isc_dsql_prepare(iconn->status_vector, &(iconn->trans), &stmt, 0, (char *)statement, 3, sqlda)) {
+	       if (iconn->status_vector[0] == 1 && iconn->status_vector[1]) {
+		       char msg[512];
+		       long* pvector = iconn->status_vector;
+		       isc_interprete(msg, &pvector);
+		       _dbd_internal_error_handler(conn, msg, 0);
+	       }
 	       free(sqlda);
 	       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 	       return NULL;
@@ -365,9 +373,16 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	       l = (short) isc_vax_integer((char *) info_buffer + 1, 2);
 	       statement_type = isc_vax_integer((char *) info_buffer + 3, l); 
        }
+
        /* Execute a non-select statement.*/
        if (!sqlda->sqld) {
 	       if (isc_dsql_execute(iconn->status_vector, &(iconn->trans), &stmt , SQL_DIALECT_V6, NULL)) {
+		       if (iconn->status_vector[0] == 1 && iconn->status_vector[1]) {
+			       char msg[512];
+			       long* pvector = iconn->status_vector;
+			       isc_interprete(msg, &pvector);
+			       _dbd_internal_error_handler(conn, msg, 0);
+		       }
 		       free(sqlda);
 		       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 		       return NULL;
@@ -382,14 +397,29 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 		       }
 		       isc_start_transaction(iconn->status_vector, &(iconn->trans), 1, &(iconn->db), 0, NULL);
 	       }
+
+
+       /* Process select statements. */
        } else {
 	       
-	       /* Process select statements. */
 	       
 	       num_cols = sqlda->sqld;
 	       numrows = 1; /*  Firebird  can't say how many rows there is, in this early stage. 
 				We need to fetch all rows and count them :( */
-	 
+
+	       /* HACK HACK HACK MH:2008-01-02 */
+	       /* I don't really know how much needs to be allocated
+		  here. The Firebird example code and the docs won't
+		  tell me. I just know that the previously used hard
+		  limit (4096) is not enough to run the test program
+		  successfully. I'm assuming here that in the worst
+		  case num_cols columns contain strings of the maximum
+		  allowed length, and that this is just about
+		  sufficient. I may be wasting memory here, or the
+		  code just so happens to work for the tests
+		  applied. If crashes or strange results are reported,
+		  revisit this issue */
+	       buffer = malloc(32768*num_cols);
 
 	       /* Need more room. */
 	       if (sqlda->sqln < num_cols) {
@@ -425,6 +455,12 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	       
 	       if (isc_dsql_execute(iconn->status_vector, &(iconn->trans), &stmt, SQL_DIALECT_V6, NULL)) {
 		       free(sqlda);
+		       if (iconn->status_vector[0] == 1 && iconn->status_vector[1]) {
+			       char msg[512];
+			       long* pvector = iconn->status_vector;
+			       isc_interprete(msg, &pvector);
+			       _dbd_internal_error_handler(conn, msg, 0);
+		       }
 		       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 		       return NULL;
 	       }       
@@ -439,6 +475,9 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
        _dbd_result_set_numfields(result, res->osqlda->sqld);
        _get_field_info(result);
        
+       if (buffer) {
+	       free(buffer);
+       }
        return result;
 }
 
@@ -469,21 +508,21 @@ const char *dbd_select_db(dbi_conn_t *conn, const char *db)
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) 
 {
-        ibase_conn_t *iconn = conn->connection;
+ /*        ibase_conn_t *iconn = conn->connection; */
         
-	ISC_SCHAR errbuf[MAXLEN];
-	long sqlcode;
+/* 	ISC_SCHAR errbuf[MAXLEN]; */
+/* 	long sqlcode; */
 
-	if ( conn->connection == NULL) {
-                *errstr = strdup("Unable to connect to database.");
-		return 1;
-	}
+/* 	if ( conn->connection == NULL) { */
+/*                 *errstr = strdup("Unable to connect to database."); */
+/* 		return 1; */
+/* 	} */
 	
-	sqlcode = isc_sqlcode(iconn->status_vector);
+/* 	sqlcode = isc_sqlcode(iconn->status_vector); */
 /* 	printf("sqlcode went to %ld<<status_vector[0]:%ld<<status_vector[1]:%ld<<\n", sqlcode, iconn->status_vector[0], iconn->status_vector[1]); */
-	isc_sql_interprete(sqlcode, errbuf, sizeof(errbuf)); 
-	*errstr = strdup(errbuf);
-	  
+/* 	isc_sql_interprete(sqlcode, errbuf, sizeof(errbuf));  */
+/* 	*errstr = strdup(errbuf); */
+	*errstr = (conn->error_message) ? strdup(conn->error_message):NULL;
 	return 1;
 }
 

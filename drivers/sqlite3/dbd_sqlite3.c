@@ -81,7 +81,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database);
 void _translate_sqlite3_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement);
-char* get_field_type(const char* statement, const char* curr_field_name);
+char* get_field_type(char*** ptr_result_table, const char* curr_field_name, int numrows);
 static size_t sqlite3_escape_string(char *to, const char *from, size_t length);
 int wild_case_compare(const char *str,const char *str_end,
 		      const char *wildstr,const char *wildend,
@@ -590,14 +590,12 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
      returns the type as a FIELD_TYPE_XXX value
 
-     sqlite3 uses a type system insufficient for libdbi. Therefore
-     there is no convenience function to retrieve the types of
-     columns. You don't even have to declare the column types if
-     you don't want to.
+     sqlite3 uses a type system insufficient for libdbi. You don't
+     even have to declare the column types if you don't want to.
 
-     However, sqlite3 stores the CREATE TABLE commands as a string in
-     an internal table, so we can try to look up the types in these
-     strings. It is a VERY GOOD idea to declare the types if we want
+     However, sqlite3 stores the types as used in the CREATE TABLE
+     commands and makes them available through the table_info
+     pragma. It is a VERY GOOD idea to declare the types if we want
      the following to work
 
      The code assumes that table and field names do not exceed a given
@@ -722,10 +720,9 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
   /* curr_table now contains the name of the table that the field
      belongs to. curr_field_name contains the name of the field.
-     Look up the field type in the sqlite3_master table */
+     Look up the field type using the table_info pragma */
 
-  /* first try in the table containing permanent tables */
-  snprintf(sql_command, MAX_IDENT_LENGTH+80, "SELECT tbl_name, sql FROM sqlite_master where tbl_name='%s'", curr_table);
+  snprintf(sql_command, MAX_IDENT_LENGTH+80, "PRAGMA table_info(%s)", curr_table);
   query_res = sqlite3_get_table((sqlite3*)conn->connection,
 				      sql_command,
 				      &table_result_table,
@@ -734,28 +731,12 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 				      &errmsg);
 
   if (query_res || !table_numrows) {
-    /* now try in the table ocntaining temporary tables */
-    snprintf(sql_command, MAX_IDENT_LENGTH+80, "SELECT tbl_name, sql FROM sqlite_temp_master where tbl_name='%s'", curr_table);
-    query_res = sqlite3_get_table((sqlite3*)conn->connection,
-					sql_command,
-					&table_result_table,
-					&table_numrows,
-					&table_numcols,
-					&errmsg);
-    
-    if (query_res || !table_numrows) {
-      _error_handler(conn, errflag);
-/*       printf("field not found\n"); */
-      return 0;
-    }
+    _error_handler(conn, errflag);
+    /*       printf("field not found\n"); */
+    return 0;
   }
   
-
-  /* table_result_table[3] now contains the sql statement that created
-     the table containing the current field */
-  /*  parse the sql statement to find the type of the current field */
-/*   printf("table_result_table[3]=%s<<\ncurr_field_name=%s<<\n", table_result_table[3], curr_field_name); */
-  curr_type = get_field_type(table_result_table[3], curr_field_name);
+  curr_type = get_field_type(&table_result_table, curr_field_name, table_numrows);
 
   /* free memory */
   sqlite3_free_table(table_result_table);
@@ -848,72 +829,31 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   return type;
 }
 
-char* get_field_type(const char* statement, const char* curr_field_name) {
+char* get_field_type(char*** ptr_result_table, const char* curr_field_name, int numrows) {
   /*
-    statement is a ptr to a string with the "create table" statement
-    curr_field_name is a ptr to a string containing the name of the
-    field we need the type of.
+    ptr_table is a ptr to a string array as returned by the
+    sqlite3_get_table() function called with the table_info pragma.
+    The array is 6 cols wide and contains one row for each field
+    in the table. The first row contains the column names, but it
+    is not included in numrows, so the real data start at [6].
+    The columns are:
+    Number|column_name|type|may_be_null|default_value|?
+    Thus, the column names are in [6+6*i], and the corresponding
+    type of the result is in [7+6*i].
+    curr_field_name is a ptr to a string holding the field name
+    numrows is the number of rows in the string array
 
     returns the field type as an allocated string or NULL
     if an error occurred
   */
-  char *item;
-  char *my_statement;
-  char *field_name;
-  char *end_field_name;
-  char *type;
-  char *curr_type = NULL;
+  char* curr_type = NULL;
+  int i;
 
-  /* make a copy that we may modify */
-  if ((my_statement = strdup(statement)) == NULL) {
-    return NULL;
-  }
-
-  /* the field list of the "create table" statement starts after the 
-     first opening bracket */
-  item = strchr(my_statement, '(');
-  if (!item) {
-    free(my_statement);
-    return NULL;
-  }
-
-  /* make item point to the first item in the comma-separated list */
-  item++;
-
-  /* now tokenize the field list */
-  for (item = strtok(item, ","); item; item = strtok(NULL, ",")) {
-/*     printf("item:%s<<\n", item); */
-
-    /* skip leading whitespace */
-    field_name = item;
-    while ((*field_name == ' ') || (*field_name == '\n')) {
-      field_name++;
-    }
-
-    /* terminate field name */
-    end_field_name = field_name+1;
-    while (*end_field_name != ' ') {
-      end_field_name++;
-    }
-    *end_field_name = '\0';
-
-/*     printf("field_name:%s<<\n", field_name); */
-
-    /* analyze type if the field name is the one we want to check */
-    if (!strcmp(field_name, curr_field_name)) {
-      /* skip leading whitespace */
-      type = end_field_name + 1;
-      while (*type == ' ') {
-	type++;
-      }
-
-      curr_type = strdup(type);
-/*       printf("curr_type:%s<<\n"); */
-      break;
+  for (i=6;i<=numrows*6;i+=6) {
+    if (!strcmp((*ptr_result_table)[i+1], curr_field_name)) {
+      curr_type = strdup((*ptr_result_table)[i+2]);
     }
   }
-
-  free(my_statement);
   return curr_type;
 }
 

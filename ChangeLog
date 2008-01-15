@@ -1,3 +1,9 @@
+2008-01-15 15:07  mhoenicka
+
+	* ChangeLog (1.9), NEWS (1.5), drivers/msql/dbd_msql.c (1.19),
+	drivers/sqlite/dbd_sqlite.c (1.39), drivers/sqlite3/dbd_sqlite3.c
+	(1.20): final touches for 0.8.3-pre1
+
 2008-01-15 01:27  mhoenicka
 
 	* drivers/firebird/dbd_firebird.c (1.26),

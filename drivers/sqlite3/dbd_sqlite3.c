@@ -895,6 +895,7 @@ unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) {
 }
 
 unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) {
+  _dbd_internal_error_handler(conn, NULL, DBI_ERROR_UNSUPPORTED);
   return 0;
 }
 

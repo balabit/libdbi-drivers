@@ -290,13 +290,15 @@ int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr)
 
 unsigned long long dbd_get_seq_last(dbi_conn_t *conn, const char *sequence) 
 {  
-	return 0;
+  _dbd_internal_error_handler(conn, NULL, DBI_ERROR_UNSUPPORTED);
+  return 0;
 }
 
 
 unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) 
 {	
-	return 0;
+  _dbd_internal_error_handler(conn, NULL, DBI_ERROR_UNSUPPORTED);
+  return 0;
 }
 
 

@@ -1,169 +1,150 @@
-2007-05-01 19:30  qu1j0t3
+2008-01-15 01:27  mhoenicka
 
-    * README.osx - remove dependence on Fink and simplify recipe;
-      add quickstart notes for MySQL and PostgreSQL.
+	* drivers/firebird/dbd_firebird.c (1.26),
+	drivers/firebird/utility.c (1.9), drivers/msql/dbd_msql.c (1.18),
+	drivers/mysql/dbd_mysql.c (1.95), drivers/pgsql/dbd_pgsql.c (1.54),
+	drivers/sqlite/dbd_sqlite.c (1.38), drivers/sqlite3/dbd_sqlite3.c
+	(1.19), tests/test_dbi.c (1.44): assorted fixes to improve error
+	handling and reporting
 
-2007-02-20 01:00  mhoenicka
+2008-01-04 01:48  mhoenicka
 
-	* drivers/sqlite3/dbd_sqlite3.c (1.15): minor cleanup
+	* drivers/sqlite3/dbd_sqlite3.c (1.18): retrieve field types using
+	table_info pragma
 
-2007-02-20 00:57  mhoenicka
+2008-01-04 01:44  mhoenicka
 
-	* acinclude.m4 (1.21): removed trailing slash from dbi_incdirs
+	* tests/test_dbi.c (1.43): fixed time_tz bug
 
-2007-02-15 01:50  mhoenicka
+2008-01-02 20:11  mhoenicka
 
-	* drivers/: firebird/Makefile.am (1.5), freetds/Makefile.am (1.6),
-	  msql/Makefile.am (1.14), mysql/Makefile.am (1.17),
-	  oracle/Makefile.am (1.8), pgsql/Makefile.am (1.17),
-	  sqlite/Makefile.am (1.15), sqlite3/Makefile.am (1.8): added
-	  LIBADD_LIBDBI
+	* drivers/firebird/utility.c (1.8): don't connect locally if
+	localhost is requested
 
-2007-02-15 01:49  mhoenicka
+2008-01-02 20:09  mhoenicka
 
-	* configure.in (1.35): bumped up version number; added
-	  --enable-libdbi and --with-dbi-libdir options
+	* drivers/firebird/: Makefile.am (1.6), dbd_firebird.sgml (1.1):
+	added driver doc
 
-2006-11-29 22:11  mhoenicka
+2008-01-02 17:26  mhoenicka
 
-	* drivers/mysql/dbd_mysql.c (1.90): dbd_get_encoding(): add support
-	  for MySQL 5.x
+	* tests/test_dbi.c (1.42): added struct TABLEINFO to simplify data
+	retrieval;run tz conversion only if data are available
 
-2006-10-17 21:18  mhoenicka
+2008-01-02 17:23  mhoenicka
 
-	* drivers/: sqlite/dbd_sqlite.c (1.35), sqlite3/dbd_sqlite3.c
-	  (1.14): allow semicolons in query strings, see bug # 1577810
+	* drivers/firebird/utility.c (1.7): fixed buffer overflow in
+	handling variable-length strings
 
-2006-10-17 21:01  mhoenicka
+2008-01-02 17:20  mhoenicka
 
-	* drivers/sqlite3/dbd_sqlite3.c (1.13): error message handling now
-	  uses the sqlite3 API call instead of the sqlite v. 2 workaround,
-	  see bug #1577808
+	* drivers/firebird/dbd_firebird.c (1.25): fixed buffer overflow due
+	to fixed size result buffer;added error handling to queries
 
-2006-10-17 21:00  mhoenicka
+2008-01-01 21:48  mhoenicka
 
-	* drivers/sqlite/dbd_sqlite.c (1.34): fixed segfault due to error
-	  message workaround, see bug #1577808
+	* tests/test_dbi.c (1.41): fixed local vs network access for
+	firebird
 
-2006-10-16 22:24  mhoenicka
+2008-01-01 21:46  mhoenicka
 
-	* tests/test_dbi.c (1.37): added test_error_messages() function
+	* configure.in (1.39): removed --with-ltdl switch
 
-2006-09-21 21:44  mhoenicka
+2008-01-01 01:18  mhoenicka
 
-	* drivers/pgsql/dbd_pgsql.c (1.51): Kjells patches for plugging a
-	  memory leak and for compatibility with older PostgreSQL versions
+	* drivers/: firebird/dbd_firebird.c (1.24), freetds/dbd_freetds.c
+	(1.3), msql/dbd_msql.c (1.17), mysql/dbd_mysql.c (1.94),
+	oracle/dbd_oracle.c (1.23), pgsql/dbd_pgsql.c (1.53),
+	sqlite/dbd_sqlite.c (1.37), sqlite3/dbd_sqlite3.c (1.17): added
+	safe_dlclose driver caps
 
-2006-09-13 21:30  mhoenicka
+2008-01-01 01:16  mhoenicka
 
-	* configure.in (1.34), drivers/freetds/Makefile.am (1.5),
-	  drivers/msql/Makefile.am (1.13), drivers/mysql/Makefile.am
-	  (1.16), drivers/oracle/Makefile.am (1.7),
-	  drivers/pgsql/Makefile.am (1.16), drivers/sqlite/Makefile.am
-	  (1.14), drivers/sqlite3/Makefile.am (1.7): dont build docs if
-	  --disable-docs was used
+	* tests/test_dbi.c (1.40): fixed isql call
 
-2006-08-29 21:49  mhoenicka
+2007-12-30 21:07  mhoenicka
 
-	* Makefile.am (1.8), configure.in (1.33): added --disable-docs
-	  switch
+	* Makefile.am (1.9), acinclude.m4 (1.22), configure.in (1.38),
+	drivers/firebird/dbd_firebird.c (1.23),
+	drivers/firebird/dbd_firebird.h (1.4), drivers/firebird/utility.c
+	(1.6), tests/Makefile.am (1.6), tests/test_dbi.c (1.39): fixes for
+	the firebird driver, firebird configuration, and test; mostly
+	working on Debian and FreeBSD, but with a few time/date issues to
+	be fixed
 
-2006-06-02 17:27  qu1j0t3
+2007-12-18 22:16  mhoenicka
 
-	* tests/test_dbi.c (1.36): Add Ingres support to test_dbi.c
+	* drivers/oracle/dbd_oracle.c (1.22): applied Brechts patch for
+	strptime on mingw
 
-2006-05-31 08:52  qu1j0t3
+2007-12-18 21:50  mhoenicka
 
-	* AUTHORS (1.11), README (1.10), acinclude.m4 (1.20), configure.in
-	  (1.32), drivers/Makefile.am (1.8): Add Ingres 2006 (experimental)
-	  driver to libdbi-drivers build system. Driver has connect, query,
-	  fetch result functionality. Notable missing/incomplete features
-	  include handling of DATE, long blob, and UTF-16 column types;
-	  querying of system catalogs; querying of sequence values.
+	* tests/test_dbi.c (1.38): added windows.h and sleep() definition
+	for mingw;fixed isql Debian hack for newer Debian releases
 
-2006-05-29 21:19  qu1j0t3
+2007-12-18 21:47  mhoenicka
 
-	* drivers/pgsql/dbd_pgsql.c (1.50): use constant masks to isolate
-	  attributes; minor whitespace cleanup
+	* drivers/firebird/utility.c (1.5): removed gds.h;use ISC_STATUS
+	for status vector; work around deprecated isc_expand_dpb;improved
+	error reporting
 
-2006-05-29 21:16  qu1j0t3
+2007-12-18 21:43  mhoenicka
 
-	* drivers/mysql/dbd_mysql.c (1.89): use constant masks to isolate
-	  attributes
+	* drivers/firebird/dbd_firebird.c (1.22): removed gds.h; added
+	FB_ALIGN definition; changed TEXT to ISC_SCHAR
 
-2006-05-16 08:27  mhoenicka
+2007-12-18 21:39  mhoenicka
 
-	* drivers/mysql/dbd_mysql.c (1.88): dbd_get_encoding(): use
-	  get_binary() instead of get_string()
+	* Makefile.w32 (1.9): added sqlite3
 
-2006-05-15 23:07  mhoenicka
+2007-12-11 22:49  mhoenicka
 
-	* tests/test_dbi.c (1.35): added timezone tests
+	* drivers/mysql/dbd_mysql.c (1.93): fixed encoding name bug in
+	dbd_connect()
 
-2006-05-15 23:06  mhoenicka
+2007-12-08 23:48  mhoenicka
 
-	* drivers/pgsql/: dbd_pgsql.c (1.49), dbd_pgsql.h (1.4): fixed
-	  timezone column type handling
+	* drivers/: mysql/dbd_mysql.sgml (1.5), sqlite/dbd_sqlite.sgml
+	(1.9), sqlite3/dbd_sqlite3.sgml (1.6): added GFDL blurb
 
-2006-05-15 06:19  qu1j0t3
+2007-12-07 01:30  mhoenicka
 
-	* drivers/mysql/dbd_mysql.c (1.87): add support for MySQL 5.0.3's
-	  BIT (unsigned 64 bit vector) and NEWDECIMAL (arbitrary precision
-	  decimal string) types
+	* COPYING (1.2), README (1.11), drivers/sqlite/dbd_sqlite.c (1.36),
+	drivers/sqlite/dbd_sqlite.h (1.3), drivers/sqlite3/dbd_sqlite3.c
+	(1.16), drivers/sqlite3/dbd_sqlite3.h (1.2): changed license from
+	GPL to LGPL
 
-2006-05-14 04:11  qu1j0t3
+2007-12-07 01:11  mhoenicka
 
-	* drivers/mysql/: AUTHORS (1.2), README (1.2), dbd_mysql.c (1.86):
-	  Fix string/binary test for VAR_STRING, STRING and BLOB/TEXT
-	  types. Add some feature support clarifications to README.
+	* configure.in (1.37): made linking drivers against libdbi the
+	default, can be turned off by --disable-libdbi; bumped up version
+	number
 
-2006-05-14 04:01  qu1j0t3
+2007-11-06 22:01  mhoenicka
 
-	* acinclude.m4 (1.19): improve formatting of --help option text
+	* drivers/oracle/dbd_oracle.c (1.21): applied Bazsis's patch
 
-2006-02-11 01:34  mhoenicka
+2007-07-16 22:24  mhoenicka
 
-	* drivers/: freetds/Makefile.am (1.4), msql/Makefile.am (1.12),
-	  mysql/Makefile.am (1.15), oracle/Makefile.am (1.6),
-	  pgsql/Makefile.am (1.15), sqlite/Makefile.am (1.13),
-	  sqlite3/Makefile.am (1.6): delete PDF by maintainer-clean
+	* drivers/mysql/dbd_mysql.c (1.92): added conditional to include
+	winsock.h on MinGW
 
-2005-11-21 22:18  mhoenicka
+2007-05-02 00:27  qu1j0t3
 
-	* Makefile.w32 (1.8): renamed driver libraries
+	* ChangeLog (1.8), README.osx (1.2): remove dependence on Fink and
+	simplify recipe; add quickstart notes for MySQL and PostgreSQL.
 
-2005-11-08 21:06  mhoenicka
+2007-03-27 19:59  mhoenicka
 
-	* drivers/oracle/: AUTHORS (1.4), dbd_oracle.c (1.20): Ashishs Nov
-	  8 patch kit
+	* drivers/pgsql/dbd_pgsql.sgml (1.6): added pgsql_foo options
 
-2005-10-26 20:40  mhoenicka
+2007-03-26 23:08  mhoenicka
 
-	* doc/include/Makefile.am (1.1): initial version
+	* drivers/pgsql/dbd_pgsql.c (1.52): Antal Novak's patch adding
+	support for all PostgreSQL connection options
 
-2005-10-26 20:40  mhoenicka
+2007-03-13 22:27  mhoenicka
 
-	* doc/Makefile.am (1.4): removed old doc junk; now passes only
-	  through to include subdir
-
-2005-10-26 20:39  mhoenicka
-
-	* Makefile.am (1.7), configure.in (1.31): added doc and doc/include
-	  to the distributed files
-
-2005-09-28 21:55  mhoenicka
-
-	* tests/test_dbi.c (1.34): added empty string and NULL string tests
-
-2005-09-27 20:42  mhoenicka
-
-	* drivers/oracle/dbd_oracle.c (1.19): Ashish's return value fixes
-
-2005-09-25 23:56  mhoenicka
-
-	* drivers/: firebird/Makefile.am (1.4), freetds/Makefile.am (1.3),
-	  msql/Makefile.am (1.11), mysql/Makefile.am (1.14),
-	  oracle/Makefile.am (1.5), pgsql/Makefile.am (1.14),
-	  sqlite/Makefile.am (1.12), sqlite3/Makefile.am (1.5): changed
-	  driver lib names from libname to libdbdname
+	* drivers/mysql/: dbd_mysql.c (1.91), dbd_mysql.sgml (1.4): support
+	client flags for mysql_real_connect()
 

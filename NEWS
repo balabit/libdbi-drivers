@@ -1,6 +1,21 @@
 libdbi-drivers NEWS file
 ========================
 
+__________________
+0.8.3 (prerelease)
+
+- major overhaul of the firebird driver. The driver is now linked to
+  libfbembed.so instead of libfbclient.so. You can request a local
+  connection (bypassing the server altogether) by using an empty
+  hostname, or a local connection through the server by using
+  "localhost" or the actual computer name as the hostname.
+- changed all driver code to LGPL, and all doc code to GFDL with no
+  invariant sections
+- made linking drivers against libdbi the default. This behaviour can be
+  switched off by --disable-libdbi, a reversal of the previous default
+- improved support for MySQL and PostgreSQL connection options
+- assorted fixes for MinGW compatibility
+
 _____________________________________
 0.8.2 (the "Payday in a Pub" release)
 

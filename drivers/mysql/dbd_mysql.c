@@ -159,11 +159,12 @@ int dbd_connect(dbi_conn_t *conn) {
 	
 	mycon = mysql_init(NULL);
 	if (!mycon) {
-		return -1;
+		_dbd_internal_error_handler(conn, NULL, DBI_ERROR_NOMEM);
+		return -2;
 	}
 	else if (!mysql_real_connect(mycon, host, username, password, dbname, port, unix_socket, client_flags)) {
 		conn->connection = (void *)mycon; // still need this set so _error_handler can grab information
-		_error_handler(conn, DBI_ERROR_DBD);
+		_dbd_internal_error_handler(conn, NULL, DBI_ERROR_DBD);
 		mysql_close(mycon);
 		conn->connection = NULL; // myconn no longer valid
 		return -2;
@@ -541,7 +542,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, s
 
 const char *dbd_select_db(dbi_conn_t *conn, const char *db) {
 	if (mysql_select_db((MYSQL *)conn->connection, db)) {
-		_error_handler(conn, DBI_ERROR_DBD);
+		_dbd_internal_error_handler(conn, NULL, DBI_ERROR_DBD);
 		return "";
 	}
 

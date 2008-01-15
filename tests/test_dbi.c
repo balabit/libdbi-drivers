@@ -213,18 +213,27 @@ int main(int argc, char **argv) {
   /* Test: test error message handling */
   printf("\nTest %d: Error message handling:\n", testnumber++);
 
+  /* supposed to fail */
   if (test_error_messages(&cinfo, conn, 1)) {
     dbi_conn_close(conn);
     dbi_shutdown();
     exit(1);
   }
 
+  /* supposed to fail. Check whether error message is overwritten
+     appropriately */
   if (test_error_messages(&cinfo, conn, 2)) {
     dbi_conn_close(conn);
     dbi_shutdown();
     exit(1);
   }
 
+  /* supposed to succeed. Check whether error message is reset */
+  if (test_error_messages(&cinfo, conn, 0)) {
+    dbi_conn_close(conn);
+    dbi_shutdown();
+    exit(1);
+  }
 
   /* we're done with this connection */
   dbi_conn_close(conn);
@@ -796,8 +805,8 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
     ptr_tinfo->have_longlong = 1;
     ptr_tinfo->have_ulonglong = 1;
     ptr_tinfo->have_datetime = 1;
-    ptr_tinfo->have_datetime_tz = 1;
-    ptr_tinfo->have_time_tz = 1;
+    ptr_tinfo->have_datetime_tz = 0;
+    ptr_tinfo->have_time_tz = 0;
   }
   else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
     /* PostgreSQL does not have a 1-byte integer, use smallint
@@ -1241,6 +1250,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
   printf("\tGot result, try to access rows\n");
 
   while (dbi_result_next_row(result)) {
+    const char *errmsg = NULL;
     signed char the_char = 0;
     unsigned char the_uchar = 0;
     short the_short = 0;
@@ -1299,39 +1309,42 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
 
     /* first retrieve the values */
     the_char = dbi_result_get_char(result, "the_char");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_char errflag=%d\n", errflag);
+      printf("the_char errflag=%s\n", errmsg);
     }
 
     the_uchar = dbi_result_get_uchar(result, "the_uchar");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_uchar errflag=%d\n", errflag);
+      printf("the_uchar errflag=%s\n", errmsg);
     }
 
     the_short = dbi_result_get_short(result, "the_short");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_short errflag=%d\n", errflag);
+      printf("the_short errflag=%s\n", errmsg);
     }
 
     the_ushort = dbi_result_get_ushort(result, "the_ushort");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_ushort errflag=%d\n", errflag);
+      printf("the_ushort errflag=%s\n", errmsg);
     }
 
+    /* the _long function (instead of _int) is used here intentionally
+       to verify that the "deprecated" message shows up during
+       compilation */
     the_long = dbi_result_get_long(result, "the_long");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_long errflag=%d\n", errflag);
+      printf("the_long errflag=%s\n", errmsg);
     }
 
     the_ulong = dbi_result_get_ulong(result, "the_ulong");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_ulong errflag=%d\n", errflag);
+      printf("the_ulong errflag=%s\n", errmsg);
     }
 
 
@@ -1340,9 +1353,9 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
     }
     else {
       the_longlong = dbi_result_get_longlong(result, "the_longlong");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_longlong errflag=%d\n", errflag);
+	printf("the_longlong errflag=%s\n", errmsg);
       }
     }
 
@@ -1351,16 +1364,16 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
     }
     else {
       the_ulonglong = dbi_result_get_ulonglong(result, "the_ulonglong");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_ulonglong errflag=%d\n", errflag);
+	printf("the_ulonglong errflag=%s\n", errmsg);
       }
     }
 
     the_float = dbi_result_get_float(result, "the_float");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_float errflag=%d\n", errflag);
+      printf("the_float errflag=%s\n", errmsg);
     }
 
     if(!ptr_tinfo->have_double) {
@@ -1368,38 +1381,52 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
     }
     else {
       the_double = dbi_result_get_double(result, "the_double");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_double errflag=%d\n", errflag);
+	printf("the_double errflag=%s\n", errmsg);
       }
     }
     the_driver_string = dbi_result_get_string(result, "the_driver_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_driver_string errflag=%d\n", errflag);
+      printf("the_driver_string errflag=%s\n", errmsg);
     }
     the_conn_string = dbi_result_get_string(result, "the_conn_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_conn_string errflag=%d\n", errflag);
+      printf("the_conn_string errflag=%s\n", errmsg);
     }
 
     the_empty_string = dbi_result_get_string(result, "the_empty_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_empty_string errflag=%d\n", errflag);
+      printf("the_empty_string errflag=%s\n", errmsg);
     }
 
     the_null_string = dbi_result_get_string(result, "the_null_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_null_string errflag=%d\n", errflag);
+      printf("the_null_string errflag=%s\n", errmsg);
+    }
+
+    printf("\tthis should cause a column type mismatch...\n");
+    dbi_result_get_string(result, "the_long");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("type mismatch errflag=%s\n", errmsg);
+    }
+
+    printf("\tthis should cause a bad name error...\n");
+    dbi_result_get_string(result, "the_nonexistent");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("bad name errflag=%s\n",errmsg);
     }
 
     the_binary_string = dbi_result_get_binary(result, "the_binary_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_binary_string errflag=%d\n", errflag);
+      printf("the_binary_string errflag=%s\n", errmsg);
     }
 
     if(!ptr_tinfo->have_datetime) {
@@ -1407,9 +1434,9 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
     }
     else {
       the_datetime = dbi_result_get_datetime(result, "the_datetime");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_datetime errflag=%d\n", errflag);
+	printf("the_datetime errflag=%s\n", errmsg);
       }
       ptr_tm = gmtime(&the_datetime);
       year_dt = ptr_tm->tm_year+1900;
@@ -1425,9 +1452,9 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
     }
     else {
       the_datetime_tz = dbi_result_get_datetime(result, "the_datetime_tz");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_datetime_tz errflag=%d\n", errflag);
+	printf("the_datetime_tz errflag=%s\n", errmsg);
       }
       ptr_tm = gmtime(&the_datetime_tz);
       year_dt_tz = ptr_tm->tm_year+1900;
@@ -1440,41 +1467,41 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
 
     /* then retrieve the field lengths */
     the_driver_string_length = dbi_result_get_field_length(result, "the_driver_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_driver_string_length errflag=%d\n", errflag);
+      printf("the_driver_string_length errflag=%s\n", errmsg);
     }
 
     the_conn_string_length = dbi_result_get_field_length(result, "the_conn_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_conn_string_length errflag=%d\n", errflag);
+      printf("the_conn_string_length errflag=%s\n", errmsg);
     }
 
     the_empty_string_length = dbi_result_get_field_length(result, "the_empty_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_empty_string_length errflag=%d\n", errflag);
+      printf("the_empty_string_length errflag=%s\n", errmsg);
     }
 
     the_binary_string_length = dbi_result_get_field_length(result, "the_binary_string");
-    errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
     if (errflag) {
-      printf("the_binary_string_size errflag=%d\n", errflag);
+      printf("the_binary_string_size errflag=%s\n", errmsg);
     }
 
 
     if(!strcmp(ptr_cinfo->drivername, "msql")) {
       the_date = dbi_result_get_string(result, "the_date");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_date errflag=%d\n", errflag);
+	printf("the_date errflag=%s\n", errmsg);
       }
 			
       the_time = dbi_result_get_string(result, "the_time");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_time errflag=%d\n", errflag);
+	printf("the_time errflag=%s\n", errmsg);
       }
 			
       printf("the_char: in:-127 out:%d<<\nthe_uchar: in:127 out:%u<<\n"
@@ -1496,18 +1523,16 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
     }
     else { /* not msql */
 
-      printf("requesting date\n");
       the_date_dt = dbi_result_get_datetime(result, "the_date");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_date errflag=%d\n", errflag);
+	printf("the_date errflag=%s\n", errmsg);
       }
 			
-      printf("requesting time\n");
       the_time_dt = dbi_result_get_datetime(result, "the_time");
-      errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
       if (errflag) {
-	printf("the_time errflag=%d\n", errflag);
+	printf("the_time errflag=%s\n", errmsg);
       }
 
       if (!ptr_tinfo->have_time_tz) {
@@ -1515,9 +1540,9 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
       }
       else {
 	the_time_dt_tz = dbi_result_get_datetime(result, "the_time_tz");
-	errflag = dbi_conn_error_flag(dbi_result_get_conn(result));
+	errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
 	if (errflag) {
-	  printf("the_time_tz errflag=%d\n", errflag);
+	  printf("the_time_tz errflag=%s\n", errmsg);
 	}
 /* 	printf("type went to %d, attribs went to %d\n", dbi_result_get_field_type(result, "the_time_tz"), dbi_result_get_field_attribs(result, "the_time_tz")); */
 	ptr_tm_time = gmtime(&the_time_dt_tz);
@@ -1712,19 +1737,49 @@ int test_convert_encoding(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n) {
   char query[QUERY_LEN+1];
   const char *errmsg;
+  int n_result;
   dbi_result result;
 
-  snprintf(query, QUERY_LEN, "%d SYNTAX ERROR", n);
+  if (n) {
+    printf("\tThis is supposed to fail...\n");
+  
+    snprintf(query, QUERY_LEN, "%d SYNTAX ERROR", n);
 
-  if ((result = dbi_conn_query(conn, query)) == NULL) {
-    dbi_conn_error(conn, &errmsg);
-    printf("\tHeck! The error message reads: %s\n", errmsg);
-    return 0;
+    if ((result = dbi_conn_query(conn, query)) == NULL) {
+      n_result = dbi_conn_error(conn, &errmsg);
+      printf("\tHeck! The error number is %d; the message reads: %s\n", n_result, errmsg);
+      return 0; /* an error is expected */
+    }
+    else {
+      n_result = dbi_conn_error(conn, &errmsg);
+      printf("\tOk. In this case, this is an error. The error number is %d; the message reads: %s\n", result, errmsg);
+      dbi_result_free(result);
+      return 1; /* lack of an error is an error here ... */
+    }
   }
-  else {
-    printf("\tOk. In this case, this is an error\n");
-    dbi_result_free(result);
-    return 1;
+  else { /* n=0 */
+    if (strcmp(ptr_cinfo->drivername, "firebird")) {
+      printf("\tThis is supposed to succeed...\n");
+  
+      snprintf(query, QUERY_LEN, "SELECT %d", n);
+
+      if ((result = dbi_conn_query(conn, query)) == NULL) {
+	n_result = dbi_conn_error(conn, &errmsg);
+	printf("\tHeck! The error number is %d; the message reads: %s\n", n_result, errmsg);
+	return 1; /* there should be no error */
+      }
+      else {
+	n_result = dbi_conn_error(conn, &errmsg);
+	printf("\tOk. The error number is %d; the message reads: %s\n", n_result, errmsg);
+	dbi_result_free(result);
+	return 0; /* as expected */
+      }
+    }
+    else {
+      /* can't find a SQL statement that firebird executes willingly
+	 without data */
+      return 0;
+    }
   }
 }
 

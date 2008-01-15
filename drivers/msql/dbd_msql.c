@@ -271,7 +271,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 const char *dbd_select_db(dbi_conn_t *conn, const char *db) 
 {
 	if (msqlSelectDB((int)conn->connection, (char *)db) < 0) {
-		_error_handler(conn, DBI_ERROR_DBD);
+		_dbd_internal_error_handler(conn, NULL, DBI_ERROR_DBD);
 		return "";
 	}
 	return db;

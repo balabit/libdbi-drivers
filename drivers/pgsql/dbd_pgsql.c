@@ -216,7 +216,7 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 
 	if (PQstatus(pgconn) == CONNECTION_BAD) {
 		conn->connection = (void *)pgconn; // still need this set so _error_handler can grab information
-		_error_handler(conn, DBI_ERROR_DBD);
+		_dbd_internal_error_handler(conn, NULL, DBI_ERROR_DBD);
 		PQfinish(pgconn);
 		conn->connection = NULL; // pgconn no longer valid
 		return -2;

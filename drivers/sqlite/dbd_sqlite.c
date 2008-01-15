@@ -140,7 +140,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   }
 
   if (!dbname) {
-    _dbd_internal_error_handler(conn, "no database specified", 0);
+    _dbd_internal_error_handler(conn, "no database specified", DBI_ERROR_CLIENT);
     return -1;
   }
 
@@ -148,7 +148,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   dbdir = dbi_conn_get_option(conn, "sqlite_dbdir");
 	
   if (!dbdir) {
-    _dbd_internal_error_handler(conn, "no database directory specified", 0);
+    _dbd_internal_error_handler(conn, "no database directory specified", DBI_ERROR_CLIENT);
     return -1;
   }
 
@@ -157,7 +157,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   db_fullpath = malloc(strlen(dbname)+strlen(dbdir)+2); /* leave room
 							   for \0 and / */
   if (db_fullpath == NULL) {
-    _dbd_internal_error_handler(conn, "out of memory", 0);
+    _dbd_internal_error_handler(conn, NULL, DBI_ERROR_NOMEM);
     return -1;
   }
 
@@ -184,7 +184,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
        access rights or an existing database is corrupted or created
        with an incompatible version */
     if (sq_errmsg) {
-      _dbd_internal_error_handler(conn, sq_errmsg, 0);
+      _dbd_internal_error_handler(conn, sq_errmsg, DBI_ERROR_CLIENT);
       free(sq_errmsg);
     }
     else {
@@ -325,7 +325,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
   dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_databases (dbname VARCHAR(255))");
 
   if (sq_datadir && (dp = opendir(sq_datadir)) == NULL) {
-    _dbd_internal_error_handler(conn, "could not open data directory", 0);
+    _dbd_internal_error_handler(conn, "could not open data directory", DBI_ERROR_CLIENT);
     return NULL;
   }
   getcwd(old_cwd, _POSIX_PATH_MAX);
@@ -417,7 +417,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   dbi_conn_set_option(tempconn, "sqlite_dbdir", (char*)dbi_conn_get_option(conn, "sqlite_dbdir"));
 
   if (dbi_conn_connect(tempconn) < 0) {
-    _dbd_internal_error_handler(conn, "could not connect to database", 0);
+    _dbd_internal_error_handler(conn, NULL, DBI_ERROR_NOCONN);
     return NULL;
   }
   

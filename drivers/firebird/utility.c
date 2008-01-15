@@ -75,7 +75,7 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 
 	
 	if (!dbname) {
-		_dbd_internal_error_handler(conn, "no database specified", 0);
+		_dbd_internal_error_handler(conn, "no database specified", DBI_ERROR_DBD);
 		return -1;
 	}
 	
@@ -96,7 +96,7 @@ int _dbd_real_connect(dbi_conn_t *conn, char *enc)
 		long* pvector = status_vector;
 		dealocate_iconn( iconn );
 		isc_interprete(msg, &pvector);
-		_dbd_internal_error_handler(conn, msg, 0);
+		_dbd_internal_error_handler(conn, msg, DBI_ERROR_DBD);
 		return -1;
 	}
 	else {

@@ -349,6 +349,12 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	ibase_conn_t *iconn = conn->connection;
 
        if (isc_dsql_allocate_statement(iconn->status_vector, &(iconn->db), &stmt)) {
+	       if (iconn->status_vector[0] == 1 && iconn->status_vector[1]) {
+		       char msg[512];
+		       long* pvector = iconn->status_vector;
+		       isc_interprete(msg, &pvector);
+		       _dbd_internal_error_handler(conn, msg, DBI_ERROR_CLIENT);
+	       }
 	       return NULL;
        }
        
@@ -361,7 +367,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 		       char msg[512];
 		       long* pvector = iconn->status_vector;
 		       isc_interprete(msg, &pvector);
-		       _dbd_internal_error_handler(conn, msg, 0);
+		       _dbd_internal_error_handler(conn, msg, DBI_ERROR_CLIENT);
 	       }
 	       free(sqlda);
 	       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
@@ -381,7 +387,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 			       char msg[512];
 			       long* pvector = iconn->status_vector;
 			       isc_interprete(msg, &pvector);
-			       _dbd_internal_error_handler(conn, msg, 0);
+			       _dbd_internal_error_handler(conn, msg, DBI_ERROR_CLIENT);
 		       }
 		       free(sqlda);
 		       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
@@ -391,6 +397,12 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 	       if (iconn->trans && (statement_type == isc_info_sql_stmt_ddl)) {
 
 		       if (isc_commit_transaction(iconn->status_vector, &(iconn->trans))) {
+			       if (iconn->status_vector[0] == 1 && iconn->status_vector[1]) {
+				       char msg[512];
+				       long* pvector = iconn->status_vector;
+				       isc_interprete(msg, &pvector);
+				       _dbd_internal_error_handler(conn, msg, DBI_ERROR_CLIENT);
+			       }
 			       free(sqlda);
 			       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 			       return NULL;
@@ -428,6 +440,12 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 		       sqlda->version = 1;
 		       
 		       if (isc_dsql_describe(iconn->status_vector, &stmt, SQL_DIALECT_V6, sqlda)) {
+			       if (iconn->status_vector[0] == 1 && iconn->status_vector[1]) {
+				       char msg[512];
+				       long* pvector = iconn->status_vector;
+				       isc_interprete(msg, &pvector);
+				       _dbd_internal_error_handler(conn, msg, DBI_ERROR_CLIENT);
+			       }
 			       free(sqlda);
 			       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 			       return NULL;
@@ -459,7 +477,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement)
 			       char msg[512];
 			       long* pvector = iconn->status_vector;
 			       isc_interprete(msg, &pvector);
-			       _dbd_internal_error_handler(conn, msg, 0);
+			       _dbd_internal_error_handler(conn, msg, DBI_ERROR_CLIENT);
 		       }
 		       isc_dsql_free_statement(iconn->status_vector, &stmt, DSQL_drop);
 		       return NULL;
@@ -508,20 +526,8 @@ const char *dbd_select_db(dbi_conn_t *conn, const char *db)
 
 int dbd_geterror(dbi_conn_t *conn, int *errno, char **errstr) 
 {
- /*        ibase_conn_t *iconn = conn->connection; */
-        
-/* 	ISC_SCHAR errbuf[MAXLEN]; */
-/* 	long sqlcode; */
-
-/* 	if ( conn->connection == NULL) { */
-/*                 *errstr = strdup("Unable to connect to database."); */
-/* 		return 1; */
-/* 	} */
-	
-/* 	sqlcode = isc_sqlcode(iconn->status_vector); */
-/* 	printf("sqlcode went to %ld<<status_vector[0]:%ld<<status_vector[1]:%ld<<\n", sqlcode, iconn->status_vector[0], iconn->status_vector[1]); */
-/* 	isc_sql_interprete(sqlcode, errbuf, sizeof(errbuf));  */
-/* 	*errstr = strdup(errbuf); */
+	/* error_message and error_number were already set by calls to _dbd_internal_error_handler */
+	*errno = conn->error_number;
 	*errstr = (conn->error_message) ? strdup(conn->error_message):NULL;
 	return 1;
 }

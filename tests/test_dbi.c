@@ -35,7 +35,9 @@ struct TABLEINFO {
 char string_to_quote[] = "Can \'we\' \"quote\" this properly?";
 
 unsigned char binary_to_quote[] = {'A', 'B', '\0', 'C', '\'', 'D'};
+unsigned char binary_to_copy[] = "Test Teste 2";
 size_t binary_to_quote_length = 6;
+size_t binary_to_copy_length = 12;
 
 void init_tinfo(struct TABLEINFO* ptr_tinfo);
 int init_db(struct CONNINFO* ptr_cinfo);
@@ -794,6 +796,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	     "the_empty_string VARCHAR(255),"
 	     "the_null_string VARCHAR(255),"
 	     "the_binary_string BLOB,"
+	     "the_binary_copy BLOB,"
 	     "the_datetime DATETIME,"
 	     "the_datetime_tz DATETIME,"
 	     "the_date DATE,"
@@ -827,6 +830,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	     "the_empty_string VARCHAR(255),"
 	     "the_null_string VARCHAR(255),"
 	     "the_binary_string BYTEA,"
+	     "the_binary_copy BYTEA,"
 	     "the_datetime TIMESTAMP,"
 	     "the_datetime_tz TIMESTAMP WITH TIME ZONE,"
 	     "the_date DATE,"
@@ -881,6 +885,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	     "the_empty_string VARCHAR(255),"
 	     "the_null_string VARCHAR(255),"
 	     "the_binary_string BLOB,"
+	     "the_binary_copy BLOB,"
 	     "the_datetime DATETIME,"
 	     "the_datetime_tz DATETIME,"
 	     "the_date DATE,"
@@ -909,6 +914,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 		 "the_empty_string VARCHAR(255),"
 		 "the_null_string VARCHAR(255), "
 		 "the_binary_string BLOB,"
+		 "the_binary_copy BLOB,"
 		 "the_datetime TIMESTAMP, "
 		 "the_date DATE,"
 		 "the_time TIME,"
@@ -933,6 +939,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	      "the_empty_string VARCHAR(255),"
 	      "the_null_string VARCHAR(255),"
 	      "the_binary_string IMAGE,"
+	      "the_binary_copy IMAGE,"
 	      "the_datetime DATETIME,"
 	      "the_date DATETIME,"
 	      "the_time DATETIME,"
@@ -964,6 +971,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	      "the_empty_string VARCHAR(255),"
 	      "the_null_string VARCHAR(255),"
 	      "the_binary_string BLOB,"
+	      "the_binary_copy BLOB,"
 	      "the_datetime DATE,"
 	      "the_date DATE,"
 	      "the_time DATE,"
@@ -1018,7 +1026,9 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   char *driver_quoted_string = NULL;
   char *conn_quoted_string = NULL;
   unsigned char* quoted_binary = NULL;
+  unsigned char* binary_copied = NULL;
   size_t quoted_binary_length;
+  size_t binary_copy_length;
   const char *errmsg;
   unsigned long long n_last_id;
   unsigned long long n_next_id;
@@ -1027,6 +1037,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
   dbi_driver_quote_string_copy(dbi_conn_get_driver(conn), string_to_quote, &driver_quoted_string);
   dbi_conn_quote_string_copy(conn, string_to_quote, &conn_quoted_string);
   quoted_binary_length = dbi_conn_quote_binary_copy(conn, binary_to_quote, binary_to_quote_length, &quoted_binary);
+  binary_copy_length = dbi_conn_quote_binary_copy(conn, binary_to_copy, binary_to_copy_length, &binary_copied);
   if(!strcmp(ptr_cinfo->drivername, "msql")) {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES ("
 	     "-127,"
@@ -1067,6 +1078,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_empty_string,"
 	     "the_null_string,"
 	     "the_binary_string,"
+	     "the_binary_copy,"
 	     "the_datetime,"
 	     "the_date,"
 	     "the_time) VALUES ("
@@ -1085,9 +1097,10 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "'',"
 	     "NULL,"
 	     "%s,"
+	     "%s,"
 	     "'2001-12-31 23:59:59',"
 	     "'2001-12-31',"
-	     "'23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary);
+	     "'23:59:59')", driver_quoted_string, conn_quoted_string, quoted_binary, binary_copied);
   } 
   else if(!strcmp(ptr_cinfo->drivername, "firebird")) {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes ("
@@ -1122,11 +1135,12 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "'',"
 	     "NULL,"
 	     "%s, "
+	     "%s, "
  	     "'2001-12-31 23:59:59',"
 	     "'2001-12-31',"
 	     "'23:59:59',"
 	     "1)", driver_quoted_string, 
-	     conn_quoted_string, quoted_binary);
+	     conn_quoted_string, quoted_binary, binary_copied);
   } 
   else if(!strcmp(ptr_cinfo->drivername, "ingres")) {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes VALUES ("
@@ -1149,11 +1163,12 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "'',"
 	     "NULL,"
 	     "%s, "
+	     "%s, "
  	     "'31-dec-2001 23:59:59',"
 	     "'31-dec-2001',"
 	     "'23:59:59',"
 	     "NEXT VALUE FOR test_datatypes_id_seq)", driver_quoted_string, 
-	     conn_quoted_string, quoted_binary);
+	     conn_quoted_string, quoted_binary, binary_copied);
   }
   else {
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes ("
@@ -1172,6 +1187,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_empty_string,"
 	     "the_null_string,"
 	     "the_binary_string,"
+    	 "the_binary_copy,"
 	     "the_datetime,"
 	     "the_datetime_tz,"
 	     "the_date,"
@@ -1192,11 +1208,12 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "'',"
 	     "NULL,"
 	     "%s,"
+	     "%s,"
 	     "'2001-12-31 23:59:59',"
 	     "'2001-12-31 23:59:59 -10:00',"
 	     "'2001-12-31',"
 	     "'23:59:59',"
-	     "'23:59:59-10:00')", driver_quoted_string, conn_quoted_string, quoted_binary);
+	     "'23:59:59-10:00')", driver_quoted_string, conn_quoted_string, quoted_binary, binary_copied);
   }
 
   if (driver_quoted_string) {
@@ -1266,6 +1283,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
     const char* the_empty_string;
     const char* the_null_string;
     const unsigned char* the_binary_string;
+    unsigned char* the_binary_copy;
     time_t the_datetime;
     time_t the_datetime_tz;
     time_t the_date_dt;
@@ -1304,6 +1322,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
     unsigned int the_empty_string_length = 0;
     unsigned int the_null_string_length = 0;
     unsigned int the_binary_string_length = 0;
+    unsigned int the_binary_copy_length = 0;
 
     dbi_error_flag errflag;
 
@@ -1409,6 +1428,12 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
       printf("the_null_string errflag=%s\n", errmsg);
     }
 
+    the_binary_copy = dbi_result_get_binary_copy(result, "the_binary_copy");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_binary_copy errflag=%s\n", errmsg);
+    }
+        
     printf("\tthis should cause a column type mismatch...\n");
     dbi_result_get_string(result, "the_long");
     errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
@@ -1490,6 +1515,11 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
       printf("the_binary_string_size errflag=%s\n", errmsg);
     }
 
+    the_binary_copy_length = dbi_result_get_field_length(result, "the_binary_copy");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_binary_copy_size errflag=%s\n", errmsg);
+    }
 
     if(!strcmp(ptr_cinfo->drivername, "msql")) {
       the_date = dbi_result_get_string(result, "the_date");
@@ -1603,7 +1633,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
 	       (signed int)the_char, (unsigned int)the_uchar, the_short, the_ushort, 
 	       the_long, the_ulong, the_longlong, the_ulonglong, the_float, the_double, 
 	       string_to_quote, the_driver_string, string_to_quote, the_conn_string, 
-	       the_empty_string, the_null_string, 
+	       the_empty_string, the_null_string,
 	       year_dt, mon_dt, day_dt, hour_dt, min_dt, sec_dt, 
 	       year_dt_tz, mon_dt_tz, day_dt_tz, hour_dt_tz, min_dt_tz, sec_dt_tz, 
 	       year, mon, day, hour, min, sec, hour_tz, min_tz, sec_tz);
@@ -1622,15 +1652,28 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
 
     printf("<<\n");
 
+    printf("the_binary_copy: in: ");
+    for (i = 0; i < binary_to_copy_length; i++) {
+      printf("%d-", binary_to_copy[i]);
+    }
+
+    printf(" out: ");
+    for (i = 0; i < the_binary_copy_length; i++) {
+      printf("%d-", the_binary_copy[i]);
+    }
+
+    printf("<<\n");
+
     printf("\n\nfield lengths:\n"
     	   "the_driver_string_length %d\nthe_conn_string_length %d\n"
     	   "the_empty_string_length %d\nthe_null_string_length %d\n"
-    	   "the_binary_string_length %d\n\n", 
+    	   "the_binary_string_length %d\nthe_binary_copy_length %d\n\n", 
 	   the_driver_string_length,
 	   the_conn_string_length,
 	   the_empty_string_length,
 	   the_null_string_length,
-	   the_binary_string_length);
+	   the_binary_string_length,
+	   the_binary_copy_length);
 
   } /* end while */
 

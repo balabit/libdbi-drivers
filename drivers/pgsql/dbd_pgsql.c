@@ -103,7 +103,7 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db);
 
 /* this function is available through the PostgreSQL client library, but it
    is not declared in any of their headers. I hope this won't break anything */
-char *pg_encoding_to_char(int encoding_id);
+const char *pg_encoding_to_char(int encoding_id);
 
 
 /* these are helpers for dbd_real_connect */
@@ -281,7 +281,7 @@ int dbd_get_socket(dbi_conn_t *conn)
 }
 
 const char *dbd_get_encoding(dbi_conn_t *conn){
-	char* my_enc;
+	const char* my_enc;
 	int n_encoding;
 	const char* encodingopt;
 	char* sql_cmd;

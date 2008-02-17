@@ -1,156 +1,174 @@
+2008-02-06 20:36  mhoenicka
+
+	* NEWS, configure.in: updated for 0.8.3
+
+2008-02-06 17:22  mhoenicka
+
+	* tests/test_dbi.c: added tests for escape functions
+
+2008-01-26 18:39  mhoenicka
+
+	* drivers/pgsql/dbd_pgsql.c: fixed pg_encoding_to_char() prototype
+
+2008-01-23 17:39  mhoenicka
+
+	* tests/test_dbi.c: added dbi_result_get_binary_copy() test
+
+2008-01-15 15:11  mhoenicka
+
+	* ChangeLog: final touches for 0.8.3-pre1
+
 2008-01-15 15:07  mhoenicka
 
-	* ChangeLog (1.9), NEWS (1.5), drivers/msql/dbd_msql.c (1.19),
-	drivers/sqlite/dbd_sqlite.c (1.39), drivers/sqlite3/dbd_sqlite3.c
-	(1.20): final touches for 0.8.3-pre1
+	* ChangeLog, NEWS, drivers/msql/dbd_msql.c,
+	drivers/sqlite/dbd_sqlite.c, drivers/sqlite3/dbd_sqlite3.c: final
+	touches for 0.8.3-pre1
 
 2008-01-15 01:27  mhoenicka
 
-	* drivers/firebird/dbd_firebird.c (1.26),
-	drivers/firebird/utility.c (1.9), drivers/msql/dbd_msql.c (1.18),
-	drivers/mysql/dbd_mysql.c (1.95), drivers/pgsql/dbd_pgsql.c (1.54),
-	drivers/sqlite/dbd_sqlite.c (1.38), drivers/sqlite3/dbd_sqlite3.c
-	(1.19), tests/test_dbi.c (1.44): assorted fixes to improve error
-	handling and reporting
+	* drivers/firebird/dbd_firebird.c, drivers/firebird/utility.c,
+	drivers/msql/dbd_msql.c, drivers/mysql/dbd_mysql.c,
+	drivers/pgsql/dbd_pgsql.c, drivers/sqlite/dbd_sqlite.c,
+	drivers/sqlite3/dbd_sqlite3.c, tests/test_dbi.c: assorted fixes to
+	improve error handling and reporting
 
 2008-01-04 01:48  mhoenicka
 
-	* drivers/sqlite3/dbd_sqlite3.c (1.18): retrieve field types using
+	* drivers/sqlite3/dbd_sqlite3.c: retrieve field types using
 	table_info pragma
 
 2008-01-04 01:44  mhoenicka
 
-	* tests/test_dbi.c (1.43): fixed time_tz bug
+	* tests/test_dbi.c: fixed time_tz bug
 
 2008-01-02 20:11  mhoenicka
 
-	* drivers/firebird/utility.c (1.8): don't connect locally if
-	localhost is requested
+	* drivers/firebird/utility.c: don't connect locally if localhost is
+	requested
 
 2008-01-02 20:09  mhoenicka
 
-	* drivers/firebird/: Makefile.am (1.6), dbd_firebird.sgml (1.1):
-	added driver doc
+	* drivers/firebird/: Makefile.am, dbd_firebird.sgml: added driver
+	doc
 
 2008-01-02 17:26  mhoenicka
 
-	* tests/test_dbi.c (1.42): added struct TABLEINFO to simplify data
+	* tests/test_dbi.c: added struct TABLEINFO to simplify data
 	retrieval;run tz conversion only if data are available
 
 2008-01-02 17:23  mhoenicka
 
-	* drivers/firebird/utility.c (1.7): fixed buffer overflow in
-	handling variable-length strings
+	* drivers/firebird/utility.c: fixed buffer overflow in handling
+	variable-length strings
 
 2008-01-02 17:20  mhoenicka
 
-	* drivers/firebird/dbd_firebird.c (1.25): fixed buffer overflow due
-	to fixed size result buffer;added error handling to queries
+	* drivers/firebird/dbd_firebird.c: fixed buffer overflow due to
+	fixed size result buffer;added error handling to queries
 
 2008-01-01 21:48  mhoenicka
 
-	* tests/test_dbi.c (1.41): fixed local vs network access for
-	firebird
+	* tests/test_dbi.c: fixed local vs network access for firebird
 
 2008-01-01 21:46  mhoenicka
 
-	* configure.in (1.39): removed --with-ltdl switch
+	* configure.in: removed --with-ltdl switch
 
 2008-01-01 01:18  mhoenicka
 
-	* drivers/: firebird/dbd_firebird.c (1.24), freetds/dbd_freetds.c
-	(1.3), msql/dbd_msql.c (1.17), mysql/dbd_mysql.c (1.94),
-	oracle/dbd_oracle.c (1.23), pgsql/dbd_pgsql.c (1.53),
-	sqlite/dbd_sqlite.c (1.37), sqlite3/dbd_sqlite3.c (1.17): added
-	safe_dlclose driver caps
+	* drivers/: firebird/dbd_firebird.c, freetds/dbd_freetds.c,
+	msql/dbd_msql.c, mysql/dbd_mysql.c, oracle/dbd_oracle.c,
+	pgsql/dbd_pgsql.c, sqlite/dbd_sqlite.c, sqlite3/dbd_sqlite3.c:
+	added safe_dlclose driver caps
 
 2008-01-01 01:16  mhoenicka
 
-	* tests/test_dbi.c (1.40): fixed isql call
+	* tests/test_dbi.c: fixed isql call
 
 2007-12-30 21:07  mhoenicka
 
-	* Makefile.am (1.9), acinclude.m4 (1.22), configure.in (1.38),
-	drivers/firebird/dbd_firebird.c (1.23),
-	drivers/firebird/dbd_firebird.h (1.4), drivers/firebird/utility.c
-	(1.6), tests/Makefile.am (1.6), tests/test_dbi.c (1.39): fixes for
-	the firebird driver, firebird configuration, and test; mostly
-	working on Debian and FreeBSD, but with a few time/date issues to
-	be fixed
+	* Makefile.am, acinclude.m4, configure.in,
+	drivers/firebird/dbd_firebird.c, drivers/firebird/dbd_firebird.h,
+	drivers/firebird/utility.c, tests/Makefile.am, tests/test_dbi.c:
+	fixes for the firebird driver, firebird configuration, and test;
+	mostly working on Debian and FreeBSD, but with a few time/date
+	issues to be fixed
 
 2007-12-18 22:16  mhoenicka
 
-	* drivers/oracle/dbd_oracle.c (1.22): applied Brechts patch for
-	strptime on mingw
+	* drivers/oracle/dbd_oracle.c: applied Brechts patch for strptime
+	on mingw
 
 2007-12-18 21:50  mhoenicka
 
-	* tests/test_dbi.c (1.38): added windows.h and sleep() definition
-	for mingw;fixed isql Debian hack for newer Debian releases
+	* tests/test_dbi.c: added windows.h and sleep() definition for
+	mingw;fixed isql Debian hack for newer Debian releases
 
 2007-12-18 21:47  mhoenicka
 
-	* drivers/firebird/utility.c (1.5): removed gds.h;use ISC_STATUS
-	for status vector; work around deprecated isc_expand_dpb;improved
-	error reporting
+	* drivers/firebird/utility.c: removed gds.h;use ISC_STATUS for
+	status vector; work around deprecated isc_expand_dpb;improved error
+	reporting
 
 2007-12-18 21:43  mhoenicka
 
-	* drivers/firebird/dbd_firebird.c (1.22): removed gds.h; added
-	FB_ALIGN definition; changed TEXT to ISC_SCHAR
+	* drivers/firebird/dbd_firebird.c: removed gds.h; added FB_ALIGN
+	definition; changed TEXT to ISC_SCHAR
 
 2007-12-18 21:39  mhoenicka
 
-	* Makefile.w32 (1.9): added sqlite3
+	* Makefile.w32: added sqlite3
 
 2007-12-11 22:49  mhoenicka
 
-	* drivers/mysql/dbd_mysql.c (1.93): fixed encoding name bug in
+	* drivers/mysql/dbd_mysql.c: fixed encoding name bug in
 	dbd_connect()
 
 2007-12-08 23:48  mhoenicka
 
-	* drivers/: mysql/dbd_mysql.sgml (1.5), sqlite/dbd_sqlite.sgml
-	(1.9), sqlite3/dbd_sqlite3.sgml (1.6): added GFDL blurb
+	* drivers/: mysql/dbd_mysql.sgml, sqlite/dbd_sqlite.sgml,
+	sqlite3/dbd_sqlite3.sgml: added GFDL blurb
 
 2007-12-07 01:30  mhoenicka
 
-	* COPYING (1.2), README (1.11), drivers/sqlite/dbd_sqlite.c (1.36),
-	drivers/sqlite/dbd_sqlite.h (1.3), drivers/sqlite3/dbd_sqlite3.c
-	(1.16), drivers/sqlite3/dbd_sqlite3.h (1.2): changed license from
-	GPL to LGPL
+	* COPYING, README, drivers/sqlite/dbd_sqlite.c,
+	drivers/sqlite/dbd_sqlite.h, drivers/sqlite3/dbd_sqlite3.c,
+	drivers/sqlite3/dbd_sqlite3.h: changed license from GPL to LGPL
 
 2007-12-07 01:11  mhoenicka
 
-	* configure.in (1.37): made linking drivers against libdbi the
-	default, can be turned off by --disable-libdbi; bumped up version
-	number
+	* configure.in: made linking drivers against libdbi the default,
+	can be turned off by --disable-libdbi; bumped up version number
 
 2007-11-06 22:01  mhoenicka
 
-	* drivers/oracle/dbd_oracle.c (1.21): applied Bazsis's patch
+	* drivers/oracle/dbd_oracle.c: applied Bazsis's patch
 
 2007-07-16 22:24  mhoenicka
 
-	* drivers/mysql/dbd_mysql.c (1.92): added conditional to include
-	winsock.h on MinGW
+	* drivers/mysql/dbd_mysql.c: added conditional to include winsock.h
+	on MinGW
 
 2007-05-02 00:27  qu1j0t3
 
-	* ChangeLog (1.8), README.osx (1.2): remove dependence on Fink and
-	simplify recipe; add quickstart notes for MySQL and PostgreSQL.
+	* ChangeLog, README.osx: remove dependence on Fink and simplify
+	recipe; add quickstart notes for MySQL and PostgreSQL.
 
 2007-03-27 19:59  mhoenicka
 
-	* drivers/pgsql/dbd_pgsql.sgml (1.6): added pgsql_foo options
+	* drivers/pgsql/dbd_pgsql.sgml: added pgsql_foo options
 
 2007-03-26 23:08  mhoenicka
 
-	* drivers/pgsql/dbd_pgsql.c (1.52): Antal Novak's patch adding
-	support for all PostgreSQL connection options
+	* drivers/pgsql/dbd_pgsql.c: Antal Novak's patch adding support for
+	all PostgreSQL connection options
 
 2007-03-13 22:27  mhoenicka
 
-	* drivers/mysql/: dbd_mysql.c (1.91), dbd_mysql.sgml (1.4): support
-	client flags for mysql_real_connect()
+	* drivers/mysql/: dbd_mysql.c, dbd_mysql.sgml: support client flags
+	for mysql_real_connect()
+
+2007-02-22 10:01  mhoenicka
+
+	* configure.in: bumped up version number to 0.8.2-1
 

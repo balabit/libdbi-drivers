@@ -1,3 +1,27 @@
+/*
+ * libdbi-drivers - database drivers for libdbi, the database
+ * independent abstraction layer for C.
+
+ * Copyright (C) 2001-2008, David Parker, Mark Tobenkin, Markus Hoenicka
+ * http://libdbi-drivers.sourceforge.net
+ * 
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ * 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * 
+ * $Id$
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <dbi/dbi.h>
@@ -11,6 +35,7 @@
 
 #define QUERY_LEN 1024
 
+/* structure definitions */
 struct CONNINFO {
   char driverdir[256];
   char drivername[64];
@@ -32,12 +57,20 @@ struct TABLEINFO {
   int have_time_tz;
 };
 
+/* the dbi instance for the recallable interface */
+dbi_inst *dbi_instance;
+
+/* switch for recallable (0) vs. legacy (!=0) interface */
+int n_legacy = 0;
+
+/* some test data */
 char string_to_quote[] = "Can \'we\' \"quote\" this properly?";
 char string_to_escape[] = "Can \'we\' \"escape\" this properly?";
 
 unsigned char binary_to_quote[] = {'A', 'B', '\0', 'C', '\'', 'D'};
 size_t binary_to_quote_length = 6;
 
+/* prototypes */
 void init_tinfo(struct TABLEINFO* ptr_tinfo);
 int init_db(struct CONNINFO* ptr_cinfo);
 int ask_for_conninfo(struct CONNINFO* ptr_cinfo);
@@ -52,6 +85,12 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
 int test_drop_table(dbi_conn conn);
 int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n);
+int my_dbi_initialize(const char *driverdir, dbi_inst **Inst);
+void my_dbi_shutdown(dbi_inst Inst);
+dbi_driver my_dbi_driver_list(dbi_driver Current, dbi_inst Inst);
+dbi_conn my_dbi_conn_new(const char *name, dbi_inst Inst);
+
+
 
 int main(int argc, char **argv) {
   dbi_driver driver;
@@ -64,15 +103,16 @@ int main(int argc, char **argv) {
   struct CONNINFO cinfo;
   struct TABLEINFO tinfo;
 
+  /* initialize structure */
   init_tinfo(&tinfo);
 
   if (ask_for_conninfo(&cinfo)) {
     exit(1);
   }
 
-  if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+  if ((conn = my_dbi_conn_new(cinfo.drivername, dbi_instance)) == NULL) {
     printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     return 1;
   }
 
@@ -92,20 +132,20 @@ int main(int argc, char **argv) {
 	 dbi_driver_get_date_compiled(driver));
 	
   if (set_driver_options(&cinfo, conn, "", NULL)) {
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
   /* some drivers need an existing database to connect to */
   if (init_db(&cinfo)) {
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
   if (dbi_conn_connect(conn) < 0) {
     dbi_conn_error(conn, &errmsg);
     printf("\nUnable to connect! Error message: %s\n", errmsg);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
   
@@ -119,7 +159,7 @@ int main(int argc, char **argv) {
 	
   if (test_list_db(&cinfo, conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -128,7 +168,7 @@ int main(int argc, char **argv) {
 	
   if (test_create_db(&cinfo, conn, NULL)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -137,7 +177,7 @@ int main(int argc, char **argv) {
 
   if (test_select_db(&cinfo, conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -152,7 +192,7 @@ int main(int argc, char **argv) {
 	
   if (test_create_table(&cinfo, &tinfo, conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -161,7 +201,7 @@ int main(int argc, char **argv) {
 	
   if (test_list_tables(&cinfo, conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -170,7 +210,7 @@ int main(int argc, char **argv) {
 
   if (test_insert_row(&cinfo, conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -179,7 +219,7 @@ int main(int argc, char **argv) {
 	
   if (test_retrieve_data(&cinfo, &tinfo, conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -188,7 +228,7 @@ int main(int argc, char **argv) {
 	
   if (test_drop_table(conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -197,7 +237,7 @@ int main(int argc, char **argv) {
 	
   if (test_drop_db(&cinfo, conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -206,7 +246,7 @@ int main(int argc, char **argv) {
 	
   if (test_convert_encoding(&cinfo, conn)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -217,7 +257,7 @@ int main(int argc, char **argv) {
   /* supposed to fail */
   if (test_error_messages(&cinfo, conn, 1)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -225,14 +265,14 @@ int main(int argc, char **argv) {
      appropriately */
   if (test_error_messages(&cinfo, conn, 2)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
   /* supposed to succeed. Check whether error message is reset */
   if (test_error_messages(&cinfo, conn, 0)) {
     dbi_conn_close(conn);
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     exit(1);
   }
 
@@ -245,23 +285,23 @@ int main(int argc, char **argv) {
 
     printf("\nNow run a couple of tests related to character encodings\n"
     	   "The previous tests used the default encoding, if any. Now we try to connect using UTF-8 and create an UTF-8 database\n");
-    if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+    if ((conn = my_dbi_conn_new(cinfo.drivername, dbi_instance)) == NULL) {
       printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       return 1;
     }
 
     driver = dbi_conn_get_driver(conn);
 	
     if (set_driver_options(&cinfo, conn, "UTF-8", NULL)) {
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
     if (dbi_conn_connect(conn) < 0) {
       dbi_conn_error(conn, &errmsg);
       printf("\nUnable to connect! Error message: %s\n", errmsg);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 	
@@ -272,7 +312,7 @@ int main(int argc, char **argv) {
 	
     if (test_create_db(&cinfo, conn, "UTF-8")) {
       dbi_conn_close(conn);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
@@ -281,7 +321,7 @@ int main(int argc, char **argv) {
 
     if (test_select_db(&cinfo, conn)) {
       dbi_conn_close(conn);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
@@ -295,7 +335,7 @@ int main(int argc, char **argv) {
 	
     if (test_drop_db(&cinfo, conn)) {
       dbi_conn_close(conn);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
@@ -306,23 +346,23 @@ int main(int argc, char **argv) {
 
     /* repeat test for latin1 encoding */
     printf("\nNow repeat this test with a ISO-8859-1 encoding\n");
-    if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+    if ((conn = my_dbi_conn_new(cinfo.drivername, dbi_instance)) == NULL) {
       printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       return 1;
     }
 
     driver = dbi_conn_get_driver(conn);
 	
     if (set_driver_options(&cinfo, conn, "ISO-8859-1", NULL)) {
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
     if (dbi_conn_connect(conn) < 0) {
       dbi_conn_error(conn, &errmsg);
       printf("\nUnable to connect! Error message: %s\n", errmsg);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 	
@@ -333,7 +373,7 @@ int main(int argc, char **argv) {
 	
     if (test_create_db(&cinfo, conn, "ISO-8859-1")) {
       dbi_conn_close(conn);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
@@ -342,7 +382,7 @@ int main(int argc, char **argv) {
 
     if (test_select_db(&cinfo, conn)) {
       dbi_conn_close(conn);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
@@ -358,23 +398,23 @@ int main(int argc, char **argv) {
     /* now make a connection to the existing database using a different
        encoding */
     printf("\nAttempt to connect to the existing ISO-8859-1 database using an UTF-8 encoding\n");
-    if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+    if ((conn = my_dbi_conn_new(cinfo.drivername, dbi_instance)) == NULL) {
       printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       return 1;
     }
 
     driver = dbi_conn_get_driver(conn);
 	
     if (set_driver_options(&cinfo, conn, "UTF-8", "libdbitest")) {
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
     if (dbi_conn_connect(conn) < 0) {
       dbi_conn_error(conn, &errmsg);
       printf("\nUnable to connect! Error message: %s\n", errmsg);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 	
@@ -393,23 +433,23 @@ int main(int argc, char **argv) {
        encoding */
     printf("\nAttempt to connect to the existing ISO-8859-1 database using the \"auto\" encoding feature\n");
 
-    if ((conn = dbi_conn_new(cinfo.drivername)) == NULL) {
+    if ((conn = my_dbi_conn_new(cinfo.drivername, dbi_instance)) == NULL) {
       printf("Can't instantiate '%s' driver into a dbi_conn!\n", cinfo.drivername);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       return 1;
     }
 
     driver = dbi_conn_get_driver(conn);
 	
     if (set_driver_options(&cinfo, conn, "auto", "libdbitest")) {
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 
     if (dbi_conn_connect(conn) < 0) {
       dbi_conn_error(conn, &errmsg);
       printf("\nUnable to connect! Error message: %s\n", errmsg);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
 	
@@ -425,7 +465,7 @@ int main(int argc, char **argv) {
 	
     if (test_drop_db(&cinfo, conn)) {
       dbi_conn_close(conn);
-      dbi_shutdown();
+      my_dbi_shutdown(dbi_instance);
       exit(1);
     }
   }
@@ -437,7 +477,7 @@ int main(int argc, char **argv) {
     dbi_conn_close(conn);
   }
 
-  dbi_shutdown();
+  my_dbi_shutdown(dbi_instance);
 	
   exit (0);
 }
@@ -492,11 +532,22 @@ int init_db(struct CONNINFO* ptr_cinfo) {
 /* returns 0 on success, 1 on error */
 int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
   int numdrivers;
+  char interface[16];
   dbi_driver driver;
 
   fprintf(stderr, "\nlibdbi-drivers test program: $Id$\n"
 	 "Library version: %s\n\n", dbi_version());
-	
+  
+  fprintf(stderr, "test recallable (r) or legacy (l) libdbi interface? [r] ");
+  fgets(interface, 16, stdin);
+  if (*interface == '\n'
+      || *interface == 'r') {
+    n_legacy = 0;
+  }
+  else {
+    n_legacy = 1;
+  }
+
   fprintf(stderr, "libdbi driver directory? [%s] ", DBI_DRIVER_DIR);
   fgets(ptr_cinfo->driverdir, 256, stdin);
   if ((ptr_cinfo->driverdir)[0] == '\n') {
@@ -506,22 +557,22 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
     (ptr_cinfo->driverdir)[strlen(ptr_cinfo->driverdir)-1] = '\0';
   }
 	
-  numdrivers = dbi_initialize(ptr_cinfo->driverdir);
+  numdrivers = my_dbi_initialize(ptr_cinfo->driverdir, &dbi_instance);
 	
   if (numdrivers < 0) {
     fprintf(stderr, "Unable to initialize libdbi! Make sure you specified a valid driver directory.\n");
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     return 1;
   }
   else if (numdrivers == 0) {
     fprintf(stderr, "Initialized libdbi, but no drivers were found!\n");
-    dbi_shutdown();
+    my_dbi_shutdown(dbi_instance);
     return 1;
   }
 	
   driver = NULL;
   fprintf(stderr, "%d drivers available: ", numdrivers);
-  while ((driver = dbi_driver_list(driver)) != NULL) {
+  while ((driver = my_dbi_driver_list(driver, dbi_instance)) != NULL) {
     fprintf(stderr, "%s ", dbi_driver_get_name(driver));
   }
   driver = NULL;
@@ -2058,6 +2109,7 @@ int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n) {
   }
 }
 
+/* fill tableinfo structure with suitable start values */
 void init_tinfo(struct TABLEINFO* ptr_tinfo) {
   ptr_tinfo->have_double = 0;
   ptr_tinfo->have_longlong = 0;
@@ -2067,3 +2119,39 @@ void init_tinfo(struct TABLEINFO* ptr_tinfo) {
   ptr_tinfo->have_time_tz = 0;
 }
 
+/* convenience wrappers for recallable vs. legacy libdbi interface */
+int my_dbi_initialize(const char *driverdir, dbi_inst **Inst) {
+  if (n_legacy) {
+    return dbi_initialize(driverdir);
+  }
+  else {
+    return dbi_initialize_r(driverdir, Inst);
+  }
+}
+
+void my_dbi_shutdown(dbi_inst Inst) {
+  if (n_legacy) {
+    dbi_shutdown();
+  }
+  else {
+    dbi_shutdown_r(Inst);
+  }
+}
+
+dbi_driver my_dbi_driver_list(dbi_driver Current, dbi_inst Inst) {
+  if (n_legacy) {
+    return dbi_driver_list(Current);
+  }
+  else {
+    return dbi_driver_list_r(Current, Inst);
+  }
+}
+
+dbi_conn my_dbi_conn_new(const char *name, dbi_inst Inst) {
+  if (n_legacy) {
+    return dbi_conn_new(name);
+  }
+  else {
+    return dbi_conn_new_r(name, Inst);
+  }
+}

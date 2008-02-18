@@ -58,7 +58,7 @@ struct TABLEINFO {
 };
 
 /* the dbi instance for the recallable interface */
-dbi_inst *dbi_instance;
+dbi_inst dbi_instance;
 
 /* switch for recallable (0) vs. legacy (!=0) interface */
 int n_legacy = 0;
@@ -85,7 +85,7 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
 int test_drop_table(dbi_conn conn);
 int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n);
-int my_dbi_initialize(const char *driverdir, dbi_inst **Inst);
+int my_dbi_initialize(const char *driverdir, dbi_inst *Inst);
 void my_dbi_shutdown(dbi_inst Inst);
 dbi_driver my_dbi_driver_list(dbi_driver Current, dbi_inst Inst);
 dbi_conn my_dbi_conn_new(const char *name, dbi_inst Inst);
@@ -2120,7 +2120,7 @@ void init_tinfo(struct TABLEINFO* ptr_tinfo) {
 }
 
 /* convenience wrappers for recallable vs. legacy libdbi interface */
-int my_dbi_initialize(const char *driverdir, dbi_inst **Inst) {
+int my_dbi_initialize(const char *driverdir, dbi_inst *Inst) {
   if (n_legacy) {
     return dbi_initialize(driverdir);
   }

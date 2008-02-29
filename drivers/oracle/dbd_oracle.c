@@ -303,7 +303,7 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const char unsigned *statement, s
 	status = OCIStmtExecute(Oconn->svc, stmt, Oconn->err, 
 		       (ub4) (stmttype == OCI_STMT_SELECT ? 0 : 1), 
 		       (ub4) 0, (CONST OCISnapshot *) NULL, (OCISnapshot *) NULL, 
-		       MY_OCI_STMT_SCROLLABLE_READONLY);
+		       stmttype == OCI_STMT_SELECT ? MY_OCI_STMT_SCROLLABLE_READONLY : OCI_COMMIT_ON_SUCCESS);
 
 	if( status != OCI_SUCCESS) {
 	  OCIHandleFree(stmt, OCI_HTYPE_STMT);

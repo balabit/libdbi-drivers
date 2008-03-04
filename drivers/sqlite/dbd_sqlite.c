@@ -31,6 +31,9 @@
 
 #define _GNU_SOURCE /* we need asprintf */
 
+/* this is defined by the Makefile and passed via -D */
+/* #define DBDIR /usr/local/var/lib/libdbi/sqlite */
+
 #ifndef HAVE_ATOLL
 long long atoll(const char *str);
 #endif
@@ -68,6 +71,7 @@ static const dbi_info_t driver_info = {
 
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = SQLITE_RESERVED_WORDS;
+static const char default_dbdir[] = DBDIR;
 
 /* the encoding strings */
 static const char sqlite_encoding_UTF8[] = "UTF-8";
@@ -84,7 +88,7 @@ static size_t sqlite_escape_string(char *to, const char *from, size_t length);
 int wild_case_compare(const char *str,const char *str_end,
 		      const char *wildstr,const char *wildend,
 		      char escape);
-
+static const char* _conn_get_dbdir(dbi_conn_t *conn);
 
 /* the real functions */
 void dbd_register_driver(const dbi_info_t **_driver_info, const char ***_custom_functions, const char ***_reserved_words) {
@@ -145,7 +149,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   }
 
   /* sqlite specific options */
-  dbdir = dbi_conn_get_option(conn, "sqlite_dbdir");
+  dbdir = _conn_get_dbdir(conn);
 	
   if (!dbdir) {
     _dbd_internal_error_handler(conn, "no database directory specified", DBI_ERROR_CLIENT);
@@ -312,7 +316,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
      files in the data directory. We search for matching files and fill a
      temporary table with what we've found. Then we query this table and
      pretend sqlite has done all the work */
-  const char *sq_datadir = dbi_conn_get_option(conn, "sqlite_dbdir");
+  const char *sq_datadir = _conn_get_dbdir(conn);
 
   /* this is not nice but we have to drop the table even if it does not
    exist (sqlite has no way to list *temporary* tables so we can't check
@@ -416,7 +420,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 
   /* we explicitly cast to (char*) as we discard the "const" thing here */
   dbi_conn_set_option(tempconn, "dbname", (char*)db);
-  dbi_conn_set_option(tempconn, "sqlite_dbdir", (char*)dbi_conn_get_option(conn, "sqlite_dbdir"));
+  dbi_conn_set_option(tempconn, "sqlite_dbdir", (char*)_conn_get_dbdir(conn));
 
   if (dbi_conn_connect(tempconn) < 0) {
     _dbd_internal_error_handler(conn, NULL, DBI_ERROR_NOCONN);
@@ -1219,5 +1223,19 @@ static size_t sqlite_escape_string(char *to, const char *from, size_t length)
     }
   *to=0;
   return (size_t) (to-to_start);
+}
+
+/* this is a convenience function to retrieve the database directory */
+static const char* _conn_get_dbdir(dbi_conn_t *conn) {
+  const char* dbdir;
+
+  dbdir = dbi_conn_get_option(conn, "sqlite_dbdir");
+	
+  if (!dbdir) {
+    /* use default directory instead */
+    dbdir = default_dbdir;
+  }
+
+  return dbdir;
 }
 

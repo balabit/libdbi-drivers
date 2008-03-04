@@ -136,6 +136,7 @@
 	<term>firebird_dbdir</term>
 	<listitem>
 	  <para>This is the directory that holds the Firebird database files. Depending on the settings of the <option>host</option> option, this may refer to a directory on a local or on a remote machine. The ownership and the permissions must match the mode of access. If you create or access a file locally (i.e. with <option>host</option> not set), the account you're logged in needs write and execute permissions. If you set the <option>host</option>, the account your server runs in must have write and execute permissions. This is true even if you connect to your own machine via localhost. Default server installations use the "firebird" account. The database directory should then be owned by firebird:firebird with write and execute permissions for both the user and the group. It should then be sufficient to add yourself to the firebird group to gain access to the database directory.</para>
+	  <para>If this option is not specified, a compile-time default directory will be used. Needless to say, this is going to work only if you work on localhost. By default, this directory (usually <filename class="directory" moreinfo="none">/usr/local/var/lib/libdbi/firebird</filename>) has read and write permissions for everyone with the sticky bit set. If this is not suitable for your application, use a custom directory with your preferred permissions instead.</para>
 	</listitem>
       </varlistentry>
     </variablelist>

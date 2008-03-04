@@ -27,6 +27,7 @@
 #include <dbi/dbi.h>
 #include <time.h>
 #include <unistd.h>
+#include <limits.h>
 
 #ifdef __MINGW32__
 #include <windows.h>
@@ -34,6 +35,9 @@
 #endif
 
 #define QUERY_LEN 1024
+
+/* this is defined by the Makefile and passed via -D */
+/* #define DBDIR /usr/local/var/lib/libdbi */
 
 /* structure definitions */
 struct CONNINFO {
@@ -69,6 +73,8 @@ char string_to_escape[] = "Can \'we\' \"escape\" this properly?";
 
 unsigned char binary_to_quote[] = {'A', 'B', '\0', 'C', '\'', 'D'};
 size_t binary_to_quote_length = 6;
+
+const char default_dbdir[] = DBDIR;
 
 /* prototypes */
 void init_tinfo(struct TABLEINFO* ptr_tinfo);
@@ -118,6 +124,16 @@ int main(int argc, char **argv) {
 
   driver = dbi_conn_get_driver(conn);
 	
+  printf("\nLibrary information:\n--------------------\n");
+  printf("\tCurrent:        %d\n"
+	 "\tRevision:       %d\n"
+	 "\tAge:            %d\n"
+	 "\tVersion string: %s\n",
+	 LIBDBI_LIB_CURRENT,
+	 LIBDBI_LIB_REVISION,
+	 LIBDBI_LIB_AGE,
+	 dbi_version());
+
   printf("\nDriver information:\n-------------------\n");
   printf("\tName:       %s\n"
 	 "\tFilename:   %s\n"
@@ -535,8 +551,7 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
   char interface[16];
   dbi_driver driver;
 
-  fprintf(stderr, "\nlibdbi-drivers test program: $Id$\n"
-	 "Library version: %s\n\n", dbi_version());
+  fprintf(stderr, "\nlibdbi-drivers test program: $Id$\n\n");
   
   fprintf(stderr, "test recallable (r) or legacy (l) libdbi interface? [r] ");
   fgets(interface, 16, stdin);
@@ -610,11 +625,10 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
   if(!strcmp(ptr_cinfo->drivername, "sqlite")
      || !strcmp(ptr_cinfo->drivername, "sqlite3")
      || !strcmp(ptr_cinfo->drivername, "firebird")) {
-    fprintf(stderr, "database directory? [.] ");
+    fprintf(stderr, "database directory? [DEFAULT] ");
     fgets(ptr_cinfo->dbdir, 256, stdin);
     if ((ptr_cinfo->dbdir)[0] == '\n') {
-      (ptr_cinfo->dbdir)[0] = '.';
-      (ptr_cinfo->dbdir)[1] = '\0';
+      (ptr_cinfo->dbdir)[0] = '\0';
     }
     else {
       (ptr_cinfo->dbdir)[strlen(ptr_cinfo->dbdir)-1] = '\0';
@@ -686,13 +700,19 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
     }
   }
   else if (!strcmp(ptr_cinfo->drivername, "sqlite3")) { 
-    dbi_conn_set_option(conn, "sqlite3_dbdir", ptr_cinfo->dbdir);
+    if (*(ptr_cinfo->dbdir)) {
+      dbi_conn_set_option(conn, "sqlite3_dbdir", ptr_cinfo->dbdir);
+    }
   }
   else  if (!strcmp(ptr_cinfo->drivername, "sqlite")){
-    dbi_conn_set_option(conn, "sqlite_dbdir", ptr_cinfo->dbdir);
+    if (*(ptr_cinfo->dbdir)) {
+      dbi_conn_set_option(conn, "sqlite_dbdir", ptr_cinfo->dbdir);
+    }
   }
   else  if (!strcmp(ptr_cinfo->drivername, "firebird")){
-    dbi_conn_set_option(conn, "firebird_dbdir", ptr_cinfo->dbdir);
+    if (*(ptr_cinfo->dbdir)) {
+      dbi_conn_set_option(conn, "firebird_dbdir", ptr_cinfo->dbdir);
+    }
     dbi_conn_set_option(conn, "host", ptr_cinfo->hostname);
     dbi_conn_set_option(conn, "username", ptr_cinfo->username);
     dbi_conn_set_option(conn, "password", ptr_cinfo->password);
@@ -1990,17 +2010,28 @@ int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 
   if (!strcmp(ptr_cinfo->drivername, "sqlite")
    || !strcmp(ptr_cinfo->drivername, "sqlite3")) {
-    char dbpath[256];
+    char dbpath[_POSIX_PATH_MAX];
 
     /* need this break to grant some time for db unlocking */
     printf("...hang on a second...\n");
     sleep(3);
 
-    strcpy(dbpath, ptr_cinfo->dbdir);
+    if (*(ptr_cinfo->dbdir)) {
+      strcpy(dbpath, ptr_cinfo->dbdir);
+    }
+    else {
+      if (!strcmp(ptr_cinfo->drivername, "sqlite")) {
+	snprintf(dbpath, _POSIX_PATH_MAX, "%s/sqlite", default_dbdir);
+      }
+      else {
+	snprintf(dbpath, _POSIX_PATH_MAX, "%s/sqlite3", default_dbdir);
+      }
+    }
     if (dbpath[strlen(dbpath)-1] != '/') {
       strcat(dbpath, "/");
     }
     strcat(dbpath, ptr_cinfo->dbname);
+
     if (unlink(dbpath)) {
       printf("AAH! Can't delete database file!\n");
       return 1;

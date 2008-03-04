@@ -41,6 +41,8 @@ libdbdsqlite3_la_LDFLAGS = $(sqlite3_ldflags) @SQLITE3_LDFLAGS@ @SQLITE3_LIBS@ @
 libdbdsqlite3_la_SOURCES = $(sqlite3_sources)
 libdbdsqlite3_la_DEPENDENCIES = dbd_sqlite3.h
 
+AM_CPPFLAGS=-DDBDIR=\"@dbi_dbdir@/sqlite3\"
+
 EXTRA_DIST = dbd_sqlite3.c dbd_sqlite3.h AUTHORS TODO README dbd_sqlite3.sgml dbd_sqlite3.pdf dbd_sqlite3/*
 
 # jadetex spews out tons of useless crap. shut it up:
@@ -60,3 +62,6 @@ dbd_sqlite3/*: dbd_sqlite3.sgml
 maintainer-clean: clean
 	rm -f dbd_sqlite3.pdf dbd_sqlite3/*
 
+install-data-local:
+	$(mkinstalldirs) @dbi_dbdir@/sqlite3
+	chmod 1777 @dbi_dbdir@/sqlite3

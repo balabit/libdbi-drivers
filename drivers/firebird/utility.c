@@ -19,6 +19,10 @@
 #include "dbd_firebird.h"
 #include "utility.h"
 
+/* this is defined by the Makefile and passed via -D */
+/* #define DBDIR /usr/local/var/lib/libdbi/firebird */
+
+static const char default_dbdir[] = DBDIR;
 
 char version[MAXLEN];
 
@@ -119,6 +123,11 @@ char *_firebird_populate_db_string( dbi_conn_t *conn, const char *dbname, char *
 	const char dirsep[] = "/";
 	const char *dbdir = dbi_conn_get_option(conn, "firebird_dbdir");
 	
+	if (!dbdir) {
+		/* use default directory instead */
+		dbdir = default_dbdir;
+	}
+
 	bzero(db_fullpath, PATH_MAX);
 
 	if (dbdir && *dbdir) 

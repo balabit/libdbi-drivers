@@ -38,6 +38,8 @@ libdbdfirebird_la_LDFLAGS = $(firebird_ldflags) @FIREBIRD_LDFLAGS@ @FIREBIRD_LIB
 libdbdfirebird_la_SOURCES = $(firebird_sources)
 libdbdfirebird_la_DEPENDENCIES = dbd_firebird.h utility.h firebird_charsets.h
 
+AM_CPPFLAGS=-DDBDIR=\"@dbi_dbdir@/firebird\"
+
 EXTRA_DIST = dbd_firebird.c utility.c dbd_firebird.h utility.h firebird_charsets.h dbd_firebird.sgml dbd_firebird.pdf $(html_data)
 
 # jadetex spews out tons of useless crap. shut it up:
@@ -57,3 +59,6 @@ dbd_firebird/*: dbd_firebird.sgml
 maintainer-clean: clean
 	rm -f dbd_firebird.pdf dbd_firebird/*
 
+install-data-local:
+	$(mkinstalldirs) @dbi_dbdir@/firebird
+	chmod 1777 @dbi_dbdir@/firebird

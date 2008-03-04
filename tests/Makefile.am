@@ -10,6 +10,7 @@ test_dbi_LDADD = -L@libdir@ -lm -ldbi
 
 INCLUDES = -I@includedir@
 CFLAGS = -g -DDBI_DRIVER_DIR=\"@driverdir@\"
+AM_CPPFLAGS=-DDBDIR=\"@dbi_dbdir@\"
 
 debug:
 	$(MAKE) all CFLAGS="@DEBUG@"

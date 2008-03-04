@@ -115,7 +115,7 @@
       <varlistentry>
 	<term>sqlite_dbdir</term>
 	<listitem>
-	  <para>This is the directory that contains all sqlite databases. Use the full path please.</para>
+	  <para>This is the directory that contains all sqlite databases. Use the full path please. If this option is not specified, a compile-time default directory will be used. By default, this directory (usually <filename class="directory" moreinfo="none">/usr/local/var/lib/libdbi/sqlite</filename>) has read and write permissions for everyone with the sticky bit set. If this is not suitable for your application, use a custom directory with your preferred permissions instead.</para>
 	  <note>
 	    <para>It is necessary to keep all sqlite databases in one directory to make it possible to list all existing databases through the libdbi API. However, you are free to open more than one connection simultaneously, each one using a different setting of <parameter moreinfo="none">sqlite_dbdir</parameter>.</para>
 	  </note>

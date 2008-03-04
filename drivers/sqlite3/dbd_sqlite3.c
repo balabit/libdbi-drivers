@@ -31,6 +31,9 @@
 
 #define _GNU_SOURCE /* we need asprintf */
 
+/* this is defined by the Makefile and passed via -D */
+/* #define DBDIR /usr/local/var/lib/libdbi/sqlite3 */
+
 #ifndef HAVE_ATOLL
 long long atoll(const char *str);
 #endif
@@ -68,6 +71,7 @@ static const dbi_info_t driver_info = {
 
 static const char *custom_functions[] = {NULL}; // TODO
 static const char *reserved_words[] = SQLITE3_RESERVED_WORDS;
+static const char default_dbdir[] = DBDIR;
 
 /* the encoding strings */
 static const char sqlite3_encoding_UTF8[] = "UTF-8";
@@ -86,6 +90,7 @@ static size_t sqlite3_escape_string(char *to, const char *from, size_t length);
 int wild_case_compare(const char *str,const char *str_end,
 		      const char *wildstr,const char *wildend,
 		      char escape);
+static const char* _conn_get_dbdir(dbi_conn_t *conn);
 
 
 /* the real functions */
@@ -155,7 +160,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
     encoding = sqlite3_encoding_UTF8;
   }
 
-  dbdir = dbi_conn_get_option(conn, "sqlite3_dbdir");
+  dbdir = _conn_get_dbdir(conn);
 	
   if (!dbdir) {
     _dbd_internal_error_handler(conn, "no database directory specified", DBI_ERROR_CLIENT);
@@ -340,7 +345,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
      files in the data directory. We search for matching files and fill a
      temporary table with what we've found. Then we query this table and
      pretend sqlite3 has done all the work */
-  const char *sq_datadir = dbi_conn_get_option(conn, "sqlite3_dbdir");
+  const char *sq_datadir = _conn_get_dbdir(conn);
 
   /* this is not nice but we have to drop the table even if it does not
    exist (sqlite3 has no way to list *temporary* tables so we can't check
@@ -444,7 +449,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 
   /* we explicitly cast to (char*) as we discard the "const" thing here */
   dbi_conn_set_option(tempconn, "dbname", (char*)db);
-  dbi_conn_set_option(tempconn, "sqlite3_dbdir", (char*)dbi_conn_get_option(conn, "sqlite3_dbdir"));
+  dbi_conn_set_option(tempconn, "sqlite3_dbdir", (char*)_conn_get_dbdir(conn));
 
   if (dbi_conn_connect(tempconn) < 0) {
     _dbd_internal_error_handler(conn, NULL, DBI_ERROR_NOCONN);
@@ -733,7 +738,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 				      &errmsg);
 
   if (query_res || !table_numrows) {
-    _dbi_internal_error_handler(conn, NULL, DBI_ERROR_BADNAME);
+    _dbd_internal_error_handler(conn, NULL, DBI_ERROR_BADNAME);
     /*       printf("field not found\n"); */
     return 0;
   }
@@ -1183,3 +1188,16 @@ static size_t sqlite3_escape_string(char *to, const char *from, size_t length)
   return (size_t) (to-to_start);
 }
 
+/* this is a convenience function to retrieve the database directory */
+static const char* _conn_get_dbdir(dbi_conn_t *conn) {
+  const char* dbdir;
+
+  dbdir = dbi_conn_get_option(conn, "sqlite3_dbdir");
+	
+  if (!dbdir) {
+    /* use default directory instead */
+    dbdir = default_dbdir;
+  }
+
+  return dbdir;
+}

@@ -69,7 +69,7 @@ static const dbi_info_t driver_info = {
   __DATE__
 };
 
-static const char *custom_functions[] = {NULL}; // TODO
+static const char *custom_functions[] = SQLITE_CUSTOM_FUNCTIONS;
 static const char *reserved_words[] = SQLITE_RESERVED_WORDS;
 static const char default_dbdir[] = DBDIR;
 

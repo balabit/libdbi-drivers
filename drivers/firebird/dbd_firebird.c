@@ -72,7 +72,7 @@ static const dbi_info_t driver_info = {
 };
 
 
-static const char *custom_functions[] = { NULL }; 
+static const char *custom_functions[] = FIREBIRD_CUSTOM_FUNCTIONS; 
 static const char *reserved_words[] = FIREBIRD_RESERVED_WORDS;
 static const char firebird_encoding_NONE[] = "NONE"; /* the encoding strings */
 

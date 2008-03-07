@@ -65,7 +65,7 @@ static const dbi_info_t driver_info = {
 	__DATE__
 };
 
-static const char *custom_functions[] = {NULL}; // TODO
+static const char *custom_functions[] = PGSQL_CUSTOM_FUNCTIONS;
 static const char *reserved_words[] = PGSQL_RESERVED_WORDS;
 
 /* encoding strings, array is terminated by a pair of empty strings */

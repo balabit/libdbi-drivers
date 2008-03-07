@@ -312,4 +312,76 @@ typedef struct vary_s {
      NULL \
 }
 
+#define FIREBIRD_CUSTOM_FUNCTIONS { \
+     "isc_add_user", \
+     "isc_array_get_slice", \
+     "isc_array_lookup_bounds", \
+     "isc_array_lookup_desc", \
+     "isc_array_put_slice", \
+     "isc_array_set_desc", \
+     "isc_attach_database", \
+     "isc_blob_default_desc", \
+     "isc_blob_gen_bpb", \
+     "isc_blob_info", \
+     "isc_blob_lookup_desc", \
+     "isc_blob_set_desc", \
+     "isc_cancel_blob", \
+     "isc_cancel_events", \
+     "isc_close_blob", \
+     "isc_commit_retaining", \
+     "isc_commit_transaction", \
+     "isc_create_blob2", \
+     "isc_create_database", \
+     "isc_database_info", \
+     "isc_decode_sql_data", \
+     "isc_decode_sql_time", \
+     "isc_decode_timestamp", \
+     "isc_delete_user", \
+     "isc_detach_database", \
+     "isc_drop_database", \
+     "isc_dsql_allocate_statement", \
+     "isc_dsql_alloc_statement2", \
+     "isc_dsql_describe", \
+     "isc_dsql_describe_bind", \
+     "isc_dsql_execute", \
+     "isc_dsql_execute2", \
+     "isc_dsql_execute_immediate", \
+     "isc_dsql_exec_immed2", \
+     "isc_dsql_fetch", \
+     "isc_dsql_free_statement", \
+     "isc_dsql_prepare", \
+     "isc_dsql_set_cursor_name", \
+     "isc_dsql_sql_info", \
+     "isc_encode_sql_date", \
+     "isc_encode_sql_time", \
+     "isc_encode_timestamp", \
+     "isc_event_block", \
+     "isc_event_counts", \
+     "isc_expand_dpb", \
+     "isc_get_segment", \
+     "isc_interprete", \
+     "isc_modify_user", \
+     "isc_open_blob2", \
+     "isc_prepare_transaction", \
+     "isc_prepare_transaction2", \
+     "isc_print_sqlerror", \
+     "isc_print_status", \
+     "isc_put_segment", \
+     "isc_que_events", \
+     "isc_rollback_retaining", \
+     "isc_rollback_transaction", \
+     "isc_service_attach", \
+     "isc_service_detach", \
+     "isc_service_query", \
+     "isc_service_start", \
+     "isc_sqlcode", \
+     "isc_sql_interprete", \
+     "isc_start_multiple", \
+     "isc_start_transaction", \
+     "isc_transaction_info", \
+     "isc_vax_integer", \
+     "isc_version", \
+     "isc_wait_for_event", \
+      NULL}
+
 #endif /* __DBD_FIREBIRD_H */

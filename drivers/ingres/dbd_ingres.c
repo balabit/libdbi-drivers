@@ -69,14 +69,16 @@ static II_PTR envHandle = NULL;
 
 #define AUTOCOMMIT_ON(conn)		(((ingres_conn_t*)conn->connection)->autocommit)
 
-#define SAVE_ERROR(conn,errhdl)	ingres_error(errhdl, dbi_verbosity>1, \
+static dbi_inst_t_pointer dbi_instance = NULL;
+
+#define SAVE_ERROR(conn,errhdl)	ingres_error(errhdl, dbi_instance->dbi_verbosity>1, \
 									 &((ingres_conn_t*)conn->connection)->errorCode, \
 									 &((ingres_conn_t*)conn->connection)->errorMsg)
-#define DEBUG_ERROR(errhdl)		ingres_error(errhdl, dbi_verbosity>2, NULL, NULL)
+#define DEBUG_ERROR(errhdl)		ingres_error(errhdl, dbi_instance->dbi_verbosity>2, NULL, NULL)
 #define DRIVER_ERROR(conn,msg)	_dbd_internal_error_handler(conn,msg,0)
 
-#define PRINT_VERBOSE	if(dbi_verbosity>1) _verbose_handler
-#define PRINT_DEBUG		if(dbi_verbosity>2) _verbose_handler
+#define PRINT_VERBOSE	if(dbi_instance->dbi_verbosity>1) _verbose_handler
+#define PRINT_DEBUG		if(dbi_instance->dbi_verbosity>2) _verbose_handler
 
 #define IS_BLOB(T) ( (T) == IIAPI_LVCH_TYPE  || (T) == IIAPI_LBYTE_TYPE \
 				  || (T) == IIAPI_LNVCH_TYPE || (T) == IIAPI_LTXT_TYPE )
@@ -124,6 +126,7 @@ int dbd_initialize(dbi_driver_t *driver) {
 	IIapi_initialize( &initParm );
 	if(initParm.in_status < IIAPI_ST_ERROR){
 		envHandle = initParm.in_envHandle;
+		dbi_instance = driver->dbi_inst;
 		return 0;
 	}else{
 		fputs("failed to initialise Ingres driver\n", stderr);
@@ -1012,7 +1015,7 @@ static dbi_result_t *ingres_sys_query(dbi_conn_t *conn, const char *sql) {
 		// note that we need to keep the system connection around,
 		// because closing it prematurely will kill result sets
 		// FIXME: could use _disjoin_from_conn() instead
-		iconn->sysConn = dbi_conn_new(driver_info.name);
+		iconn->sysConn = dbi_conn_new_r(driver_info.name, dbi_instance);
 		if(ingres_connect(iconn->sysConn, SYS_CATALOGS, NO_AUTOCOMMIT) < 0){
 			_verbose_handler(conn,"can't connect to '%s'\n",SYS_CATALOGS);
 			return NULL;
@@ -1054,7 +1057,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
 	static char *select = "SELECT table_name FROM iitables WHERE table_name NOT LIKE 'ii%'";
 	char *sql = select;
 	dbi_result_t *res = NULL;
-	dbi_conn_t *newconn = dbi_conn_new(driver_info.name);
+	dbi_conn_t *newconn = dbi_conn_new_r(driver_info.name, dbi_instance);
 	
 	if(ingres_connect(newconn, db, NO_AUTOCOMMIT) < 0)
 		_verbose_handler(conn,"dbd_list_tables: can't connect to '%s'\n",db);

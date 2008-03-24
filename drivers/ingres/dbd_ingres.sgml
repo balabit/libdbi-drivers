@@ -120,13 +120,13 @@
 				<listitem>
 					<para>
 						This is the C shared library to enable user programs
-						to communicate with the Ingres(R) 2006 Community Edition
+						to communicate with the Ingres(R) Community Edition
 						RDBMS.
 					</para>
 					<para>
 						The current version of the dbd_ingres driver was
 						written and tested with the 32-bit NPTL version II 9.0.4
-						for Linux/x86, running on Gentoo 
+						and 9.2 for Linux/x86, running on Gentoo 
 						(see <ulink url="http://slashdot.org/~toby/journal/136300">my installation notes</ulink>).
 					</para>
 				</listitem>

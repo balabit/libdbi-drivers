@@ -471,7 +471,9 @@ size_t dbd_quote_binary(dbi_conn_t *conn, const unsigned char* orig, size_t from
   PQfreemem((void*)temp);
 
   *ptr_dest = quoted_temp;
-  return to_length;
+
+  /* to_length already contains one extra byte for the trailing NULL byte */
+  return to_length+1;
 }
 
 dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {

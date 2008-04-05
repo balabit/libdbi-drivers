@@ -486,7 +486,7 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 	
 	res = PQexec((PGconn *)conn->connection, statement);
 	if (res) resstatus = PQresultStatus(res);
-	if (!res || ((resstatus != PGRES_COMMAND_OK) && (resstatus != PGRES_TUPLES_OK))) {
+	if (!res || ((resstatus != PGRES_COMMAND_OK) && (resstatus != PGRES_TUPLES_OK) && (resstatus != PGRES_COPY_OUT) && (resstatus != PGRES_COPY_IN))) {
 		PQclear(res);
 		return NULL;
 	}

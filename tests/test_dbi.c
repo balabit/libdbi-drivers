@@ -93,6 +93,7 @@ int test_drop_table(dbi_conn conn);
 int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n);
 int test_custom_function(struct CONNINFO* ptr_cinfo, dbi_conn conn);
+int test_custom_function_parameters(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int my_dbi_initialize(const char *driverdir, dbi_inst *Inst);
 void my_dbi_shutdown(dbi_inst Inst);
 dbi_driver my_dbi_driver_list(dbi_driver Current, dbi_inst Inst);
@@ -190,6 +191,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
+  
   /* Test: create database */
   printf("\nTest %d: Create database %s using default encoding: \n", testnumber++, cinfo.dbname);
 	
@@ -232,6 +234,15 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
+  /* Test: custom function parameters*/
+  printf("\n\nTest %d: Run driver-specific function parameters: \n", testnumber++, cinfo.dbname);
+            
+  if (test_custom_function_parameters(&cinfo, conn)) {
+    dbi_conn_close(conn);
+    my_dbi_shutdown(dbi_instance);
+    exit(1);
+  }  
+  
   /* Test: insert row */
   printf("\nTest %d: Insert row: \n", testnumber++);
 
@@ -636,6 +647,166 @@ int test_custom_function(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
       printf("\tD'uh! Cannot run custom function\n");
       return 1;
     }
+  }
+}
+
+/* returns 0 on success, 1 on error */
+int test_custom_function_parameters(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
+  dbi_conn_t *myconn = conn;
+
+  /* attempt to call a trivial function of the client library */
+  if (!strcmp(ptr_cinfo->drivername, "firebird")) {
+    fprintf(stderr, "\tnot yet implemented for this driver\n");
+    return 0;
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "freetds")) {
+    fprintf(stderr, "\tnot yet implemented for this driver\n");
+    return 0;
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "ingres")) {
+    fprintf(stderr, "\tnot yet implemented for this driver\n");
+    return 0;
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "msql")) {
+    fprintf(stderr, "\tnot yet implemented for this driver\n");
+    return 0;
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "mysql")) {
+    fprintf(stderr, "\tnot yet implemented for this driver\n");
+    return 0;
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "oracle")) {
+    fprintf(stderr, "not yet implemented\n");
+    return 0;
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "pgsql")) {
+    int res;
+    int count = 30;
+    const char *error = NULL;
+    const char *errmsg = NULL;
+    int (*custom_function_copy)(void*, const char*, int) = NULL;
+    int (*custom_function_end)(void*, const char*) = NULL;  
+    char* (*custom_function_error)(void*) = NULL;
+    dbi_result result;   
+    
+    const char *query = "COPY batch FROM STDIN";
+    const char *query_data1 = "1\t2\t\"A little job\"\n";
+    const char *query_data2 = "2\t3\t\"Other little job\"\n";
+    const char *table_batch = "CREATE TABLE batch ( id int, jobid int, jobname varchar)";
+    
+    // Start copy 
+    
+    if ((result = dbi_conn_query(conn, table_batch)) == NULL) {
+       dbi_conn_error(conn, &errmsg);
+       printf("\tAAH! Can't create table! Error message: %s\n", errmsg);
+       return 1;
+    } else {
+       printf("\tOk.\n");
+    }
+    dbi_result_free(result);
+    
+    if ((result = dbi_conn_query(conn, query)) == NULL) {
+       dbi_conn_error(conn, &errmsg);
+       printf("\tAAH! Can't query! Error message: %s\n", errmsg);
+       return 1;
+    } else {
+       printf("\tOk %s.\n", query);
+    }
+    dbi_result_free(result);
+    
+    // Start copy insert
+    // Insert data two times
+    if ((custom_function_copy = dbi_driver_specific_function(dbi_conn_get_driver(conn), "PQputCopyData")) != NULL) {
+       
+       printf("\tPQputCopyData %s\n", query_data1);
+       res = custom_function_copy(myconn->connection, query_data1, strlen(query_data1));
+       printf("\tPQputCopyData returned: %d\n", res);
+              
+       if (res <= 0) {
+          printf("\tD'uh! PQputCopyData error\n");
+          return 1;
+       }
+       
+       printf("\tPQputCopyData %s\n", query_data2);
+       res = custom_function_copy(myconn->connection, query_data2, strlen(query_data2));
+       printf("\tPQputCopyData returned: %d\n", res);
+       
+       if (res <= 0) {
+          printf("\tD'uh! PQputCopyData error\n");
+          return 1;
+       }
+    }
+                
+    // End data
+    if ((custom_function_end = dbi_driver_specific_function(dbi_conn_get_driver(conn), "PQputCopyEnd")) != NULL) {
+       do { 
+          res = custom_function_end(myconn->connection, error);         
+       } while (res == 0 && --count > 0);
+    }
+    
+    if (res <= 0) {
+       printf("\tD'uh! PQputCopyEnd error\n");
+       return 1;
+    }
+    printf("\tPQputCopyEnd returned: %d\n\tError: %d %s\n", res, dbi_conn_error(conn, &errmsg), errmsg);
+    if ((custom_function_error = dbi_driver_specific_function(dbi_conn_get_driver(conn), "PQerrorMessage")) != NULL) {
+       printf("\tPQerrorMessage returned %s\n", custom_function_error(myconn->connection));
+    }
+    
+    if ((result = dbi_conn_query(conn, "SELECT * from batch")) == NULL) {
+        dbi_conn_error(conn, &errmsg);
+        printf("\tAAH! Can't get read data! Error message: %s\n", errmsg);
+        return 1;
+      }
+
+    printf("\tGot result, %d rows, try to access rows\n", dbi_result_get_numrows(result));
+
+    while (dbi_result_next_row(result)) {
+        const char *errmsg = NULL;
+        long the_long_one = 0;
+        long the_long_two = 0;
+        const char* the_string;
+        
+        dbi_error_flag errflag;
+
+        /* first retrieve the values */
+        the_long_one = dbi_result_get_long(result, "id");
+        errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+        if (errflag) {
+          printf("the_int_one errflag=%s\n", errmsg);
+        }
+
+        the_long_two = dbi_result_get_long(result, "jobid");
+        errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+        if (errflag) {
+          printf("the_int_two errflag=%s\n", errmsg);
+        }
+        
+        the_string = dbi_result_get_string(result, "jobname");
+        errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+        if (errflag) {
+          printf("the_stringr errflag=%s\n", errmsg);
+        }
+                
+        printf("\tResult: the_long_one: %d the_long_two: %d the_string: %s\n",
+              the_long_one,
+              the_long_two,
+              the_string);
+    }        
+    
+    return 0;        
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "sqlite")) {
+     fprintf(stderr, "\tnot yet implemented for this driver\n");
+     return 0;
+  }
+  else if (!strcmp(ptr_cinfo->drivername, "sqlite3")) {
+     fprintf(stderr, "\tnot yet implemented for this driver\n");
+     return 0;
+  }
+  else {
+     printf("\tD'uh! Cannot run custom function\n");
+     return 1;
   }
 }
 

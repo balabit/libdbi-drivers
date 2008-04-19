@@ -613,6 +613,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
   char* item;
   char* table;
+  char* my_statement = NULL;
   char curr_table[MAX_IDENT_LENGTH] = "";
   char curr_field_name[MAX_IDENT_LENGTH];
   char curr_field_name_up[MAX_IDENT_LENGTH];
@@ -626,56 +627,98 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   int type;
   dbi_error_flag errflag = 0;
 
+/*   printf("%s\n", statement); */
   /* check whether field contains the table info. It does if the
    notation "table.field" is used */
   item = strchr(field, (int)'.');
   if (!item) {
-    /* the fields do not contain the table info. This means that
-       all fields are from the same table which we have to extract
-       from the statement that created the result */
+    /* the field does not contain the table info. However, the latter
+     may be available in the original statement, so let's look
+     there first*/
+    my_statement = strdup(statement);
+    if (!my_statement) {
+      return 0;
+    }
 
-    /* To get started, we use the first item after 'from' or 'FROM'
-       as the table name (we currently ignore pathologic cases like
-       'FroM' or 'froM'. We could uppercase a copy but we need the
-       table name as is, so it is going to get complex) */
-    if (!(table = strstr(statement, " from "))) {
-      table = strstr(statement, " FROM ");
+    if (!(table = strstr(my_statement, " from "))) {
+      table = strstr(my_statement, " FROM ");
     }
 
     if (!table) {
 /*       fprintf(stderr, "no from keyword found\n"); */
       return 0;
     }
+
+    *table = '\0'; /* terminate string, leaves only field names */
+
+    if ((table = strstr(my_statement, field)) != NULL
+	&& table != my_statement
+	&& *(table-1) == '.') {
+      /* the field name is there, isolate preceding table */
+      *(table-1) = '\0';
+
+      while (table > my_statement
+	     && *table != ' '
+	     && *table != ',') {
+	table--;
+      }
+
+      if (*table == ' '
+	  || *table == ',') {
+	table++;
+      }
+
+      /* table should now point to the table name */
+      strcpy(curr_table, table);
+    }
+    else {
+      /* as a last resort assume that all fields are from the same table
+	 which we have to extract from the statement that created the
+	 result */
+
+      /* To get started, we use the first item after 'from' or 'FROM'
+	 as the table name (we currently ignore pathologic cases like
+	 'FroM' or 'froM'. We could uppercase a copy but we need the
+	 table name as is, so it is going to get complex) */
+      if (!(table = strstr(statement, " from "))) {
+	table = strstr(statement, " FROM ");
+      }
+
+      if (!table) {
+	/*       fprintf(stderr, "no from keyword found\n"); */
+	return 0;
+      }
     
-    /* set ptr to possible start of item after 'from' */
-    table += 6;
+      /* set ptr to possible start of item after 'from' */
+      table += 6;
 
-    /* skip spaces */
-    while (*table == ' ') {
-      table++;
-    }
-
-    /* table now points to the table name; find the end of table */
-    item = table;
-    while (*item && *item != ' ' && *item != ',' && *item != ';') {
-      item++;
-    }
-    strncpy(curr_table, table, item-table);
-    curr_table[item-table] = '\0'; /* terminate just in case */
-
-    /* for obvious reasons, the internal tables do not contain the
-       commands how they were created themselves. We have to use known
-       values for the field types */
-    if (!strcmp(curr_table, "sqlite_master") ||
-	!strcmp(curr_table, "sqlite_temp_master")) {
-      if (!strcmp(field, "rootpage")) {
-	return FIELD_TYPE_LONG;
+      /* skip spaces */
+      while (*table == ' ') {
+	table++;
       }
-      else {
-	return FIELD_TYPE_STRING;
+
+      /* table now points to the table name; find the end of table */
+      item = table;
+      while (*item && *item != ' ' && *item != ',' && *item != ';') {
+	item++;
+      }
+      strncpy(curr_table, table, item-table);
+      curr_table[item-table] = '\0'; /* terminate just in case */
+
+      /* for obvious reasons, the internal tables do not contain the
+	 commands how they were created themselves. We have to use known
+	 values for the field types */
+      if (!strcmp(curr_table, "sqlite_master") ||
+	  !strcmp(curr_table, "sqlite_temp_master")) {
+	if (!strcmp(field, "rootpage")) {
+	  return FIELD_TYPE_LONG;
+	}
+	else {
+	  return FIELD_TYPE_STRING;
+	}
       }
     }
-
+    free(my_statement);
     strcpy(curr_field_name, field);
   }
   else {   /* each field contains table info */
@@ -684,7 +727,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     strcpy(curr_field_name, item+1);
   }
 
-/*   printf("curr_table went to %s<<\ncurr_field_name went to %s<<\n", curr_table, curr_field_name); */
+/*   printf("field went to %s<<\ncurr_table went to %s<<\ncurr_field_name went to %s<<\n", field, curr_table, curr_field_name); */
 
   /* check for known functions which may appear here instead
      of field names. There is some overlap, i.e. some function work
@@ -739,7 +782,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 
   if (query_res || !table_numrows) {
     _dbd_internal_error_handler(conn, NULL, DBI_ERROR_BADNAME);
-    /*       printf("field not found\n"); */
+/*     printf("field not found\n"); */
     return 0;
   }
   
@@ -749,7 +792,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   sqlite3_free_table(table_result_table);
 
   if (!curr_type) {
-/*     printf("out of memory\n"); */
+/*     printf("no type found\n"); */
     return 0;
   }
   
@@ -766,7 +809,8 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
      PostgreSQL. Some conflicts remain, like the REAL type which is a
      different thing in MySQL and PostgreSQL */
 
-/*   printf("field type: %s<<\n", curr_type); */
+/*    printf("field type: %s<<\n", curr_type); */
+   fflush(NULL);
   if (strstr(curr_type, "CHAR(") /* note the opening bracket */
       || strstr(curr_type, "CLOB")
       || strstr(curr_type, "TEXT") /* also catches TINYTEXT */

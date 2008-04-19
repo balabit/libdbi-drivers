@@ -71,6 +71,7 @@ int n_legacy = 0;
 /* some test data */
 char string_to_quote[] = "Can \'we\' \"quote\" this properly?";
 char string_to_escape[] = "Can \'we\' \"escape\" this properly?";
+char numstring[] = "-54321";
 
 unsigned char binary_to_quote[] = {'A', 'B', '\0', 'C', '\'', 'D'};
 size_t binary_to_quote_length = 6;
@@ -89,6 +90,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 int test_list_tables(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, dbi_conn conn);
+int test_retrieve_data_as(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, dbi_conn conn);
 int test_drop_table(dbi_conn conn);
 int test_drop_db(struct CONNINFO* ptr_cinfo, dbi_conn conn);
 int test_error_messages(struct CONNINFO* ptr_cinfo, dbi_conn conn, int n);
@@ -256,6 +258,15 @@ int main(int argc, char **argv) {
   printf("\nTest %d: Retrieve data: \n", testnumber++);
 	
   if (test_retrieve_data(&cinfo, &tinfo, conn)) {
+    dbi_conn_close(conn);
+    my_dbi_shutdown(dbi_instance);
+    exit(1);
+  }
+
+  /* Test: retrieve data as string or integer */
+  printf("\nTest %d: Retrieve data as string or integer: \n", testnumber++);
+	
+  if (test_retrieve_data_as(&cinfo, &tinfo, conn)) {
     dbi_conn_close(conn);
     my_dbi_shutdown(dbi_instance);
     exit(1);
@@ -1129,6 +1140,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 		 "the_conn_quoted_string_copy VARCHAR(255),"
 		 "the_conn_escaped_string VARCHAR(255),"
 		 "the_conn_escaped_string_copy VARCHAR(255),"
+		 "the_numstring VARCHAR(255),"
 		 "the_empty_string VARCHAR(255),"
 		 "the_null_string VARCHAR(255), "
 		 "the_binary_quoted_string BLOB,"
@@ -1157,6 +1169,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	      "the_conn_quoted_string_copy VARCHAR(255),"
 	      "the_conn_escaped_string VARCHAR(255),"
 	      "the_conn_escaped_string_copy VARCHAR(255),"
+	      "the_numstring VARCHAR(255),"
 	      "the_empty_string VARCHAR(255),"
 	      "the_null_string VARCHAR(255),"
 	      "the_binary_quoted_string IMAGE,"
@@ -1192,6 +1205,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	      "the_conn_quoted_string_copy VARCHAR(255),"
 	      "the_conn_escaped_string VARCHAR(255),"
 	      "the_conn_escaped_string_copy VARCHAR(255),"
+	      "the_numstring VARCHAR(255),"
 	      "the_empty_string VARCHAR(255),"
 	      "the_null_string VARCHAR(255),"
 	      "the_binary_string BLOB,"
@@ -1221,6 +1235,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	     "the_conn_quoted_string_copy CHAR(255),"
 	     "the_conn_escaped_string CHAR(255),"
 	     "the_conn_escaped_string_copy CHAR(255),"
+	     "the_numstring CHAR(255),"
 	     "the_empty_string VARCHAR(255),"
 	     "the_null_string VARCHAR(255),"
 	     "the_date DATE,"
@@ -1248,6 +1263,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	     "the_conn_quoted_string_copy VARCHAR(255),"
 	     "the_conn_escaped_string VARCHAR(255),"
 	     "the_conn_escaped_string_copy VARCHAR(255),"
+	     "the_numstring VARCHAR(255),"
 	     "the_empty_string VARCHAR(255),"
 	     "the_null_string VARCHAR(255),"
 	     "the_binary_quoted_string BLOB,"
@@ -1285,6 +1301,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	     "the_conn_quoted_string_copy VARCHAR(255),"
 	     "the_conn_escaped_string VARCHAR(255),"
 	     "the_conn_escaped_string_copy VARCHAR(255),"
+	     "the_numstring VARCHAR(255),"
 	     "the_empty_string VARCHAR(255),"
 	     "the_null_string VARCHAR(255),"
 	     "the_binary_quoted_string BYTEA,"
@@ -1320,6 +1337,7 @@ int test_create_table(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, d
 	     "the_conn_quoted_string_copy VARCHAR(255),"
 	     "the_conn_escaped_string VARCHAR(255),"
 	     "the_conn_escaped_string_copy VARCHAR(255),"
+	     "the_numstring VARCHAR(255),"
 	     "the_empty_string VARCHAR(255),"
 	     "the_null_string VARCHAR(255),"
 	     "the_binary_quoted_string BLOB,"
@@ -1431,6 +1449,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_conn_quoted_string_copy,"
 	     "the_conn_escaped_string,"
 	     "the_conn_escaped_string_copy,"
+	     "the_numstring,"
 	     "the_empty_string,"
 	     "the_null_string,"
 	     "the_binary_quoted_string,  "
@@ -1453,6 +1472,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "%s,"
 	     "'%s',"
 	     "'%s',"
+	     "'%s',"
 	     "'',"
 	     "NULL,"
 	     "%s, "
@@ -1466,6 +1486,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     quoted_string,
 	     my_string_to_escape,
 	     escaped_string,
+	     numstring,
 	     quoted_binary,
 	     escaped_binary);
   } 
@@ -1491,6 +1512,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_conn_quoted_string_copy,"
 	     "the_conn_escaped_string,"
 	     "the_conn_escaped_string_copy,"
+	     "the_numstring,"
 	     "the_empty_string,"
 	     "the_null_string,"
 	     "the_binary_quoted_string,"
@@ -1513,6 +1535,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "%s,"
 	     "'%s',"
 	     "'%s',"
+	     "'%s',"
 	     "'',"
 	     "NULL,"
 	     "%s,"
@@ -1525,6 +1548,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     quoted_string,
 	     my_string_to_escape,
 	     escaped_string,
+	     numstring,
 	     quoted_binary,
 	     escaped_binary);
   } 
@@ -1549,6 +1573,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "%s,"
 	     "'%s',"
 	     "'%s',"
+	     "'%s',"
 	     "'',"
 	     "NULL,"
 	     "%s,"
@@ -1562,6 +1587,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     quoted_string,
 	     my_string_to_escape,
 	     escaped_string,
+	     numstring,
 	     quoted_binary,
 	     escaped_binary);
   }
@@ -1581,6 +1607,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "%s,"
 	     "'%s',"
 	     "'%s',"
+	     "'%s',"
 	     "'',"
 	     "NULL,"
 	     "'11-jul-1977',"
@@ -1590,7 +1617,8 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     my_string_to_quote,
 	     quoted_string,
 	     my_string_to_escape,
-	     escaped_string);
+	     escaped_string,
+	     numstring);
   }
   else { /* mysql, pgsql, sqlite, sqlite3 */
     snprintf(query, QUERY_LEN, "INSERT INTO test_datatypes ("
@@ -1609,6 +1637,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "the_conn_quoted_string_copy,"
 	     "the_conn_escaped_string,"
 	     "the_conn_escaped_string_copy,"
+	     "the_numstring,"
 	     "the_empty_string,"
 	     "the_null_string,"
 	     "the_binary_quoted_string,"
@@ -1633,6 +1662,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     "%s,"
 	     "'%s',"
 	     "'%s',"
+	     "'%s',"
 	     "'',"
 	     "NULL,"
 	     "%s,"
@@ -1647,6 +1677,7 @@ int test_insert_row(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
 	     quoted_string,
 	     my_string_to_escape,
 	     escaped_string,
+	     numstring,
 	     quoted_binary,
 	     escaped_binary);
   }
@@ -2246,6 +2277,580 @@ int test_retrieve_data(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, 
   } /* end while */
 
   /* todo: check field sizes */
+  dbi_result_free(result);
+
+  return 0;
+}
+
+/* returns 0 on success, 1 on error */
+int test_retrieve_data_as(struct CONNINFO* ptr_cinfo, struct TABLEINFO* ptr_tinfo, dbi_conn conn) {
+  const char *errmsg;
+  dbi_result result;
+
+  if ((result = dbi_conn_query(conn, "SELECT * from test_datatypes")) == NULL) {
+    dbi_conn_error(conn, &errmsg);
+    printf("\tAAH! Can't get read data! Error message: %s\n", errmsg);
+    return 1;
+  }
+
+  printf("\tGot result, try to access rows\n");
+
+  while (dbi_result_next_row(result)) {
+    const char *errmsg = NULL;
+    char* the_char_as_string = NULL;
+    char* the_uchar_as_string = NULL;
+    char* the_short_as_string = NULL;
+    char* the_ushort_as_string = NULL;
+    char* the_long_as_string = NULL;
+    char* the_ulong_as_string = NULL;
+    char* the_longlong_as_string = NULL;
+    char* the_ulonglong_as_string = NULL;
+    char* the_float_as_string = NULL;
+    char* the_double_as_string = NULL;
+    char* the_string_as_string = NULL;
+    char* the_numstring_as_string = NULL;
+    char* the_empty_string_as_string = NULL;
+    char* the_null_string_as_string = NULL;
+    char* the_binary_as_string = NULL;
+    char* the_date_as_string = NULL;
+    char* the_time_as_string = NULL;
+    char* the_datetime_as_string = NULL;
+    long long the_char_as_ll = 0;
+    long long the_uchar_as_ll = 0;
+    long long the_short_as_ll = 0;
+    long long the_ushort_as_ll = 0;
+    long long the_long_as_ll = 0;
+    long long the_ulong_as_ll = 0;
+    long long the_longlong_as_ll = 0;
+    long long the_ulonglong_as_ll = 0;
+    long long the_float_as_ll = 0;
+    long long the_double_as_ll = 0;
+    long long the_string_as_ll = 0;
+    long long the_numstring_as_ll = 0;
+    long long the_empty_string_as_ll = 0;
+    long long the_null_string_as_ll = 0;
+    long long the_binary_as_ll = 0;
+    long long the_date_as_ll = 0;
+    long long the_time_as_ll = 0;
+    long long the_datetime_as_ll = 0;
+
+    dbi_error_flag errflag;
+
+    /* first retrieve the values */
+    the_char_as_string = dbi_result_get_as_string_copy(result, "the_char");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_char errflag=%s\n", errmsg);
+    }
+
+    the_char_as_ll = dbi_result_get_as_longlong(result, "the_char");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_char errflag=%s\n", errmsg);
+    }
+
+    the_uchar_as_string = dbi_result_get_as_string_copy(result, "the_uchar");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_uchar errflag=%s\n", errmsg);
+    }
+
+    the_uchar_as_ll = dbi_result_get_as_longlong(result, "the_uchar");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_uchar errflag=%s\n", errmsg);
+    }
+
+    the_short_as_string = dbi_result_get_as_string_copy(result, "the_short");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_short errflag=%s\n", errmsg);
+    }
+
+    the_short_as_ll = dbi_result_get_as_longlong(result, "the_short");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_short errflag=%s\n", errmsg);
+    }
+
+    the_ushort_as_string = dbi_result_get_as_string_copy(result, "the_ushort");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_ushort errflag=%s\n", errmsg);
+    }
+
+    the_ushort_as_ll = dbi_result_get_as_longlong(result, "the_ushort");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_ushort errflag=%s\n", errmsg);
+    }
+
+    the_long_as_string = dbi_result_get_as_string_copy(result, "the_long");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_long errflag=%s\n", errmsg);
+    }
+
+    the_long_as_ll = dbi_result_get_as_longlong(result, "the_long");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_long errflag=%s\n", errmsg);
+    }
+
+    the_ulong_as_string = dbi_result_get_as_string_copy(result, "the_ulong");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_ulong errflag=%s\n", errmsg);
+    }
+
+    the_ulong_as_ll = dbi_result_get_as_longlong(result, "the_ulong");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_ulong errflag=%s\n", errmsg);
+    }
+
+
+    if (!ptr_tinfo->have_longlong) {
+      printf("the_longlong: test skipped for this driver.\n");
+    }
+    else {
+      the_longlong_as_string = dbi_result_get_as_string_copy(result, "the_longlong");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_longlong errflag=%s\n", errmsg);
+      }
+      the_longlong_as_ll = dbi_result_get_as_longlong(result, "the_longlong");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_longlong errflag=%s\n", errmsg);
+      }
+    }
+
+    if (!ptr_tinfo->have_ulonglong) {
+      printf("the_ulonglong: test skipped for this driver.\n");
+    }
+    else {
+      the_ulonglong_as_string = dbi_result_get_as_string_copy(result, "the_ulonglong");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_ulonglong errflag=%s\n", errmsg);
+      }
+      the_ulonglong_as_ll = dbi_result_get_as_longlong(result, "the_ulonglong");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_ulonglong errflag=%s\n", errmsg);
+      }
+    }
+
+    the_float_as_string = dbi_result_get_as_string_copy(result, "the_float");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_float errflag=%s\n", errmsg);
+    }
+
+    the_float_as_ll = dbi_result_get_as_longlong(result, "the_float");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_float errflag=%s\n", errmsg);
+    }
+
+    if(!ptr_tinfo->have_double) {
+      printf("the_double: test skipped for this driver.\n");
+    }
+    else {
+      the_double_as_string = dbi_result_get_as_string_copy(result, "the_double");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_double errflag=%s\n", errmsg);
+      }
+      the_double_as_ll = dbi_result_get_as_longlong(result, "the_double");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_double errflag=%s\n", errmsg);
+      }
+    }
+
+    the_string_as_string = dbi_result_get_as_string_copy(result, "the_conn_quoted_string_copy");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_conn_quoted_string_copy errflag=%s\n", errmsg);
+    }
+
+    the_string_as_ll = dbi_result_get_as_longlong(result, "the_conn_quoted_string_copy");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_conn_quoted_string_copy errflag=%s\n", errmsg);
+    }
+
+    the_numstring_as_string = dbi_result_get_as_string_copy(result, "the_numstring");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_conn_quoted_string_copy errflag=%s\n", errmsg);
+    }
+
+    the_numstring_as_ll = dbi_result_get_as_longlong(result, "the_numstring");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_conn_quoted_string_copy errflag=%s\n", errmsg);
+    }
+
+    the_empty_string_as_string = dbi_result_get_as_string_copy(result, "the_empty_string");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_empty_string errflag=%s\n", errmsg);
+    }
+
+    the_empty_string_as_ll = dbi_result_get_as_longlong(result, "the_empty_string");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_empty_string errflag=%s\n", errmsg);
+    }
+
+    the_null_string_as_string = dbi_result_get_as_string_copy(result, "the_null_string");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_null_string errflag=%s\n", errmsg);
+    }
+
+    the_null_string_as_ll = dbi_result_get_as_longlong(result, "the_null_string");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_null_string errflag=%s\n", errmsg);
+    }
+
+    the_binary_as_string = dbi_result_get_as_string_copy(result, "the_binary_quoted_string");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_binary_string errflag=%s\n", errmsg);
+    }
+
+    the_binary_as_ll = dbi_result_get_as_longlong(result, "the_binary_quoted_string");
+    errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+    if (errflag) {
+      printf("the_binary_string errflag=%s\n", errmsg);
+    }
+
+    if(!ptr_tinfo->have_datetime) {
+      printf("the_datetime: test skipped for this driver.\n");
+    }
+    else {
+      the_datetime_as_string = dbi_result_get_as_string_copy(result, "the_datetime");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_datetime errflag=%s\n", errmsg);
+      }
+      the_datetime_as_ll = dbi_result_get_as_longlong(result, "the_datetime");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_datetime errflag=%s\n", errmsg);
+      }
+    }
+
+    if(!strcmp(ptr_cinfo->drivername, "msql")) {
+      the_date_as_string = dbi_result_get_as_string_copy(result, "the_date");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_date errflag=%s\n", errmsg);
+      }
+			
+      the_date_as_ll = dbi_result_get_as_longlong(result, "the_date");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_date errflag=%s\n", errmsg);
+      }
+			
+      the_time_as_string = dbi_result_get_as_string_copy(result, "the_time");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_time errflag=%s\n", errmsg);
+      }
+
+      the_time_as_ll = dbi_result_get_as_longlong(result, "the_time");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_time errflag=%s\n", errmsg);
+      }
+			
+      printf("the_char_as_string: in:-127 out:%s<<\n"
+	     "the_uchar_as_string: in:127 out:%s<<\n"
+	     "the_short_as_string: in:-32767 out:%s<<\n"
+	     "the_ushort_as_string: in:32767 out:%s<<\n"
+	     "the_long_as_string: in:-2147483647 out:%s<<\n"
+	     "the_ulong_as_string: in:2147483647 out:%s<<\n"
+	     "the_longlong_as_string: in:-9223372036854775807 out:%s<<\n"
+	     "the_ulonglong_as_string: in:9223372036854775807 out:%s<<\n"
+	     "the_float_as_string: in:3.402823466E+38 out:%s<<\n"
+	     "the_string_as_string: in:\'%s\' out:\'%s\'<<\n"
+	     "the_numstring_as_string: in:\'%s\' out:\'%s\'<<\n"
+	     "the_empty_string_as_string: out:\'%s\'\n"
+	     "the_null_string_as_string: out:\'%s\'\n"
+	     "the_date_as_string: in:\'11-jul-1977\' out: %s<<\n"
+	     "the_time_as_string: in:\'23:59:59\' out: %s<<", 
+	     "the_char_as_ll: in:-127 out:%lld<<\n"
+	     "the_uchar_as_ll: in:127 out:%lld<<\n"
+	     "the_short_as_ll: in:-32767 out:%lld<<\n"
+	     "the_ushort_as_ll: in:32767 out:%lld<<\n"
+	     "the_long_as_ll: in:-2147483647 out:%lld<<\n"
+	     "the_ulong_as_ll: in:2147483647 out:%lld<<\n"
+	     "the_longlong_as_ll: in:-9223372036854775807 out:%lld<<\n"
+	     "the_ulonglong_as_ll: in:9223372036854775807 out:%lld<<\n"
+	     "the_float_as_ll: in:3.402823466E+38 out:%lld<<\n"
+	     "the_string_as_ll: in:\'%s\' out:%lld<<\n"
+	     "the_numstring_as_ll: in:\'%s\' out:%lld<<\n"
+	     "the_empty_string_as_ll: out:%lld\n"
+	     "the_null_string_as_ll: out:%lld\n"
+	     "the_date_as_ll: in:\'11-jul-1977\' out: %lld<<\n"
+	     "the_time_as_ll: in:\'23:59:59\' out: %lld<<", 
+	     the_char_as_string,
+	     the_uchar_as_string, 
+	     the_short_as_string,
+	     the_ushort_as_string,
+	     the_long_as_string,
+	     the_ulong_as_string,
+	     the_longlong_as_string,
+	     the_ulonglong_as_string, 
+	     the_float_as_string,
+	     string_to_quote,
+	     the_string_as_string,
+	     numstring,
+	     the_numstring_as_string,
+	     the_empty_string_as_string,
+	     the_null_string_as_string,
+	     the_date_as_string,
+	     the_time_as_string,
+	     the_char_as_string,
+	     the_uchar_as_ll, 
+	     the_short_as_ll,
+	     the_ushort_as_ll,
+	     the_long_as_ll,
+	     the_ulong_as_ll,
+	     the_longlong_as_ll,
+	     the_ulonglong_as_ll, 
+	     the_float_as_ll,
+	     string_to_quote,
+	     the_string_as_ll,
+	     numstring,
+	     the_numstring_as_ll,
+	     the_empty_string_as_ll,
+	     the_null_string_as_ll,
+	     the_date_as_ll,
+	     the_time_as_ll);
+
+    }
+    else { /* not msql */
+      the_date_as_string = dbi_result_get_as_string_copy(result, "the_date");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_date errflag=%s\n", errmsg);
+      }
+			
+      the_date_as_ll = dbi_result_get_as_longlong(result, "the_date");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_date errflag=%s\n", errmsg);
+      }
+			
+      the_time_as_string = dbi_result_get_as_string_copy(result, "the_time");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_time errflag=%s\n", errmsg);
+      }
+
+      the_time_as_ll = dbi_result_get_as_longlong(result, "the_time");
+      errflag = dbi_conn_error(dbi_result_get_conn(result), &errmsg);
+      if (errflag) {
+	printf("the_time errflag=%s\n", errmsg);
+      }
+
+      if (!strcmp(ptr_cinfo->drivername, "firebird")) {
+	printf("the_short_as_string: in:-32768 out:%s<<\n"
+	       "the_ushort_as_string: in:32767 out:%s<<\n"
+	       "the_long_as_string: in:-2147483648 out:%s<<\n"
+	       "the_ulong_as_string: in:2147483647 out:%s<<\n"
+	       "the_float_as_string: in:3.4E+37 out:%s<<\n"
+	       "the_double_as_string: in:1.7E+307 out:%s\n"
+	       "the_string_as_string: in:\'%s\' out:\'%s\'<<\n"
+	       "the_numstring_as_string: in:\'%s\' out:\'%s\'<<\n"
+	       "the_empty_string_as_string: out:\'%s\'<<\n"
+	       "the_null_string_as_string: out:\'%s\'\n"
+	       "the_datetime_as_string: in:\'2001-12-31 23:59:59\' out:%s\n"
+	       "the_date_as_string: in:\'2001-12-31\' out:%s\n"
+	       "the_time_as_string: in:\'23:59:59\' out:%s\n",
+	       "the_short_as_ll: in:-32768 out:%ld<<\n"
+	       "the_ushort_as_ll: in:32767 out:%ld<<\n"
+	       "the_long_as_ll: in:-2147483648 out:%ld<<\n"
+	       "the_ulong_as_ll: in:2147483647 out:%ld<<\n"
+	       "the_float_as_ll: in:3.4E+37 out:%ld<<\n"
+	       "the_double_as_ll: in:1.7E+307 out:%ld\n"
+	       "the_string_as_ll: in:\'%s\' out:%ld<<\n"
+	       "the_numstring_as_ll: in:\'%s\' out:%ld<<\n"
+	       "the_empty_string_as_ll: out:%ld<<\n"
+	       "the_null_string_as_ll: out:%ld\n"
+	       "the_datetime_as_ll: in:\'2001-12-31 23:59:59\' out:%ld\n"
+	       "the_date_as_ll: in:\'2001-12-31\' out:%ld\n"
+	       "the_time_as_ll: in:\'23:59:59\' out:%ld\n",
+	       the_short_as_string,
+	       the_ushort_as_string,
+	       the_long_as_string,
+	       the_ulong_as_string,
+	       the_float_as_string,
+	       the_double_as_string, 
+	       string_to_quote,
+	       the_string_as_string,
+	       numstring, 
+	       the_numstring_as_string,
+	       the_empty_string_as_string,
+	       the_null_string_as_string, 
+	       the_datetime_as_string,
+	       the_date_as_string,
+	       the_time_as_string,
+	       the_short_as_ll,
+	       the_ushort_as_ll,
+	       the_long_as_ll,
+	       the_ulong_as_ll,
+	       the_float_as_ll,
+	       the_double_as_ll, 
+	       string_to_quote,
+	       the_string_as_ll,
+	       numstring, 
+	       the_numstring_as_ll,
+	       the_empty_string_as_ll,
+	       the_null_string_as_ll, 
+	       the_datetime_as_ll,
+	       the_date_as_ll,
+	       the_time_as_ll);
+      }
+      else {
+	printf("the_char_as_string: in:-127 out:%s<<\n"
+	       "the_uchar_as_string: in:127 out:%s<<\n"
+	       "the_short_as_string: in:-32768 out:%s<<\n"
+	       "the_ushort_as_string: in:32767 out:%s<<\n"
+	       "the_long_as_string: in:-2147483648 out:%s<<\n"
+	       "the_ulong_as_string: in:2147483647 out:%s<<\n"
+	       "the_longlong_as_string: in:-9223372036854775807 out:%s<<\n"
+	       "the_ulonglong_as_string: in:9223372036854775807 out:%s<<\n"
+	       "the_float_as_string: in:3.402823466E+38 out:%s<<\n"
+	       "the_double_as_string: in:1.7976931348623157E+307 out:%s<<\n"
+	       "the_string_as_string: in:\'%s\' out:\'%s\'<<\n"
+	       "the_numstring_as_string: in:\'%s\' out:\'%s\'<<\n"
+	       "the_empty_string_as_string: out:\'%s\'<<\n"
+	       "the_null_string_as_string: out:\'%s\'\n"
+	       "the_datetime_as_string: in:\'2001-12-31 23:59:59\' out:\'%s\'\n"
+	       "the_date_as_string: in:\'2001-12-31\' out:\'%s\'\n"
+	       "the_time_as_string: in:\'23:59:59\' out:\'%s\'\n"
+	       "the_char_as_ll: in:-127 out:%lld<<\n"
+	       "the_uchar_as_ll: in:127 out:%lld<<\n"
+	       "the_short_as_ll: in:-32768 out:%lld<<\n"
+	       "the_ushort_as_ll: in:32767 out:%lld<<\n"
+	       "the_long_as_ll: in:-2147483648 out:%lld<<\n"
+	       "the_ulong_as_ll: in:2147483647 out:%lld<<\n"
+	       "the_longlong_as_ll: in:-9223372036854775807 out:%lld<<\n"
+	       "the_ulonglong_as_ll: in:9223372036854775807 out:%lld<<\n"
+	       "the_float_as_ll: in:3.402823466E+38 out:%lld<<\n"
+	       "the_double_as_ll: in:1.7976931348623157E+307 out:%lld<<\n"
+	       "the_string_as_ll: in:\'%s\' out:%lld<<\n"
+	       "the_numstring_as_ll: in:\'%s\' out:%lld<<\n"
+	       "the_empty_string_as_ll: out:%lld<<\n"
+	       "the_null_string_as_ll: out:%lld\n"
+	       "the_datetime_as_ll: in:\'2001-12-31 23:59:59\' out:%lld\n"
+	       "the_date_as_ll: in:\'2001-12-31\' out:%lld\n"
+	       "the_time_as_ll: in:\'23:59:59\' out:%lld\n",
+	       the_char_as_string,
+	       the_uchar_as_string,
+	       the_short_as_string,
+	       the_ushort_as_string, 
+	       the_long_as_string,
+	       the_ulong_as_string,
+	       the_longlong_as_string,
+	       the_ulonglong_as_string,
+	       the_float_as_string,
+	       the_double_as_string, 
+	       string_to_quote,
+	       the_string_as_string,
+	       numstring, 
+	       the_numstring_as_string,
+	       the_empty_string_as_string,
+	       the_null_string_as_string,
+	       the_datetime_as_string,
+	       the_date_as_string,
+	       the_time_as_string,
+	       the_char_as_ll,
+	       the_uchar_as_ll,
+	       the_short_as_ll,
+	       the_ushort_as_ll, 
+	       the_long_as_ll,
+	       the_ulong_as_ll,
+	       the_longlong_as_ll,
+	       the_ulonglong_as_ll,
+	       the_float_as_ll,
+	       the_double_as_ll, 
+	       string_to_quote,
+	       the_string_as_ll,
+	       numstring, 
+	       the_numstring_as_ll,
+	       the_empty_string_as_ll,
+	       the_null_string_as_ll,
+	       the_datetime_as_ll,
+	       the_date_as_ll,
+	       the_time_as_ll);
+      } /* end if firebird */
+    } /* end if msql */
+    if (the_char_as_string) {
+      free(the_char_as_string);
+    }
+    if (the_uchar_as_string) {
+      free(the_uchar_as_string);
+    }
+    if (the_short_as_string) {
+      free(the_short_as_string);
+    }
+    if (the_ushort_as_string) {
+      free(the_ushort_as_string);
+    }
+    if (the_long_as_string) {
+      free(the_long_as_string);
+    }
+    if (the_ulong_as_string) {
+      free(the_ulong_as_string);
+    }
+    if (the_longlong_as_string) {
+      free(the_longlong_as_string);
+    }
+    if (the_ulonglong_as_string) {
+      free(the_ulonglong_as_string);
+    }
+    if (the_float_as_string) {
+      free(the_float_as_string);
+    }
+    if (the_double_as_string) {
+      free(the_double_as_string);
+    }
+    if (the_string_as_string) {
+      free(the_string_as_string);
+    }
+    if (the_numstring_as_string) {
+      free(the_numstring_as_string);
+    }
+    if (the_empty_string_as_string) {
+      free(the_empty_string_as_string);
+    }
+    if (the_null_string_as_string) {
+      free(the_null_string_as_string);
+    }
+    if (the_binary_as_string) {
+      free(the_binary_as_string);
+    }
+    if (the_date_as_string) {
+      free(the_date_as_string);
+    }
+    if (the_time_as_string) {
+      free(the_time_as_string);
+    }
+    if (the_datetime_as_string) {
+      free(the_datetime_as_string);
+    }
+  } /* end while */
+
   dbi_result_free(result);
 
   return 0;

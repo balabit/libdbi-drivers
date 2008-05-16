@@ -70,7 +70,7 @@
 	<varlistentry>
 	  <term>libmysqlclient</term>
 	  <listitem>
-	    <para>This library implements the client API for MySQL programs. Find the most recent release at <ulink url="http://www.mysql.org">www.mysql.org</ulink>. The current version of the mysql driver was tested with MySQL version 4.1.10a, and it should work with other 4.x releases.</para>
+	    <para>This library implements the client API for MySQL programs. Find the most recent release at <ulink url="http://www.mysql.org">www.mysql.com</ulink>. The current version of the mysql driver should work with versions 4.x and 5.x.</para>
 	  </listitem>
 	</varlistentry>
       </variablelist>
@@ -130,6 +130,12 @@
 	<term>dbname</term>
 	<listitem>
 	  <para>The name of the database used for the initial connection. If your program must be able to connect to a fresh MySQL installation, use the system database <filename moreinfo="none">mysql</filename>.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>timeout (numeric)</term>
+	<listitem>
+	  <para>The connection timeout in seconds.</para>
 	</listitem>
       </varlistentry>
       <varlistentry>

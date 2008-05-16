@@ -124,9 +124,18 @@
 	</listitem>
       </varlistentry>
       <varlistentry>
-	<term>sqlite3_timeout</term>
+	<term>timeout (numeric)</term>
+	<listitem>
+	  <para>The connection timeout in seconds.</para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>sqlite3_timeout (numeric)</term>
 	<listitem>
 	  <para>The design of SQLite3 does not allow fully concurrent access by two clients. However, if the timeout is larger than zero, the second client will wait for the given amount of time for the first client to release its lock, if necessary. If the timeout is set to zero, the second client will return immediately, indicating a busy status. The numerical value of this option specifies the timeout in milliseconds.</para>
+	  <note>
+	    <para>This option is deprecated. Use the generic option <option>timeout</option> instead. In the current implementation, <option>sqlite3_timeout</option> overrides <option>timeout</option> if both are set. Please be aware that these options use different time scales.</para>
+	  </note>
 	</listitem>
       </varlistentry>
     </variablelist>

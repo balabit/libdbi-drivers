@@ -176,6 +176,10 @@ int _dbd_real_connect(dbi_conn_t *conn, const char *db) {
 	    pgopt = "user";
 	  }
 
+	  else if (!strcmp(pgopt, "timeout")) {
+	    pgopt = "connect_timeout";
+	  }
+
 	  /* Map "pgsql_foo" to "foo" */
 	  else if( !strncmp( pgopt, "pgsql_", 6 ) ) {
 	    pgopt += 6;

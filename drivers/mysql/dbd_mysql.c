@@ -141,6 +141,8 @@ int dbd_connect(dbi_conn_t *conn) {
 	const char *dbname = dbi_conn_get_option(conn, "dbname");
 	const char *encoding = dbi_conn_get_option(conn, "encoding");
 	int port = dbi_conn_get_option_numeric(conn, "port");
+	int timeout = dbi_conn_get_option_numeric(conn, "timeout");
+
 	/* mysql specific options */
 	const char *unix_socket = dbi_conn_get_option(conn, "mysql_unix_socket");
 	/* we honor the mysql_compression flag for the sake of
@@ -162,7 +164,13 @@ int dbd_connect(dbi_conn_t *conn) {
 		_dbd_internal_error_handler(conn, NULL, DBI_ERROR_NOMEM);
 		return -2;
 	}
-	else if (!mysql_real_connect(mycon, host, username, password, dbname, port, unix_socket, client_flags)) {
+
+	if (timeout != -1) { /* option was specified */
+	  /* the mysql_options prototype is braindead */
+	  mysql_options(mycon, MYSQL_OPT_CONNECT_TIMEOUT, (const char*) &timeout);
+	}
+
+	if (!mysql_real_connect(mycon, host, username, password, dbname, port, unix_socket, client_flags)) {
 		conn->connection = (void *)mycon; // still need this set so _error_handler can grab information
 		_dbd_internal_error_handler(conn, NULL, DBI_ERROR_DBD);
 		mysql_close(mycon);

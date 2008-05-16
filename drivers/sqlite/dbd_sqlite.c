@@ -203,11 +203,17 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
     }
   }
 
-  /* set the SQLite timeout to timeout milliseconds */
+  /* set the SQLite timeout to timeout milliseconds. The older
+     SQLite-specific setting takes precedence over the generic timeout
+     option for backwards compatibility */
   timeout = dbi_conn_get_option_numeric(conn, "sqlite_timeout");
 
   if (timeout == -1) {
-    timeout = 0;
+    /* generic timeout is specified in seconds, not milliseconds */
+    timeout = 1000*dbi_conn_get_option_numeric(conn, "timeout");
+    if (timeout == -1) {
+      timeout = 0;
+    }
   }
 
   sqlite_busy_timeout(sqcon, timeout);	

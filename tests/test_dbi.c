@@ -51,6 +51,7 @@ struct CONNINFO {
   char password[64];
   char hostname[256];
   char version[64];
+  int timeout;
 };
 
 struct TABLEINFO {
@@ -953,6 +954,9 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
     (ptr_cinfo->dbname)[strlen(ptr_cinfo->dbname)-1] = '\0';
   }
 
+  /* use default timeout for now */
+  ptr_cinfo->timeout = 10;
+
   return 0;
 }
 
@@ -1026,6 +1030,7 @@ int set_driver_options(struct CONNINFO* ptr_cinfo, dbi_conn conn, const char* en
   }
 	
   dbi_conn_set_option(conn, "dbname", db && *db ? db : ptr_cinfo->initial_dbname);
+  dbi_conn_set_option_numeric(conn, "timeout", ptr_cinfo->timeout);
   dbi_conn_set_option_numeric(conn, "LogQueries", 1);
 
   return 0;

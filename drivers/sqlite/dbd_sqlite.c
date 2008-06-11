@@ -317,6 +317,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
   DIR *dp;
   struct dirent *entry;
   struct stat statbuf;
+  dbi_result rs;
 
   /* sqlite has no builtin function to list databases. Databases are just
      files in the data directory. We search for matching files and fill a
@@ -331,8 +332,10 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
    Update: Now apparently there is a system table that lists
    temporary tables, but the DROP TABLE error doesn't hurt and is
    most likely faster than checking for the existence of the table */
-  dbd_query(conn, "DROP TABLE libdbi_databases");
-  dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_databases (dbname VARCHAR(255))");
+  rs = dbd_query(conn, "DROP TABLE libdbi_databases");
+  dbi_result_free(rs);
+  rs = dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_databases (dbname VARCHAR(255))");
+  dbi_result_free(rs);
 
   if (sq_datadir && (dp = opendir(sq_datadir)) == NULL) {
     _dbd_internal_error_handler(conn, "could not open data directory", DBI_ERROR_CLIENT);
@@ -417,6 +420,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   int retval;
   char* sq_errmsg;
   char* sql_cmd;
+  dbi_result_t *rs;
 
   /* this function tries to query a specific database, so we need a
    separate connection to that other database, retrieve the table names,
@@ -435,8 +439,10 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   
   /* create temporary table for table names. The DROP command won't hurt
      if the table doesn't exist yet */
-  dbd_query(conn, "DROP TABLE libdbi_tablenames");
-  dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_tablenames (tablename VARCHAR(255))");
+  rs = dbd_query(conn, "DROP TABLE libdbi_tablenames");
+  dbi_result_free(rs);
+  rs = dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_tablenames (tablename VARCHAR(255))");
+  dbi_result_free(rs);
 /*   fprintf(stderr, "created temporary table\n"); */
 
   /* sqlite does not support the SHOW command, so we have to extract the
@@ -461,7 +467,8 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
     free(sq_errmsg);
   }
 
-  sqlite_close((sqlite*)(tempconn->connection));
+  /* sqlite_close((sqlite*)(tempconn->connection)); */
+  dbi_conn_close(tempconn);
 
   return dbd_query(conn, "SELECT tablename FROM libdbi_tablenames ORDER BY tablename");
 }
@@ -533,6 +540,9 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 
   if (query_res) {
     _dbd_internal_error_handler(conn, errmsg, query_res);
+    if (result_table != NULL) {
+      sqlite_free_table(result_table);
+    }
     return NULL;
   }
 	
@@ -758,6 +768,9 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 				      curr_table);
 
   if (query_res || !table_numrows) {
+	if(table_result_table != NULL) {
+	  sqlite_free_table(table_result_table);
+	}
     /* now try in the table ocntaining temporary tables */
     query_res = sqlite_get_table_printf((sqlite*)conn->connection,
 					"SELECT tbl_name, sql FROM sqlite_temp_master where tbl_name='%s'",
@@ -769,6 +782,9 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     
     if (query_res || !table_numrows) {
       _dbd_internal_error_handler(conn, errmsg, query_res);
+      if (table_result_table != NULL) {
+	sqlite_free_table(table_result_table);
+      }
 /*       printf("field not found\n"); */
       return 0;
     }

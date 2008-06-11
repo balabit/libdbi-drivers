@@ -294,7 +294,7 @@ enum enum_field_types { FIELD_TYPE_DECIMAL, FIELD_TYPE_TINY,
         "sqlite_complete", \
         "sqlite_busy_handler", \
         "sqlite_busy_timeout", \
-        "sqlite_version", \
+        "sqlite_libversion", \
         "sqlite_encoding", \
         "sqlite_exec_printf", \
         "sqlite_exec_vprintf", \

@@ -636,9 +636,9 @@ int test_custom_function(struct CONNINFO* ptr_cinfo, dbi_conn conn) {
     const char* version;
     const char* (*custom_function)(void);
 
-    if ((custom_function = dbi_driver_specific_function(dbi_conn_get_driver(conn), "sqlite_version")) != NULL) {
+    if ((custom_function = dbi_driver_specific_function(dbi_conn_get_driver(conn), "sqlite_libversion")) != NULL) {
       version = custom_function();
-      printf("\tsqlite_version returned: %s\n", version);
+      printf("\tsqlite_libversion returned: %s\n", version);
       return 0;
     }
     else {

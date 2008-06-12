@@ -123,15 +123,16 @@ char *_firebird_populate_db_string( dbi_conn_t *conn, const char *dbname, char *
 	const char dirsep[] = "/";
 	const char *dbdir = dbi_conn_get_option(conn, "firebird_dbdir");
 	
-	if (!dbdir) {
+	if (!dbdir || !*dbdir) {
 		/* use default directory instead */
 		dbdir = default_dbdir;
 	}
 
 	bzero(db_fullpath, PATH_MAX);
 
-	if (dbdir && *dbdir) 
+	if (dbdir && *dbdir) {
 		strcpy(db_fullpath, dbdir);
+	}
 	
 	if (db_fullpath[strlen(db_fullpath)-1] != *dirsep && db_fullpath[0] != '\0') 
 		strcat(db_fullpath, dirsep);

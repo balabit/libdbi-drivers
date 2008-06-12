@@ -910,6 +910,11 @@ int ask_for_conninfo(struct CONNINFO* ptr_cinfo) {
     else {
       (ptr_cinfo->dbdir)[strlen(ptr_cinfo->dbdir)-1] = '\0';
     }
+    if (!strcmp(ptr_cinfo->drivername, "firebird")
+	&& (ptr_cinfo->dbdir)[0] == '\0') {
+      strcpy(ptr_cinfo->dbdir, default_dbdir);
+      strcat(ptr_cinfo->dbdir, "/firebird");
+    }
   }
 
   if (!strcmp(ptr_cinfo->drivername, "firebird")

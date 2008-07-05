@@ -825,6 +825,7 @@ void _translate_freetds_type(CS_DATAFMT * datafmt, unsigned short *type, unsigne
     case CS_VARCHAR_TYPE:
 	_type = DBI_TYPE_STRING;
 	datafmt->format = CS_FMT_NULLTERM;
+	++datafmt->maxlength; /* 1 extra byte for \0 */
 	break;
     case CS_MONEY_TYPE:	/* 8 */
     case CS_MONEY4_TYPE:	/* 4 */

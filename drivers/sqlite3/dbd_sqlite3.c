@@ -85,6 +85,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database);
 void _translate_sqlite3_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs);
 void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowidx);
 int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement);
+int getTables(char** tables, int index, const char* statement);
 char* get_field_type(char*** ptr_result_table, const char* curr_field_name, int numrows);
 static size_t sqlite3_escape_string(char *to, const char *from, size_t length);
 int wild_case_compare(const char *str,const char *str_end,
@@ -127,7 +128,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
   char* sq_errmsg = NULL;
   char* db_fullpath = NULL;
 
-/* ToDo: make OS-independent */
+  /* ToDo: make OS-independent */
   const char dirsep[] = "/";
 
   const char *dbname;
@@ -191,7 +192,7 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
     strcat(db_fullpath, dbname);
   }
 
-/*   fprintf(stderr, "try to open %s<<\n", db_fullpath); */
+  /*   fprintf(stderr, "try to open %s<<\n", db_fullpath); */
   if (!strcmp(encoding, sqlite3_encoding_UTF8)) {
     sqlite3_errcode = sqlite3_open(db_fullpath, &sqcon);
   }
@@ -355,12 +356,12 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
   const char *sq_datadir = _conn_get_dbdir(conn);
 
   /* this is not nice but we have to drop the table even if it does not
-   exist (sqlite3 has no way to list *temporary* tables so we can't check
-   for it's existence). Then we start over with a fresh table lest we
-   want duplicates.
-   Update: Now apparently there is a system table that lists
-   temporary tables, but the DROP TABLE error doesn't hurt and is
-   most likely faster than checking for the existence of the table */
+     exist (sqlite3 has no way to list *temporary* tables so we can't check
+     for it's existence). Then we start over with a fresh table lest we
+     want duplicates.
+     Update: Now apparently there is a system table that lists
+     temporary tables, but the DROP TABLE error doesn't hurt and is
+     most likely faster than checking for the existence of the table */
   rs = dbd_query(conn, "DROP TABLE libdbi_databases");
   dbi_result_free(rs);
   rs = dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_databases (dbname VARCHAR(255))");
@@ -418,7 +419,7 @@ dbi_result_t *dbd_list_dbs(dbi_conn_t *conn, const char *pattern) {
 	  }
 	}
 	else {
-	    snprintf(sql_command, _POSIX_PATH_MAX+64, "INSERT INTO libdbi_databases VALUES ('%s')", entry->d_name);
+	  snprintf(sql_command, _POSIX_PATH_MAX+64, "INSERT INTO libdbi_databases VALUES ('%s')", entry->d_name);
 	  retval = sqlite3_exec((sqlite3*)(conn->connection), sql_command, NULL, NULL, &sq_errmsg);
 	}	  
 
@@ -442,7 +443,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   /* list tables in a database. The current implementation lists permanent
      tables only, as most applications know about the temporary tables
      they created anyway.
-   */
+  */
   dbi_result_t *dbi_result;
   dbi_conn_t* tempconn;
   dbi_inst instance;
@@ -452,8 +453,8 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   dbi_result_t *rs;
 
   /* this function tries to query a specific database, so we need a
-   separate connection to that other database, retrieve the table names,
-   and feed them to a temporary table in our main connection */
+     separate connection to that other database, retrieve the table names,
+     and feed them to a temporary table in our main connection */
   instance = dbi_driver_get_instance(dbi_conn_get_driver(conn));
   tempconn = dbi_conn_new_r("sqlite3", instance);
 
@@ -472,7 +473,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   dbi_result_free(rs);
   rs = dbd_query(conn, "CREATE TEMPORARY TABLE libdbi_tablenames (tablename VARCHAR(255))");
   dbi_result_free(rs);
-/*   fprintf(stderr, "created temporary table\n"); */
+  /*   fprintf(stderr, "created temporary table\n"); */
 
   /* sqlite3 does not support the SHOW command, so we have to extract the
      information from the accessory sqlite3_master table */
@@ -484,12 +485,12 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
   }
   dbi_result = dbd_query(tempconn, sql_cmd);
   free(sql_cmd);
-/*   fprintf(stderr, "select from sqlite3_master has run\n"); */
+  /*   fprintf(stderr, "select from sqlite3_master has run\n"); */
   if (dbi_result) {
     while (dbi_result_next_row(dbi_result)) {
       asprintf(&sql_cmd, "INSERT INTO libdbi_tablenames VALUES ('%s')", dbi_result_get_string(dbi_result, "name"));
       retval = sqlite3_exec((sqlite3*)(conn->connection), sql_cmd, NULL, NULL, &sq_errmsg);
-	  free(sql_cmd);
+      free(sql_cmd);
     }
     dbi_result_free(dbi_result);
   }
@@ -498,7 +499,7 @@ dbi_result_t *dbd_list_tables(dbi_conn_t *conn, const char *db, const char *patt
     free(sq_errmsg);
   }
 
-//  sqlite3_close((sqlite3*)(tempconn->connection));
+  //  sqlite3_close((sqlite3*)(tempconn->connection));
   dbi_conn_close(tempconn);
 
   return dbd_query(conn, "SELECT tablename FROM libdbi_tablenames ORDER BY tablename");
@@ -566,14 +567,11 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
 			       &errmsg);
 
   if (query_res) {
-    if(result_table != NULL) {
-	  sqlite3_free_table(result_table);
-    }
     return NULL;
   }
 	
   result = _dbd_result_create(conn, (void *)result_table, numrows, (unsigned long long)sqlite3_changes((sqlite3*)conn->connection));
-/*   printf("numrows:%d, numcols:%d<<\n", numrows, numcols); */
+  /*   printf("numrows:%d, numcols:%d<<\n", numrows, numcols); */
   _dbd_result_set_numfields(result, numcols);
 
   /* assign types to result */
@@ -582,7 +580,67 @@ dbi_result_t *dbd_query(dbi_conn_t *conn, const char *statement) {
     char *item;
     
     type = find_result_field_types(result_table[idx], conn, statement);
-/*     printf("type: %d<<\n", type); */
+    /*     printf("type: %d<<\n", type); */
+    _translate_sqlite3_type(type, &fieldtype, &fieldattribs);
+
+    /* we need the field name without the table name here */
+    item = strchr(result_table[idx], (int)'.');
+    if (!item) {
+      item = result_table[idx];
+    }
+    else {
+      item++;
+    }
+
+    _dbd_result_add_field(result, idx, item, fieldtype, fieldattribs);
+    idx++;
+  }
+  
+  return result;
+}
+
+dbi_result_t *dbd_query_old(dbi_conn_t *conn, const char *statement) {
+  /* allocate a new dbi_result_t and fill its applicable members:
+   * 
+   * result_handle, numrows_matched, and numrows_changed.
+   * everything else will be filled in by DBI */
+	
+  dbi_result_t *result;
+  int query_res;
+  int numrows;
+  int numcols;
+  char** result_table;
+  char* errmsg;
+  int idx = 0;
+  unsigned short fieldtype;
+  unsigned int fieldattribs;
+  dbi_error_flag errflag = 0;
+
+  query_res = sqlite3_get_table((sqlite3*)conn->connection,
+				statement,
+				&result_table,
+				&numrows,
+				&numcols,
+				&errmsg);
+
+  if (query_res) {
+    if(result_table != NULL) {
+      sqlite3_free_table(result_table);
+    }
+    return NULL;
+  }
+	
+  result = _dbd_result_create(conn, (void *)result_table, numrows, (unsigned long long)sqlite3_changes((sqlite3*)conn->connection));
+  /*   printf("numrows:%d, numcols:%d<<\n", numrows, numcols); */
+  _dbd_result_set_numfields(result, numcols);
+
+  /* assign types to result */
+  while (idx < numcols) {
+    int type;
+    char *item;
+    
+    type = find_result_field_types(result_table[idx], conn, statement);
+    /*     printf("type: %d<<\n", type); */
     _translate_sqlite3_type(type, &fieldtype, &fieldattribs);
 
     /* we need the field name without the table name here */
@@ -607,217 +665,388 @@ dbi_result_t *dbd_query_null(dbi_conn_t *conn, const unsigned char *statement, s
 }
 
 int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement) {
-  /* 
-     field is the name of the field which we want to know the type of
-     conn is the connection
-     statement is the query string
 
-     returns the type as a FIELD_TYPE_XXX value
+  /*
+    field is the name of the field which we want to know the type of
+    conn is the connection
+    statement is the query string
 
-     sqlite3 uses a type system insufficient for libdbi. You don't
-     even have to declare the column types if you don't want to.
+    returns the type as a FIELD_TYPE_XXX value
 
-     However, sqlite3 stores the types as used in the CREATE TABLE
-     commands and makes them available through the table_info
-     pragma. It is a VERY GOOD idea to declare the types if we want
-     the following to work
+    sqlite3 uses a type system insufficient for libdbi. You don't
+    even have to declare the column types if you don't want to.
 
-     The code assumes that table and field names do not exceed a given
-     length limit. PostgreSQL uses 32 which is a bit low. Sqlite3 does
-     not seem to have fixed limits. We use a default limit of 128 here
-     which can be increased in dbd_sqlite3.h if need arises.
-   */
+    However, sqlite3 stores the types as used in the CREATE TABLE
+    commands and makes them available through the table_info
+    pragma. It is a VERY GOOD idea to declare the types if we want
+    the following to work
 
+    The code assumes that table and field names do not exceed a given
+    length limit. PostgreSQL uses 32 which is a bit low. Sqlite3 does
+    not seem to have fixed limits. We use a default limit of 128 here
+    which can be increased in dbd_sqlite3.h if need arises.
+  */
+
+  char* statement_copy = strdup(statement);
   char* item;
-  char* table;
-  char* my_statement = NULL;
-  char curr_table[MAX_IDENT_LENGTH] = "";
-  char curr_field_name[MAX_IDENT_LENGTH];
-  char curr_field_name_up[MAX_IDENT_LENGTH];
+  char curr_field[MAX_IDENT_LENGTH];
+  char curr_field_lower[MAX_IDENT_LENGTH];
+  char curr_table[MAX_IDENT_LENGTH];
+  char* tables[MAX_TABLES_IN_QUERY];
+  int table_count = 0;
+  int type;
+  int counter;
+
+  item = strchr(field, (int)'.');
+  if ( !item ) {
+    strcpy(curr_field, field);
+    strcpy(curr_table, "");
+  }
+  else {
+    strcpy(curr_field, item+1);
+    strncpy(curr_table, field, item-field);
+    curr_table[item-field] = '\0';
+  }
+  //printf("table = %s\ncolumn = %s\n",curr_table,curr_field);
+
+  /* If curr_table is empty, this means we have to get the
+     select tables from the statement (it is possible there is more than one),
+     otherwise we have the table for this field.
+     It would seem that even if the table is aliased in the statement,
+     we still have the original table name.
+     sqlite3_get_table returns the tablename and not the alias when returning table.column.
+     It probably isn't a good idea to rely on this, but we will. */
+
+  if ( strlen(curr_table) < 1 ) {
+    //printf("not curr_table\n");
+    table_count = getTables(tables,0,statement_copy);
+    //printf("*********TABLELIST************\n");
+    //		for ( counter = 0 ; counter < table_count ; counter++) {
+    //			printf("%s\n",tables[counter]);
+    //		}
+  }
+
+  // resolve our curr_field to a real column
+  char* token;
+  char* saveptr;
+  char* itemstore;
+  int as_flag = 0;
+  int function_flag = 0;
+  int expression_flag = 0;
+  int from_flag = 0;
+
+  token = strtok_r(statement_copy, " ,;", &saveptr);
+  while( token != NULL ) {
+    //printf("checking %s\n",token);
+    // check to see if there is a tablename on this field
+    item = strchr(token, (int)'.');
+    if ( item != NULL ) {
+      // discard the tablename
+      token = item+1;
+      //printf("checking %s\n",token);
+    }
+    /* if the from flag is set, we're not interested in any tokens
+     * until we hit another select.
+     */
+    if ( from_flag == 1 ) {
+      if( strcmp(token,"(select") == 0 ||
+	  strcmp(token,"(SELECT" ) == 0 ||
+	  strcmp(token,"select") == 0 ||
+	  strcmp(token,"SELECT" ) == 0
+	  ) {
+	from_flag = 0;
+      }
+    }
+    else {
+      if ( as_flag == 0 ) {
+	if( strcmp(token,"as") == 0 || strcmp(token,"AS" ) == 0 ) {
+	  as_flag = 1;
+	}
+	else {
+	  // reset function and expression flags
+	  function_flag = 0;
+	  expression_flag = 0;
+	  itemstore = token;
+	  // check if this is a function
+	  item = strchr(itemstore,'(');
+	  if ( item != NULL ) {
+	    if ( item == itemstore ) {
+	      /* I started to try to parse for this scenario, and
+		 realized that I was descending into a pit of parsing
+		 that would never end.  if it turns out that our
+		 curr_field aliases something that comes after this
+		 case it will more than likely be wrong and the end
+		 result is the field type will resolve to string.
+
+		 so we have to create a rule for creating sql
+		 statements with this case and document it so users
+		 know how to form their statements and know how to
+		 receive their results
+
+		 The rule here is that if you want to enclose your
+		 result field in brackets, you must have an alias for
+		 it, and the 'as' must be spaced from the closing
+		 bracket.  e.g. (<some expression that could be
+		 anything really>) as <alias>
+
+		 The result will be obtainable as string, period.
+
+		 if this is the case then this field is enclosed in brackets
+		 check for the closing bracket in this token */
+
+	      expression_flag = 1;
+	      int opens = 1;
+	      while ( opens > 0 && *item != '\0' ) {
+		item++;
+		if ( *item == '(' )
+		  opens++;
+		if ( *item == ')' )
+		  opens--;
+	      }
+	      if ( opens > 0 ) {
+		// this token doesn't have the complete field
+		// get the next token etc...
+		int field_complete = 0;
+		while ( field_complete == 0 ) {
+		  token = strtok_r(NULL, " ,;", &saveptr);
+		  item = token;
+		  while ( opens > 0 && *item != '\0' ) {
+		    if ( *item == '(' )
+		      opens++;
+		    if ( *item == ')' )
+		      opens--;
+		    item++;
+		  }
+		  if ( opens == 0 ) {
+		    field_complete = 1;
+		  }
+		}
+	      }
+	    }
+
+	    else {
+	      // we have a function here
+	      /*
+	       * As for expressions we need a documented rule for
+	       * having a function as a result column.  The opening
+	       * bracket should be attached to the function name, e.g
+	       * count(, not count ( the function must be aliased and
+	       * the 'as' must be spaced from the closing bracket. e.g
+	       * <function>( <function parameters> ) as <alias>
+	       */
+	      function_flag = 1;
+	      int opens = 1;
+	      while ( opens > 0 && *item != '\0' ) {
+		item++;
+		if ( *item == '(' )
+		  opens++;
+		if ( *item == ')' )
+		  opens--;
+	      }
+	      if ( opens > 0 ) {
+		// this token doesn't have the complete function
+		// get the next token etc...
+		int function_complete = 0;
+		while ( function_complete == 0 ) {
+		  token = strtok_r(NULL, " ,;", &saveptr);
+		  item = token;
+		  while ( opens > 0 && *item != '\0' ) {
+		    if ( *item == '(' )
+		      opens++;
+		    if ( *item == ')' )
+		      opens--;
+		    item++;
+		  }
+		  if ( opens == 0 ) {
+		    function_complete = 1;
+		  }
+		}
+	      }
+	    }
+	  }
+	  if ( strcmp(token, "from") == 0 || strcmp(token, "FROM") == 0 ) {
+	    from_flag = 1;
+	  }
+	}
+      }
+      else {
+	if ( strcmp(token,curr_field) == 0 ) {
+	  // our curr_field is an alias for the field in itemstore
+	  // if the expresion flag is set we know that the field type is string
+	  if ( expression_flag == 1 ) {
+	    free(statement_copy);
+	    return FIELD_TYPE_STRING;
+	  }
+	  if ( function_flag == 1 ) {
+	    free(statement_copy);
+	    // itemstore has at least the functionname( in it
+	    strcpy(curr_field,itemstore);
+	    strcpy(curr_field_lower, curr_field);
+	    item = curr_field_lower;
+	    while (*item) {
+	      *item = (char)tolower((int)*item);
+	      item++;
+	    }
+	    //printf("Field is a function - %s\n",curr_field_lower);
+	    if ( strstr(curr_field_lower,"avg(") ||
+		 strstr(curr_field_lower,"sum(") ||
+		 strstr(curr_field_lower,"total(") ||
+		 strstr(curr_field_lower,"abs(") ||
+		 strstr(curr_field_lower,"round(") ) {
+	      return FIELD_TYPE_FLOAT;
+	    }
+	    if ( strstr(curr_field_lower,"julianday(") ||
+		 strstr(curr_field_lower,"count(") ||
+		 strstr(curr_field_lower,"max(") ||
+		 strstr(curr_field_lower,"min(") ||
+		 strstr(curr_field_lower,"last_insert_rowid(") ||
+		 strstr(curr_field_lower,"length(") ) {
+	      return FIELD_TYPE_LONG;
+	    }
+	    if ( strstr(curr_field_lower,"random(") ) {
+	      return FIELD_TYPE_LONGLONG;
+	    }
+	    if ( strstr(curr_field_lower,"randomblob(") ||
+		 strstr(curr_field_lower,"zeroblob(") ||
+		 strstr(curr_field_lower,"total(") ||
+		 strstr(curr_field_lower,"abs(") ||
+		 strstr(curr_field_lower,"round(") ) {
+	      return FIELD_TYPE_BLOB;
+	    }
+	    if ( strstr(curr_field_lower,"date(") ||
+		 strstr(curr_field_lower,"time(") ||
+		 strstr(curr_field_lower,"datetime(") ||
+		 strstr(curr_field_lower,"strftime(") ||
+		 strstr(curr_field_lower,"group_concat(") ||
+		 strstr(curr_field_lower,"coalesce(") ||
+		 strstr(curr_field_lower,"glob(") ||
+		 strstr(curr_field_lower,"ifnull(") ||
+		 strstr(curr_field_lower,"hex(") ||
+		 strstr(curr_field_lower,"like(") ||
+		 strstr(curr_field_lower,"lower(") ||
+		 strstr(curr_field_lower,"ltrim(") ||
+		 strstr(curr_field_lower,"nullif(") ||
+		 strstr(curr_field_lower,"quote(") ||
+		 strstr(curr_field_lower,"replace(") ||
+		 strstr(curr_field_lower,"rtrim(") ||
+		 strstr(curr_field_lower,"sqlite_version(") ||
+		 strstr(curr_field_lower,"substr(") ||
+		 strstr(curr_field_lower,"trim(") ||
+		 strstr(curr_field_lower,"typeof(") ||
+		 strstr(curr_field_lower,"upper(") ) {
+	      return FIELD_TYPE_STRING;
+	    }
+	    // if we get here we have a function we don't know
+	    return FIELD_TYPE_STRING;
+	  }
+	  item = strchr(itemstore,'.');
+	  if ( item != NULL ) {
+	    strcpy(curr_field,item+1);
+	  }
+	  else {
+	    strcpy(curr_field,itemstore);
+	  }
+	}
+	as_flag = 0;
+      }
+    }
+    token = strtok_r(NULL, " ,;", &saveptr);
+  }
+  //printf("table = %s\ncolumn = %s\n",curr_table,curr_field);
+
+  /* now we have to look for the field type in the curr_table
+   * If curr_table is empty, we have to search through the table list
+   */
   char sql_command[MAX_IDENT_LENGTH+80];
   char **table_result_table;
-  char *curr_type;
+  char *curr_type = NULL;
   char* errmsg;
   int query_res;
   int table_numrows = 0;
   int table_numcols = 0;
-  int type;
   dbi_error_flag errflag = 0;
 
-/*   printf("%s\n", statement); */
-  /* check whether field contains the table info. It does if the
-   notation "table.field" is used */
-  item = strchr(field, (int)'.');
-  if (!item) {
-    /* the field does not contain the table info. However, the latter
-     may be available in the original statement, so let's look
-     there first*/
-    my_statement = strdup(statement);
-    if (!my_statement) {
-      return 0;
+  if ( strlen(curr_table) > 0 ) {
+    snprintf(sql_command, MAX_IDENT_LENGTH+80, "PRAGMA table_info(%s)", curr_table);
+    query_res = sqlite3_get_table((sqlite3*)conn->connection,
+				  sql_command,
+				  &table_result_table,
+				  &table_numrows,
+				  &table_numcols,
+				  &errmsg);
+
+    if (query_res || !table_numrows) {
+      /* The table we have doesn't seem to exist in the database!
+       * fallback to to string
+       */
+      //printf("singletable unknown !\n");
+      return FIELD_TYPE_STRING;
     }
-
-    if (!(table = strstr(my_statement, " from "))) {
-      table = strstr(my_statement, " FROM ");
+    curr_type = get_field_type(&table_result_table, curr_field, table_numrows);
+    sqlite3_free_table(table_result_table);
+    if (!curr_type) {
+      /* the field was not found in the table!
+       * fallback to string
+       */
+      //printf("field not in singletable !\n");
+      return FIELD_TYPE_STRING;
     }
-
-    if (!table) {
-/*       fprintf(stderr, "no from keyword found\n"); */
-      return 0;
-    }
-
-    *table = '\0'; /* terminate string, leaves only field names */
-
-    if ((table = strstr(my_statement, field)) != NULL
-	&& table != my_statement
-	&& *(table-1) == '.') {
-      /* the field name is there, isolate preceding table */
-      *(table-1) = '\0';
-
-      while (table > my_statement
-	     && *table != ' '
-	     && *table != ',') {
-	table--;
-      }
-
-      if (*table == ' '
-	  || *table == ',') {
-	table++;
-      }
-
-      /* table should now point to the table name */
-      strcpy(curr_table, table);
-    }
-    else {
-      /* as a last resort assume that all fields are from the same table
-	 which we have to extract from the statement that created the
-	 result */
-
-      /* To get started, we use the first item after 'from' or 'FROM'
-	 as the table name (we currently ignore pathologic cases like
-	 'FroM' or 'froM'. We could uppercase a copy but we need the
-	 table name as is, so it is going to get complex) */
-      if (!(table = strstr(statement, " from "))) {
-	table = strstr(statement, " FROM ");
-      }
-
-      if (!table) {
-	/*       fprintf(stderr, "no from keyword found\n"); */
-	return 0;
-      }
-    
-      /* set ptr to possible start of item after 'from' */
-      table += 6;
-
-      /* skip spaces */
-      while (*table == ' ') {
-	table++;
-      }
-
-      /* table now points to the table name; find the end of table */
-      item = table;
-      while (*item && *item != ' ' && *item != ',' && *item != ';') {
-	item++;
-      }
-      strncpy(curr_table, table, item-table);
-      curr_table[item-table] = '\0'; /* terminate just in case */
-
-      /* for obvious reasons, the internal tables do not contain the
-	 commands how they were created themselves. We have to use known
-	 values for the field types */
-      if (!strcmp(curr_table, "sqlite_master") ||
-	  !strcmp(curr_table, "sqlite_temp_master")) {
-	if (!strcmp(field, "rootpage")) {
-	  return FIELD_TYPE_LONG;
-	}
-	else {
-	  return FIELD_TYPE_STRING;
-	}
-      }
-    }
-    free(my_statement);
-    strcpy(curr_field_name, field);
   }
-  else {   /* each field contains table info */
-    strncpy(curr_table, field, item-field);
-    curr_table[item-field] = '\0';
-    strcpy(curr_field_name, item+1);
-  }
+  else {
+    /* process the table list
+     * It should be noted here that we stop searching the tables on the
+     * first match of the curr_field from the list of tables
+     * The reasoning here is that fields with the same name will
+     * probably be the same type.  Obviously, this is a hole.
+     */
+    if ( table_count > 0 ) {
 
-/*   printf("field went to %s<<\ncurr_table went to %s<<\ncurr_field_name went to %s<<\n", field, curr_table, curr_field_name); */
-
-  /* check for known functions which may appear here instead
-     of field names. There is some overlap, i.e. some function work
-     both on strings and numbers. These cases would have to be
-     analyzed by checking the arguments */
-  /* ToDo: find the matching closing bracket and submit this function
-     call to the builtin typeof() SQL function. This should return a
-     distinction between text and numeric types. However, the size and
-     subtype of a numeric column can't be deduced as easily */
-  strcpy(curr_field_name_up, curr_field_name);
-
-  /* uppercase string, reuse item */
-  item = curr_field_name_up;
-  while (*item) {
-    *item = (char)toupper((int)*item);
-    item++;
-  }
-
-  if (strstr(curr_field_name_up, "ABS(")
-      || strstr(curr_field_name_up, "LAST_INSERT_ROWID(")
-      || strstr(curr_field_name_up, "LENGTH(")
-      || strstr(curr_field_name_up, "MAX(")
-      || strstr(curr_field_name_up, "MIN(")
-      || strstr(curr_field_name_up, "RANDOM(*)")
-      || strstr(curr_field_name_up, "ROUND(")
-      || strstr(curr_field_name_up, "AVG(")
-      || strstr(curr_field_name_up, "COUNT(")
-      || strstr(curr_field_name_up, "SUM(")) {
-    return FIELD_TYPE_LONG;
-  }
-  else if (strstr(curr_field_name_up, "COALESCE(")
-	   || strstr(curr_field_name_up, "GLOB(")
-	   || strstr(curr_field_name_up, "LIKE(")
-	   || strstr(curr_field_name_up, "LOWER(")
-	   || strstr(curr_field_name_up, "SUBSTR(")
-	   || strstr(curr_field_name_up, "UPPER(")) {
-    return FIELD_TYPE_STRING;
-  }
-      
-
-  /* curr_table now contains the name of the table that the field
-     belongs to. curr_field_name contains the name of the field.
-     Look up the field type using the table_info pragma */
-
-  snprintf(sql_command, MAX_IDENT_LENGTH+80, "PRAGMA table_info(%s)", curr_table);
-  query_res = sqlite3_get_table((sqlite3*)conn->connection,
+      for ( counter = 0 ; counter < table_count ; counter++ ) {
+	//printf("searching table %s\n",tables[counter]);
+	snprintf(sql_command, MAX_IDENT_LENGTH+80, "PRAGMA table_info(%s)", tables[counter]);
+	query_res = sqlite3_get_table((sqlite3*)conn->connection,
 				      sql_command,
 				      &table_result_table,
 				      &table_numrows,
 				      &table_numcols,
 				      &errmsg);
 
-  if (query_res || !table_numrows) {
-    _dbd_internal_error_handler(conn, NULL, DBI_ERROR_BADNAME);
-/*     printf("field not found\n"); */
-    if (table_result_table != NULL) {
-      sqlite3_free_table(table_result_table);
+	if (query_res || !table_numrows) {
+	  /* This table doesn't seem to exist in the database!
+	   * fallback to to string
+	   */
+	  // continue processing
+	}
+	else {
+	  curr_type = get_field_type(&table_result_table, curr_field, table_numrows);
+	  sqlite3_free_table(table_result_table);
+	  if (!curr_type) {
+	    /* the field was not found in this table!
+	     * fallback to string
+	     */
+	    // continue processing
+	  }
+	}
+	if ( curr_type )
+	  break;
+      }
+      if (!curr_type) {
+	/* the field was not found in any of the tables!
+	 * fallback to string
+	 */
+	//printf("field not in any table !\n");
+	return FIELD_TYPE_STRING;
+      }
     }
-    return 0;
+    else {
+      /* no tables in the statement ?!
+       * fallback to string
+       */
+      //printf("no tables in statement !\n");
+      return FIELD_TYPE_STRING;
+    }
   }
-  
-  curr_type = get_field_type(&table_result_table, curr_field_name, table_numrows);
 
-  /* free memory */
-  if (table_result_table != NULL) {
-    sqlite3_free_table(table_result_table);
-  }
-
-  if (!curr_type) {
-/*     printf("no type found\n"); */
-    return 0;
-  }
-  
   /* convert type to uppercase, reuse item */
   item = curr_type;
   while (*item) {
@@ -825,14 +1054,12 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     item++;
   }
 
-
   /* the following code tries to support as many of the SQL types as
      possible, including those extensions supported by MySQL and
      PostgreSQL. Some conflicts remain, like the REAL type which is a
      different thing in MySQL and PostgreSQL */
 
-/*    printf("field type: %s<<\n", curr_type); */
-   fflush(NULL);
+  /*   printf("field type: %s<<\n", curr_type); */
   if (strstr(curr_type, "CHAR(") /* note the opening bracket */
       || strstr(curr_type, "CLOB")
       || strstr(curr_type, "TEXT") /* also catches TINYTEXT */
@@ -859,7 +1086,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     type = FIELD_TYPE_INT24;
   }
   else if (strstr(curr_type, "BIGINT")
-	   || strstr(curr_type, "INTEGER PRIMARY KEY") /* BAD BAD HACK */ 
+	   || strstr(curr_type, "INTEGER PRIMARY KEY") /* BAD BAD HACK */
 	   || strstr(curr_type, "INT8")) {
     type = FIELD_TYPE_LONGLONG;
   }
@@ -896,10 +1123,177 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   else {
     type = FIELD_TYPE_STRING; /* most reasonable default */
   }
-  
-  free(curr_type);
 
+  free(curr_type);
+  //printf("GET FIELD TYPE RETURNS %d !\n",type);
   return type;
+}
+
+int getTables(char** tables, int index, const char* statement) {
+  //printf("getTables\n");
+  //printf("processing %s\n",statement);
+  char* item;
+  char* start;
+  int join_flag = 0;
+  int as_flag = 0;
+  int not_word_flag = 0;
+
+  // the table list will start after 'from' and finish at the last occurrence of
+  // 'where' | 'group' | 'having' | 'union' | 'intersect' | 'except' | 'order' | 'limit'
+
+  char* endwords[] = {"where","group","having","union","intersect","except","order","limit"};
+  char* nottables[] = {"natural","left","right","full","outer","inner","cross","join","as"};
+
+  if ( !(item = strstr(statement, " from ")) ) {
+    if ( !(item = strstr(statement, " FROM ")) )
+      return index;
+  }
+  item += 6;
+
+  while ( *item != '\0' ) {
+    //printf("begin parsing\n");
+    if ( *item == ' ' || *item == ',' ) {
+      item++;
+    }
+    else {
+      //printf("word start\n");
+      start = item; // mark the start of the word
+      if ( *item == '(' ) {
+	//printf("sub select\n");
+	int opens = 1;
+	while ( opens > 0 ) {
+	  item++;
+	  if ( *item == '(' )
+	    opens++;
+	  if ( *item == ')' )
+	    opens--;
+	}
+	char substatement[item-start];
+	strncpy(substatement,start+1,item-(start+1));
+	substatement[item-(start+1)] = '\0';
+	index = getTables(tables,index,substatement);
+	//printf("index is at %d\n",index);
+	item ++;
+      }
+      else {
+	//printf("actual word\n");
+	while ( *item != ',' && *item != ' ' && *item != ')' && *item != '\0' && *item != ';' ) {
+	  item++;
+	}
+	char word[item-start+1];
+	char word_lower[item-start+1];
+	strncpy(word,start,item-start);
+	word[item-start] = '\0';
+	strncpy(word_lower,start,item-start);
+	word_lower[item-start] = '\0';
+	int i = 0;
+	while (word_lower[i]) {
+	  word_lower[i] = tolower(word_lower[i]);
+	  i++;
+	}
+	// if word is an end word we can return
+	for ( i = 0 ; i < (sizeof(endwords)/sizeof *(endwords)) ; i++ ) {
+	  if ( strcmp(endwords[i],word_lower) == 0 ) {
+	    //printf("end word!\n");
+	    return index;
+	  }
+	}
+	// if word is not a table we ignore it and continue
+	for ( i = 0 ; i < (sizeof(nottables)/sizeof *(nottables)) ; i++ ) {
+	  if ( strcmp(nottables[i],word_lower) == 0 ) {
+	    //printf("not a table\n");
+	    // if we encounter join or as we set
+	    // a flag because we know what to do next
+	    if ( strcmp(nottables[7],word_lower) == 0 ) {
+	      //printf("join found\n");
+	      join_flag = 1;
+	    }
+	    if ( strcmp(nottables[8],word_lower) == 0 ) {
+	      //printf("as found\n");
+	      as_flag = 1;
+	    }
+	    not_word_flag = 1;
+	    break;
+	  }
+	}
+	if ( not_word_flag == 1) {
+	  //printf("skipping word\n");
+	  not_word_flag = 0;
+	}
+	else {
+	  if ( as_flag == 1) {
+	    //printf("skipping alias\n");
+	    // this word is an alias, ignore it
+	    as_flag = 0;
+	  }
+	  else {
+	    //printf("found table!\n");
+	    // if we get here the word is a table name
+	    tables[index] = strdup(word);
+	    //printf("table index %d = %s\n",index,tables[index]);
+	    index++;
+	    if ( join_flag == 1) {
+	      //printf("skipping after joined table\n");
+	      // we can ignore everything until the next ',' or 'join'
+	      join_flag = 0;
+	      int skip_flag = 1;
+	      while ( skip_flag == 1 ) {
+		if ( *item == ' ') {
+		  item++;
+		}
+		else {
+		  start = item; // mark the start of the word
+		  // this will skip over the using (id-list)
+		  if ( *item == '(' ) {
+		    //printf("skip over the using (id-list)\n");
+		    int opens = 1;
+		    while ( opens > 0 ) {
+		      item++;
+		      if ( *item == '(' )
+			opens++;
+		      if ( *item == ')' )
+			opens--;
+		    }
+		  }
+		  while ( *item != ',' && *item != ' ' && *item != '(') {
+		    item++;
+		  }
+		  if ( *item == ',') {
+		    //printf("stop skip after comma\n");
+		    // we have come to a comma, so we can stop skipping
+		    skip_flag = 0;
+		    break;
+		  }
+		  word_lower[item-start+1];
+		  strncpy(word_lower,start,item-start);
+		  word_lower[item-start] = '\0';
+		  int i = 0;
+		  while (word_lower[i]) {
+		    word_lower[i] = tolower(word_lower[i]);
+		    i++;
+		  }
+		  if ( strcmp(nottables[7],word_lower) == 0 ) {
+		    //printf("stop skip after join found\n");
+		    // we have found the next join, stop skipping
+		    join_flag = 1;
+		    skip_flag = 0;
+		    break;
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+	if ( *item == '\0' ) {
+	  //printf("returning %d",index);
+	  return index;
+	}
+	item++;
+      }
+    }
+  }
+  //printf("returning %d\n",index);
+  return index;
 }
 
 char* get_field_type(char*** ptr_result_table, const char* curr_field_name, int numrows) {
@@ -936,7 +1330,7 @@ const char *dbd_select_db(dbi_conn_t *conn, const char *db) {
     or opening a database. If we want to switch to a different database,
     we have to drop the current connection and create a new one
     instead, using the new database.
-   */
+  */
 
   if (!db || !*db) {
     return NULL;
@@ -974,12 +1368,12 @@ unsigned long long dbd_get_seq_next(dbi_conn_t *conn, const char *sequence) {
 
 int dbd_ping(dbi_conn_t *conn) {
 
-	if (dbd_query(conn, "SELECT 1") == NULL) {
-	  return 0;
-	}
-	else {
-	  return 1;
-	}
+  if (dbd_query(conn, "SELECT 1") == NULL) {
+    return 0;
+  }
+  else {
+    return 1;
+  }
 }
 
 /* CORE SQLITE3 DATA FETCHING STUFF */
@@ -987,7 +1381,7 @@ int dbd_ping(dbi_conn_t *conn) {
 void _translate_sqlite3_type(enum enum_field_types fieldtype, unsigned short *type, unsigned int *attribs) {
   unsigned int _type = 0;
   unsigned int _attribs = 0;
-/* printf("fieldtype:%d<<\n", fieldtype); */
+  /* printf("fieldtype:%d<<\n", fieldtype); */
   switch (fieldtype) {
   case FIELD_TYPE_TINY:
     _type = DBI_TYPE_INTEGER;
@@ -1071,7 +1465,7 @@ void _get_row_data(dbi_result_t *result, dbi_row_t *row, unsigned long long rowi
 
   while (curfield < result->numfields) {
     /* rowidx appears to be 0-based, but the first row always contains
-     the column names */
+       the column names */
     raw = result_table[curfield + ((rowidx+1)*result->numfields)];
     data = &row->field_values[curfield];
     
@@ -1150,82 +1544,82 @@ int wild_case_compare(const char *str,const char *str_end,
   unsigned char cmp;
 
   while (wildstr != wildend) {
-      while (*wildstr != wild_many && *wildstr != wild_one) {
-	if (*wildstr == escape && wildstr+1 != wildend) {
-	  wildstr++;
-	}
-	if (str == str_end || *wildstr++ != *str++) {
-	  return(1);				// No match
-	}
-	if (wildstr == wildend) {
-	  return (str != str_end);		// Match if both are at end
-	}
-	result=1;					// Found an anchor char
-      }
-      if (*wildstr == wild_one)	{
-	do {
-	  if (str == str_end) {			// Skip one char if possible
-	    return (result);
-	  }
-	  INC_PTR(str,str_end);
-	} while (++wildstr < wildend && *wildstr == wild_one);
-	if (wildstr == wildend) {
-	  break;
-	}
-      }
-
-      if (*wildstr == wild_many) {		// Found wild_many
+    while (*wildstr != wild_many && *wildstr != wild_one) {
+      if (*wildstr == escape && wildstr+1 != wildend) {
 	wildstr++;
-	/* Remove any '%' and '_' from the wild search string */
-	for ( ; wildstr != wildend ; wildstr++) {
-	  if (*wildstr == wild_many) {
-	    continue;
-	  }
-	  if (*wildstr == wild_one) {
-	    if (str == str_end) {
-	      return (-1);
-	    }
-	    INC_PTR(str,str_end);
-	    continue;
-	  }
-	  break;					// Not a wild character
+      }
+      if (str == str_end || *wildstr++ != *str++) {
+	return(1);				// No match
+      }
+      if (wildstr == wildend) {
+	return (str != str_end);		// Match if both are at end
+      }
+      result=1;					// Found an anchor char
+    }
+    if (*wildstr == wild_one)	{
+      do {
+	if (str == str_end) {			// Skip one char if possible
+	  return (result);
 	}
-	if (wildstr == wildend) {
-	  return(0);				// Ok if wild_many is last
-	}
-	if (str == str_end) {
-	  return -1;
-	}
+	INC_PTR(str,str_end);
+      } while (++wildstr < wildend && *wildstr == wild_one);
+      if (wildstr == wildend) {
+	break;
+      }
+    }
 
-	if ((cmp= *wildstr) == escape && wildstr+1 != wildend) {
-	  cmp= *++wildstr;
+    if (*wildstr == wild_many) {		// Found wild_many
+      wildstr++;
+      /* Remove any '%' and '_' from the wild search string */
+      for ( ; wildstr != wildend ; wildstr++) {
+	if (*wildstr == wild_many) {
+	  continue;
 	}
-	INC_PTR(wildstr,wildend);			// This is compared trough cmp
-	  /*        cmp=likeconv(cmp);    */
-	do {
-	  while (str != str_end && *str != cmp) {
-	    str++;
-	  }
-	  if (str++ == str_end) {
+	if (*wildstr == wild_one) {
+	  if (str == str_end) {
 	    return (-1);
 	  }
-
-	  {
-	    int tmp=wild_case_compare(str,str_end,wildstr,wildend,escape);
-	    if (tmp <= 0) {
-	      return (tmp);
-	    }
-	  }
-	} while (str != str_end && wildstr[0] != wild_many);
-	return(-1);
+	  INC_PTR(str,str_end);
+	  continue;
+	}
+	break;					// Not a wild character
       }
+      if (wildstr == wildend) {
+	return(0);				// Ok if wild_many is last
+      }
+      if (str == str_end) {
+	return -1;
+      }
+
+      if ((cmp= *wildstr) == escape && wildstr+1 != wildend) {
+	cmp= *++wildstr;
+      }
+      INC_PTR(wildstr,wildend);			// This is compared trough cmp
+      /*        cmp=likeconv(cmp);    */
+      do {
+	while (str != str_end && *str != cmp) {
+	  str++;
+	}
+	if (str++ == str_end) {
+	  return (-1);
+	}
+
+	{
+	  int tmp=wild_case_compare(str,str_end,wildstr,wildend,escape);
+	  if (tmp <= 0) {
+	    return (tmp);
+	  }
+	}
+      } while (str != str_end && wildstr[0] != wild_many);
+      return(-1);
+    }
   }
   return (str != str_end ? 1 : 0);
 }
 
 /* this function is stolen from MySQL. The quoting was changed to the
- SQL standard, i.e. single and double quotes are escaped by doubling,
- not by a backslash. Newlines and carriage returns are left alone */
+   SQL standard, i.e. single and double quotes are escaped by doubling,
+   not by a backslash. Newlines and carriage returns are left alone */
 static size_t sqlite3_escape_string(char *to, const char *from, size_t length)
 {
   const char *to_start=to;

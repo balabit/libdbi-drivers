@@ -2,7 +2,7 @@
  * libdbi - database independent abstraction layer for C.
  * Copyright (C) 2001, David Parker and Mark Tobenkin.
  * http://libdbi.sourceforge.net
- * 
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -20,7 +20,7 @@
  * dbd_sqlite3.c: SQLite3 database support (using libsqlite3) header file
  * Copyright (C) 2005-2007, Markus Hoenicka <mhoenicka@users.sourceforge.net>
  * http://libdbi.sourceforge.net
- * 
+ *
  * $Id$
  */
 
@@ -46,6 +46,7 @@ enum enum_field_types { FIELD_TYPE_DECIMAL, FIELD_TYPE_TINY,
    column names. SQLite does not seem to have any limit like this, but
    other systems use limits like 32 (PostgreSQL) and 64 (MySQL) */
 #define MAX_IDENT_LENGTH 128
+#define MAX_TABLES_IN_QUERY 50
 
 /* this is the maximum length of a path that the system is guaranteed
    to handle. This is usually defined in limits.h but appears to be

@@ -14,7 +14,7 @@
       </affiliation>
     </author>
     <copyright>
-      <year>2005-2007</year>
+      <year>2005-2008</year>
       <holder>Markus Hoenicka</holder>
     </copyright>
     <legalnotice>
@@ -98,9 +98,6 @@
       <para>To test the operation of the newly installed driver, use the command:</para>
       <screen><prompt>$ </prompt><userinput>make check</userinput></screen>
       <para>This command creates and runs a test program that performs a few basic input and output tests. The program will ask for a database name. This can be any name that is a valid filename on your system. It will also ask for a data directory. This is the directory that is used to create the test database. Needless to say that you need write access to that directory. If you accept the default ".", the database will be created in the <filename class="directory">tests</filename> subdirectory.</para>
-      <note>
-	<para>If for some reason you need to re-create the autoconf/automake-related files, try running <command moreinfo="none">./autogen.sh</command>. I've found out that the current stable autoconf/automake/libtool versions (as found in FreeBSD 4.7 and Debian 3.0) do not cooperate well, so I found it necessary to run the older autoconf 2.13. If necessary, edit <filename moreinfo="none">autogen.sh</filename> so that it will catch the older autoconf version on your system.</para>
-      </note>
     </sect1>
   </chapter>
   <chapter>
@@ -241,7 +238,15 @@
 	  </warning>
 	</listitem>
 	<listitem>
-	  <para>The (essentially) typeless nature of SQLite has some nasty consequences. The sqlite driver takes great care to reconstruct the type of a field that you request in a query, but this isn't always successful. Some of the functions that SQLite supports work both on numeric and text data. The sqlite driver currently cannot deduce the field type correctly as it would have to check all arguments of each function. Instead the sqlite driver makes a few assumptions that may be right or wrong in a given case. The affected functions are <function>coalesce(X,Y,...)</function>, <function>max(X)</function>, <function>min(X)</function>, and <function>count(X)</function>.</para>
+	  <para>The (essentially) typeless nature of SQLite has some nasty consequences. The sqlite driver takes great care to reconstruct the type of a field that you request in a query, but this isn't always successful. To help the driver get things right, please stick to the following rules:</para>
+	  <itemizedlist>
+	    <listitem>
+	      <para>When using a function as a result column [e.g. count(*)], the opening bracket <emphasis>must</emphasis> hug the function name as shown. The function call <emphasis>must</emphasis> also be aliased.</para>
+	    </listitem>
+	    <listitem>
+	      <para>When using an expression as a result column [e.g. (count(*) + 6)], the entire expression <emphasis>must</emphasis> be enclosed in brackets as shown and <emphasis>must</emphasis> also be aliased.</para>
+	    </listitem>
+	  </itemizedlist>
 	</listitem>
 	<listitem>
 	  <para>The sqlite driver currently assumes that the directory separator of your filesystem is a slash (/). This may be wrong on your particular system. It is not a problem for Windows systems as long as the sqlite driver is built with the Cygwin tools (see <filename>README.win32</filename>).</para>

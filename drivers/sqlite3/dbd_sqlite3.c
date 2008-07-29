@@ -246,7 +246,9 @@ int _real_dbd_connect(dbi_conn_t *conn, const char* database) {
      in that it returns the column information even if there are no
      rows in a result set */
   dbi_result = dbd_query(conn, "PRAGMA empty_result_callbacks=1");
-  
+  if (dbi_result) {
+    dbi_result_free(dbi_result);
+  }
   
   return 0;
 }

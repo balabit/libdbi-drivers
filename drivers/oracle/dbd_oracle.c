@@ -841,7 +841,7 @@ time_t _oradate_to_time_t (char *obuff)
 {
   struct  tm tmt;
 /*  char    stime[101], *cp = NULL; */
-/*  time_t  loct = 0L; */
+  time_t  loct = 0L;
 
 /*    memset(stime, 0, sizeof(stime)); */
    

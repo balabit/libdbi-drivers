@@ -1,6 +1,18 @@
 libdbi-drivers NEWS file
 ========================
 
+______________________________________
+1.0 (the "Lightning Blue Eyes" release)
+
+- some of the drivers now export client library functions to the
+  programmer via the dbi_driver_specific_function() interface
+
+- if necessary, the drivers now support libdbi instances
+
+- a segfault in the oracle driver caused by INSERT statements was
+  fixed
+
+
 __________________________________________
 0.8.3 (the "Shores of California" release)
 

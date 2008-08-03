@@ -6,6 +6,33 @@
 ## Hoenicka who then used for the libdbi-drivers project
 ##
 
+dnl AC_SEARCH_LIBS_VAR(FUNCTION, SEARCH-LIBS [, ACTION-IF-FOUND
+dnl            [, ACTION-IF-NOT-FOUND [, OTHER-LIBRARIES [, VAR]]]])
+dnl Search for a library defining FUNC, if it's not already available.
+dnl If a library is needed, add it to VAR (typically prog_LDADD) but
+dnl not to LIBS
+
+AC_DEFUN([AC_SEARCH_LIBS_VAR],
+[AC_PREREQ([2.13])
+AC_CACHE_CHECK([for library containing $1], [ac_cv_search_$1],
+[ac_func_search_save_LIBS="$LIBS"
+ac_cv_search_$1="no"
+AC_TRY_LINK_FUNC([$1], [ac_cv_search_$1="none required"])
+test "$ac_cv_search_$1" = "no" && for i in $2; do
+LIBS="-l$i $5 $ac_func_search_save_LIBS"
+AC_TRY_LINK_FUNC([$1],
+[ac_cv_search_$1="-l$i"
+break])
+done
+LIBS="$ac_func_search_save_LIBS"])
+if test "$ac_cv_search_$1" != "no"; then
+  test "$ac_cv_search_$1" = "none required" || $6="$$6 $ac_cv_search_$1"
+  $3
+else :
+  $4
+fi])
+
+dnl try to get rid of this
 AC_DEFUN([AC_FIND_FILE],
 [
 $3=no
@@ -36,17 +63,11 @@ AC_ARG_WITH(dbi-incdir,
 	[  ac_dbi_incdir="$withval" ])
 
 if test "$ac_dbi_incdir" = "no"; then
-	dbi_incdirs="/usr/include /usr/local/include /sw/include"
-	AC_FIND_FILE(dbi/dbi.h, $dbi_incdirs, ac_dbi_incdir)
-	if test "$ac_dbi_incdir" = "no"; then
-		AC_MSG_RESULT(no)
-		AC_MSG_ERROR([Invalid libdbi directory - include files not found.])
-	fi
+	AC_CHECK_HEADERS([dbi/dbi.h])
+	DBI_INCLUDE=""
+else
+	DBI_INCLUDE=-I$ac_dbi_incdir
 fi
-AC_MSG_RESULT([yes: headers in $ac_dbi_incdir])
-AM_CONDITIONAL(HAVE_DBI, true)
-	
-DBI_INCLUDE=-I$ac_dbi_incdir
 	
 AC_SUBST(DBI_INCLUDE)
 ])
@@ -70,10 +91,6 @@ AC_MSG_CHECKING(for MySQL support)
 AC_ARG_WITH(mysql,
 	[  --with-mysql            Include MySQL support.],
 	[  ac_mysql="$withval" ])
-AC_ARG_WITH(mysql-dir,
-	[  --with-mysql-dir        Specifies the MySQL root directory.],
-	[  ac_mysql_incdir="$withval"/include
-	   ac_mysql_libdir="$withval"/lib ])
 AC_ARG_WITH(mysql-incdir,
 	[  --with-mysql-incdir     Specifies where the MySQL include files are.],
 	[  ac_mysql_incdir="$withval" ])
@@ -82,31 +99,34 @@ AC_ARG_WITH(mysql-libdir,
 	[  ac_mysql_libdir="$withval" ])
 
 if test "$ac_mysql" = "yes"; then
-	if test "$ac_mysql_incdir" = "no" || test "$ac_mysql_libs" = "no"; then
-		mysql_incdirs="/usr/include /usr/local/include /usr/include/mysql /usr/local/include/mysql /usr/local/mysql/include /usr/local/mysql/include/mysql /opt/mysql/include/mysql /sw/include/mysql"
-		AC_FIND_FILE(mysql/mysql.h, $mysql_incdirs, ac_mysql_incdir)
-		mysql_libdirs="/usr/lib /usr/local/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib /usr/local/mysql/lib/mysql /opt/mysql/lib/mysql /sw/lib/mysql"
-		mysql_libs="libmysqlclient.so libmysqlclient.a"
-		AC_FIND_FILE($mysql_libs, $mysql_libdirs, ac_mysql_libdir)
-		if test "$ac_mysql_incdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid MySQL directory - include files not found.])
-		fi
-		if test "$ac_mysql_libdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid MySQL directory - libraries not found.])
+   	AC_MSG_RESULT(yes)
+	if test "$ac_mysql_incdir" = "no" || test "$ac_mysql_libdir" = "no"; then
+	   	AC_CHECK_PROG([MYSQL_CONFIG], [mysql_config], [yes], [no])
+		if test "$MYSQL_CONFIG" = "no"; then
+		   AC_MSG_ERROR([cannot auto-configure MySQL without mysql_config])
 		fi
 	fi
-	AC_MSG_RESULT([yes: libs in $ac_mysql_libdir, headers in $ac_mysql_incdir])
+
+	if test "$ac_mysql_incdir" = "no"; then
+		MYSQL_INCLUDE=`mysql_config --include`
+	else
+		MYSQL_INCLUDE=-I$ac_mysql_incdir
+	fi
+	if test "$ac_mysql_libdir" = "no"; then
+		MYSQL_LDFLAGS=`mysql_config --libs`
+	else
+		MYSQL_LDFLAGS=-L$ac_mysql_libdir
+	fi
+
 	AM_CONDITIONAL(HAVE_MYSQL, true)
-	
-	MYSQL_LIBS=-lmysqlclient
-	MYSQL_INCLUDE=-I$ac_mysql_incdir
-	MYSQL_LDFLAGS=-L$ac_mysql_libdir
 	
 	AC_SUBST(MYSQL_LIBS)
 	AC_SUBST(MYSQL_INCLUDE)
+	AC_MSG_CHECKING(for MySQL includes)
+	AC_MSG_RESULT($MYSQL_INCLUDE)
 	AC_SUBST(MYSQL_LDFLAGS)
+	AC_MSG_CHECKING(for MySQL libraries)
+	AC_MSG_RESULT($MYSQL_LDFLAGS)
 else
 	AC_MSG_RESULT(no)
 fi
@@ -131,10 +151,6 @@ AC_MSG_CHECKING(for PostgreSQL support)
 AC_ARG_WITH(pgsql,
 	[  --with-pgsql            Include PostgreSQL support.],
 	[  ac_pgsql="$withval" ])
-AC_ARG_WITH(pgsql-dir,
-	[  --with-pgsql-dir        Specifies the PostgreSQL root directory.],
-	[  ac_pgsql_incdir="$withval"/include
-	   ac_pgsql_libdir="$withval"/lib ])
 AC_ARG_WITH(pgsql-incdir,
 	[  --with-pgsql-incdir     Specifies where the PostgreSQL include files are.],
 	[  ac_pgsql_incdir="$withval" ])
@@ -143,31 +159,36 @@ AC_ARG_WITH(pgsql-libdir,
 	[  ac_pgsql_libdir="$withval" ])
 
 if test "$ac_pgsql" = "yes"; then
-	if test "$ac_pgsql_incdir" = "no" || test "$ac_pgsql_libs" = "no"; then
-		pgsql_incdirs="/usr/include /usr/local/include /usr/include/pgsql /usr/local/include/pgsql /usr/local/pgsql/include /usr/include/postgresql /usr/local/postgresql/include /opt/pgsql/include"
-		AC_FIND_FILE(libpq-fe.h, $pgsql_incdirs, ac_pgsql_incdir)
-		pgsql_libdirs="/usr/lib /usr/local/lib /usr/lib/pgsql /usr/local/lib/pgsql /usr/local/pgsql/lib /opt/pgsql/lib"
-		pgsql_libs="libpq.so libpq.a"
-		AC_FIND_FILE($pgsql_libs, $pgsql_libdirs, ac_pgsql_libdir)
-		if test "$ac_pgsql_incdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid PostgreSQL directory - include files not found.])
-		fi
-		if test "$ac_pgsql_libdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid PostgreSQL directory - libraries not found.])
+	AC_MSG_RESULT([yes])
+	if test "$ac_pgsql_incdir" = "no" || test "$ac_pgsql_libdir" = "no"; then
+	   	AC_CHECK_PROG([PG_CONFIG], [pg_config], [yes], [no])
+		if test "$PG_CONFIG" = "no"; then
+		   AC_MSG_ERROR([cannot auto-configure PostgreSQL without pg_config])
 		fi
 	fi
-	AC_MSG_RESULT([yes: libs in $ac_pgsql_libdir, headers in $ac_pgsql_incdir])
-	AM_CONDITIONAL(HAVE_PGSQL, true)
-	
+	if test "$ac_pgsql_incdir" = "no"; then
+		PGSQL_INCLUDE="-I"`pg_config --includedir`
+	else
+		PGSQL_INCLUDE=-I$ac_mysql_incdir
+	fi
+	if test "$ac_pgsql_libdir" = "no"; then
+		PGSQL_LDFLAGS=`pg_config --libdir`
+	else
+		PGSQL_LDFLAGS=-L$ac_mysql_libdir
+	fi
+
 	PGSQL_LIBS=-lpq
-	PGSQL_INCLUDE=-I$ac_pgsql_incdir
-	PGSQL_LDFLAGS=-L$ac_pgsql_libdir
+
+
+	AM_CONDITIONAL(HAVE_PGSQL, true)
 	
 	AC_SUBST(PGSQL_LIBS)
 	AC_SUBST(PGSQL_INCLUDE)
+	AC_MSG_CHECKING(for PostgreSQL includes)
+	AC_MSG_RESULT($PGSQL_INCLUDE)
 	AC_SUBST(PGSQL_LDFLAGS)
+	AC_MSG_CHECKING(for PostgreSQL libraries)
+	AC_MSG_RESULT($PGSQL_LDFLAGS)
 else
 	AC_MSG_RESULT(no)
 fi
@@ -192,10 +213,6 @@ AC_MSG_CHECKING(for SQLite support)
 AC_ARG_WITH(sqlite,
 	[  --with-sqlite           Include SQLite support.],
 	[  ac_sqlite="$withval" ])
-AC_ARG_WITH(sqlite-dir,
-	[  --with-sqlite-dir       Specifies the SQLite root directory.],
-	[  ac_sqlite_incdir="$withval"/include
-	   ac_sqlite_libdir="$withval"/lib ])
 AC_ARG_WITH(sqlite-incdir,
 	[  --with-sqlite-incdir    Specifies where the SQLite include files are.],
 	[  ac_sqlite_incdir="$withval" ])
@@ -204,27 +221,22 @@ AC_ARG_WITH(sqlite-libdir,
 	[  ac_sqlite_libdir="$withval" ])
 
 if test "$ac_sqlite" = "yes"; then
-	if test "$ac_sqlite_incdir" = "no" || test "$ac_sqlite_libs" = "no"; then
-		sqlite_incdirs="/usr/include /usr/local/include /usr/include/sqlite /usr/local/include/sqlite /usr/local/sqlite/include /opt/sqlite/include"
-		AC_FIND_FILE(sqlite.h, $sqlite_incdirs, ac_sqlite_incdir)
-		sqlite_libdirs="/usr/lib /usr/local/lib /usr/lib/sqlite /usr/local/lib/sqlite /usr/local/sqlite/lib /opt/sqlite/lib"
-		sqlite_libs="libsqlite.so libsqlite.a"
-		AC_FIND_FILE($sqlite_libs, $sqlite_libdirs, ac_sqlite_libdir)
-		if test "$ac_sqlite_incdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid SQLite directory - include files not found.])
-		fi
-		if test "$ac_sqlite_libdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid SQLite directory - libraries not found.])
-		fi
+	AC_MSG_RESULT([yes])
+	if test "$ac_sqlite_incdir" = "no"; then
+		AC_CHECK_HEADER([sqlite.h])
+		SQLITE_INCLUDE=""
+	else
+		SQLITE_INCLUDE=-I$ac_sqlite_incdir
 	fi
-	AC_MSG_RESULT([yes: libs in $ac_sqlite_libdir, headers in $ac_sqlite_incdir])
+	if test "$ac_sqlite_libdir" = "no"; then
+		AC_SEARCH_LIBS_VAR(sqlite_exec, sqlite, , , , SQLITE_LIBS)
+		SQLITE_LDFLAGS=""
+	else
+		SQLITE_LIBS=-lsqlite
+		SQLITE_LDFLAGS=-L$ac_sqlite_libdir
+	fi
+
 	AM_CONDITIONAL(HAVE_SQLITE, true)
-	
-	SQLITE_LIBS=-lsqlite
-	SQLITE_INCLUDE=-I$ac_sqlite_incdir
-	SQLITE_LDFLAGS=-L$ac_sqlite_libdir
 	
 	AC_SUBST(SQLITE_LIBS)
 	AC_SUBST(SQLITE_INCLUDE)
@@ -251,41 +263,32 @@ SQLITE3_INCLUDE=""
 AC_MSG_CHECKING(for SQLite3 support)
 
 AC_ARG_WITH(sqlite3,
-	[  --with-sqlite3          Include SQLite3 support.],
+	[  --with-sqlite3           Include SQLite3 support.],
 	[  ac_sqlite3="$withval" ])
-AC_ARG_WITH(sqlite3-dir,
-	[  --with-sqlite3-dir      Specifies the SQLite3 root directory.],
-	[  ac_sqlite3_incdir="$withval"/include
-	   ac_sqlite3_libdir="$withval"/lib ])
 AC_ARG_WITH(sqlite3-incdir,
-	[  --with-sqlite3-incdir   Specifies where the SQLite3 include files are.],
+	[  --with-sqlite3-incdir    Specifies where the SQLite3 include files are.],
 	[  ac_sqlite3_incdir="$withval" ])
 AC_ARG_WITH(sqlite3-libdir,
-	[  --with-sqlite3-libdir   Specifies where the SQLite3 libraries are.],
+	[  --with-sqlite3-libdir    Specifies where the SQLite3 libraries are.],
 	[  ac_sqlite3_libdir="$withval" ])
 
 if test "$ac_sqlite3" = "yes"; then
-	if test "$ac_sqlite3_incdir" = "no" || test "$ac_sqlite3_libs" = "no"; then
-		sqlite3_incdirs="/usr/include /usr/local/include /usr/include/sqlite3 /usr/local/include/sqlite3 /usr/local/sqlite3/include /opt/sqlite3/include"
-		AC_FIND_FILE(sqlite3.h, $sqlite3_incdirs, ac_sqlite3_incdir)
-		sqlite3_libdirs="/usr/lib /usr/local/lib /usr/lib/sqlite3 /usr/local/lib/sqlite3 /usr/local/sqlite3/lib /opt/sqlite3/lib"
-		sqlite3_libs="libsqlite3.so libsqlite3.a"
-		AC_FIND_FILE($sqlite3_libs, $sqlite3_libdirs, ac_sqlite3_libdir)
-		if test "$ac_sqlite3_incdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid SQLite3 directory - include files not found.])
-		fi
-		if test "$ac_sqlite3_libdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid SQLite3 directory - libraries not found.])
-		fi
+	AC_MSG_RESULT([yes])
+	if test "$ac_sqlite3_incdir" = "no"; then
+		AC_CHECK_HEADER([sqlite3.h])
+		SQLITE3_INCLUDE=""
+	else
+		SQLITE3_INCLUDE=-I$ac_sqlite3_incdir
 	fi
-	AC_MSG_RESULT([yes: libs in $ac_sqlite3_libdir, headers in $ac_sqlite3_incdir])
+	if test "$ac_sqlite3_libdir" = "no"; then
+		AC_SEARCH_LIBS_VAR([sqlite3_exec], sqlite3, , , , SQLITE3_LIBS)
+		SQLITE3_LDFLAGS=""
+	else
+		SQLITE3_LIBS=-lsqlite
+		SQLITE3_LDFLAGS=-L$ac_sqlite3_libdir
+	fi
+
 	AM_CONDITIONAL(HAVE_SQLITE3, true)
-	
-	SQLITE3_LIBS=-lsqlite3
-	SQLITE3_INCLUDE=-I$ac_sqlite3_incdir
-	SQLITE3_LDFLAGS=-L$ac_sqlite3_libdir
 	
 	AC_SUBST(SQLITE3_LIBS)
 	AC_SUBST(SQLITE3_INCLUDE)
@@ -294,6 +297,7 @@ else
 	AC_MSG_RESULT(no)
 fi
 ])
+
 
 ## mSQL
 
@@ -309,43 +313,35 @@ MSQL_LIBS=""
 MSQL_LDFLAGS=""
 MSQL_INCLUDE=""
 
-AC_MSG_CHECKING(for MiniSQL (mSQL) support)
+AC_MSG_CHECKING(for Msql support)
 
 AC_ARG_WITH(msql,
-	[  --with-msql             Include mSQL support.],
+	[  --with-msql           Include MiniSQL (mSQL) support.],
 	[  ac_msql="$withval" ])
-AC_ARG_WITH(msql-dir,
-	[  --with-msql-dir         Specifies the mSQL root directory.],
-	[  ac_msql_incdir="$withval"/include
-	   ac_msql_libdir="$withval"/lib ])
 AC_ARG_WITH(msql-incdir,
-	[  --with-msql-incdir      Specifies where the mSQL include files are.],
+	[  --with-msql-incdir    Specifies where the mSQL include files are.],
 	[  ac_msql_incdir="$withval" ])
 AC_ARG_WITH(msql-libdir,
-	[  --with-msql-libdir      Specifies where the mSQL libraries are.],
+	[  --with-msql-libdir    Specifies where the mSQL libraries are.],
 	[  ac_msql_libdir="$withval" ])
 
 if test "$ac_msql" = "yes"; then
-	if test "$ac_msql_incdir" = "no" || test "$ac_msql_libs" = "no"; then
-		msql_incdirs="/usr/local/msql3/include /usr/msql3/include /opt/msql3/include/ /usr/include /usr/local/include"
-		AC_FIND_FILE(msql.h, $msql_incdirs, ac_msql_incdir)
-		msql_libdirs="/usr/lib /usr/local/lib /usr/lib/msql3 /usr/local/lib/msql /usr/local/msql3/lib /opt/msql3/lib"
-		AC_FIND_FILE(libmsql.a, $msql_libdirs, ac_msql_libdir)
-		if test "$ac_msql_incdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid mSQL directory - include files not found.])
-		fi
-		if test "$ac_msql_libdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid mSQL directory - libraries not found.])
-		fi
+	AC_MSG_RESULT([yes])
+	if test "$ac_msql_incdir" = "no"; then
+		AC_CHECK_HEADER([msql.h])
+		MSQL_INCLUDE=""
+	else
+		MSQL_INCLUDE=-I$ac_msql_incdir
 	fi
-	AC_MSG_RESULT([yes: libs in $ac_msql_libdir, headers in $ac_msql_incdir])
+	if test "$ac_msql_libdir" = "no"; then
+		AC_SEARCH_LIBS_VAR(msql_exec, msql, , , , MSQL_LIBS)
+		MSQL_LDFLAGS=""
+	else
+		MSQL_LIBS=-lmsql
+		MSQL_LDFLAGS=-L$ac_msql_libdir
+	fi
+
 	AM_CONDITIONAL(HAVE_MSQL, true)
-	
-	MSQL_LIBS=-lmsql
-	MSQL_INCLUDE=-I$ac_msql_incdir
-	MSQL_LDFLAGS=-L$ac_msql_libdir
 	
 	AC_SUBST(MSQL_LIBS)
 	AC_SUBST(MSQL_INCLUDE)
@@ -354,6 +350,7 @@ else
 	AC_MSG_RESULT(no)
 fi
 ])
+
 
 ## Oracle
 
@@ -432,57 +429,32 @@ FIREBIRD_INCLUDE=""
 AC_MSG_CHECKING(for Firebird/Interbase support)
 
 AC_ARG_WITH(firebird,
-	[  --with-firebird         Include Firebird support.],
+	[  --with-firebird           Include Firebird/Interbase support.],
 	[  ac_firebird="$withval" ])
-AC_ARG_WITH(firebird-dir,
-	[  --with-firebird-dir     Specifies Firebird directory.],
-	[  ac_firebird_incdir="$withval"/include
-	   ac_firebird_libdir="$withval"/lib ])
 AC_ARG_WITH(firebird-incdir,
-	[  --with-firebird-incdir  Specifies where Firebird/Interbase include files are.],
+	[  --with-firebird-incdir    Specifies where the Firebird/Interbase include files are.],
 	[  ac_firebird_incdir="$withval" ])
 AC_ARG_WITH(firebird-libdir,
-	[  --with-firebird-libdir  Specifies where Firebird/Interbase libraries are.],
+	[  --with-firebird-libdir    Specifies where the Firebird/Interbase libraries are.],
 	[  ac_firebird_libdir="$withval" ])
 
 if test "$ac_firebird" = "yes"; then
-	if test "$ac_firebird_incdir" = "no" || test "$ac_firebird_libs" = "no"; then
-		firebird_incdirs="/opt/firebird/include /usr/include /usr/local/include /usr/include/firebird /usr/local/include/firebird /usr/local/firebird/include /opt/firebird/include"
-		AC_FIND_FILE(ibase.h, $firebird_incdirs, ac_firebird_incdir)
-		firebird_libdirs="/opt/firebird/lib /usr/lib /usr/local/lib /usr/lib/firebird /usr/local/lib/firebird /usr/local/firebird/lib /opt/firebird/lib"
-dnl		AC_FIND_FILE(libfbclient.so, $firebird_libdirs, ac_firebird_libdir)
-		AC_FIND_FILE(libfbembed.so, $firebird_libdirs, ac_firebird_libdir)
-		if test "$ac_firebird_incdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid Firebird/Interbase directory - include files not found.])
-		fi
-		if test "$ac_firebird_libdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid Firebird/Interbase directory - libraries not found.])
-		fi
+	AC_MSG_RESULT([yes])
+	if test "$ac_firebird_incdir" = "no"; then
+		AC_CHECK_HEADER([ibase.h])
+		FIREBIRD_INCLUDE=""
+	else
+		FIREBIRD_INCLUDE=-I$ac_firebird_incdir
 	fi
-	AC_MSG_RESULT([yes: libs in $ac_firebird_libdir, headers in $ac_firebird_incdir])
+	if test "$ac_firebird_libdir" = "no"; then
+		AC_SEARCH_LIBS_VAR(isc_dsql_fetch, fbembed, , , , FIREBIRD_LIBS)
+		FIREBIRD_LDFLAGS=""
+	else
+		FIREBIRD_LIBS=-lfbembed
+		FIREBIRD_LDFLAGS=-L$ac_firebird_libdir
+	fi
+
 	AM_CONDITIONAL(HAVE_FIREBIRD_INTERBASE, true)
-	
-	dnl libfbclient needs pthreads
-	AC_SEARCH_LIBS(pthread_create, c_r pthread,,)
-	CFLAGS="$CFLAGS -I$ac_firebird_incdir"
-
-	dnl firebird versions prior to 2.0 do not define ISC_SCHAR
-	AC_MSG_CHECKING(for ISC_SCHAR type definition)
-	AC_COMPILE_IFELSE(AC_LANG_PROGRAM(
-	[[#include <ibase.h>]],
-	[[ISC_SCHAR c;]]),
-
-	[AC_DEFINE([HAVE_ISC_SCHAR], ["1"], [Define to 1 if ibase.h defines ISC_SCHAR])
-	SCHAR_MSG="yes"],
-	[SCHAR_MSG="no"])
-	AC_MSG_RESULT([$SCHAR_MSG])
-
-dnl	FIREBIRD_LIBS="-lfbclient"
-	FIREBIRD_LIBS="-lfbembed"
-	FIREBIRD_INCLUDE="-I$ac_firebird_incdir"
-	FIREBIRD_LDFLAGS="-L$ac_firebird_libdir"
 	
 	AC_SUBST(FIREBIRD_LIBS)
 	AC_SUBST(FIREBIRD_INCLUDE)
@@ -491,6 +463,7 @@ else
 	AC_MSG_RESULT(no)
 fi
 ])
+
 
 ## Freetds
 
@@ -509,40 +482,32 @@ FREETDS_INCLUDE=""
 AC_MSG_CHECKING(for Freetds support)
 
 AC_ARG_WITH(freetds,
-	[  --with-freetds          Include Freetds support.],
+	[  --with-freetds           Include Freetds support.],
 	[  ac_freetds="$withval" ])
-AC_ARG_WITH(freetds-dir,
-	[  --with-freetds-dir      Specifies FREETDS_HOME.],
-	[  ac_freetds_incdir="$withval"/include
-	   ac_freetds_libdir="$withval"/lib ])
 AC_ARG_WITH(freetds-incdir,
-	[  --with-freetds-incdir   Specifies where the Freetds include files are.],
+	[  --with-freetds-incdir    Specifies where the Freetds include files are.],
 	[  ac_freetds_incdir="$withval" ])
 AC_ARG_WITH(freetds-libdir,
-	[  --with-freetds-libdir   Specifies where the Freetds libraries are.],
+	[  --with-freetds-libdir    Specifies where the Freetds libraries are.],
 	[  ac_freetds_libdir="$withval" ])
 
 if test "$ac_freetds" = "yes"; then
-	if test "$ac_freetds_incdir" = "no" || test "$ac_freetds_libs" = "no"; then
-		freetds_incdirs="/usr/include /usr/local/include"
-		AC_FIND_FILE(tds.h, $freetds_incdirs, ac_freetds_incdir)
-		freetds_libdirs="/usr/lib /usr/local/lib"
-		AC_FIND_FILE(libtds.so, $freetds_libdirs, ac_freetds_libdir)
-		if test "$ac_freetds_incdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid Freetds directory - include files not found.])
-		fi
-		if test "$ac_freetds_libdir" = "no"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([Invalid Freetds directory - libraries not found.])
-		fi
+	AC_MSG_RESULT([yes])
+	if test "$ac_freetds_incdir" = "no"; then
+		AC_CHECK_HEADER([tds.h])
+		FREETDS_INCLUDE=""
+	else
+		FREETDS_INCLUDE=-I$ac_freetds_incdir
 	fi
-	AC_MSG_RESULT([yes: libs in $ac_freetds_libdir, headers in $ac_freetds_incdir])
+	if test "$ac_freetds_libdir" = "no"; then
+		AC_SEARCH_LIBS_VAR(ct_command, ct, , , , FREETDS_LIBS)
+		FREETDS_LDFLAGS=""
+	else
+		FREETDS_LIBS=-lct
+		FREETDS_LDFLAGS=-L$ac_freetds_libdir
+	fi
+
 	AM_CONDITIONAL(HAVE_FREETDS, true)
-	
-	FREETDS_LIBS=-lct
-	FREETDS_INCLUDE=-I$ac_freetds_incdir
-	FREETDS_LDFLAGS=-L$ac_freetds_libdir
 	
 	AC_SUBST(FREETDS_LIBS)
 	AC_SUBST(FREETDS_INCLUDE)
@@ -551,6 +516,7 @@ else
 	AC_MSG_RESULT(no)
 fi
 ])
+
 
 ## Ingres
 

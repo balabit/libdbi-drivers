@@ -1,0 +1,56 @@
+#!/usr/local/bin/make -f                                                                                                                                           
+STAMPDIR=tgz2build/stamps
+
+CONFIGURE_OPTS := --prefix=$(ZBS_PREFIX) --disable-docs --without-oracle
+
+ifneq (,$(findstring solaris,$(ZBS_DIST)))
+# Under solaris we need this switch to be able to use iconv.
+  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-mysql --with-pgsql
+endif
+
+ifneq (,$(findstring hpux,$(ZBS_DIST)))
+# Under hpux we need this switch to be able to use iconv.
+  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-mysql --with-pgsql
+endif
+
+ifneq (,$(findstring aix,$(ZBS_DIST)))
+# Under hpux we need this switch to be able to use iconv.
+  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-mysql --with-pgsql
+endif
+
+ifneq (,$(findstring linux-generic,$(ZBS_DIST)))
+# Under hpux we need this switch to be able to use iconv.
+  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-mysql --with-pgsql --with-freetds --with-freetds-incdir=/opt/syslog-ng/include/ --with-freetds-libdir=/opt/syslog-ng/lib/ --with-oracle --with-oracle-incdir=/opt/syslog-ng/include/oracle/10.2.0.3/client/ --with-oracle-libdir=/opt/syslog-ng/lib/oracle/10.2.0.3/client/lib/
+endif
+
+
+all: binary
+
+binary: setup configure build install
+
+setup:  $(STAMPDIR)/stamp-setup
+$(STAMPDIR)/stamp-setup:
+	mkdir tgz2build/stamps || true
+	touch $@
+
+configure: $(STAMPDIR)/stamp-configure
+	./configure $(CONFIGURE_OPTS)
+	touch $@
+
+$(STAMPDIR)/stamp-configure: setup
+
+build:  $(STAMPDIR)/stamp-build
+$(STAMPDIR)/stamp-build: configure
+	$(MAKE)
+	touch $@
+install: $(STAMPDIR)/stamp-install
+$(STAMPDIR)/stamp-install: build
+	rm -rf $(ZBS_STAGE_DIR) || true
+	$(MAKE) install DESTDIR=$(ZBS_STAGE_DIR)
+	touch $@
+clean:
+	rm -rf tgz2build/stamps || true
+	rm -rf tgz2build/staging || true
+	$(MAKE) clean
+
+.PHONY: build clean binary-indep binary-arch binary install

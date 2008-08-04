@@ -1,0 +1,2 @@
+debian/tmp/usr/lib/dbd/libdbdsqlite.la /usr/lib/dbd
+debian/tmp/usr/lib/dbd/libdbdsqlite.so /usr/lib/dbd

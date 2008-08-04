@@ -1,14 +1,15 @@
 Source: libdbi-drivers
 Section: libs
 Priority: optional
-Maintainer: David Parker <david@neongoat.com>
-Build-Depends: debhelper (>> 3.0.0), libdbi0-dev (>= 0.8.0), libmysqlclient14-dev, postgresql-dev, libsqlite0-dev, libsqlite3-dev
-Standards-Version: 3.6.1
+Maintainer: Thomas Goirand <thomas@goirand.fr>
+Build-Depends: debhelper (>= 6), autotools-dev, libdbi0-dev (>= 0.7.0), libmysqlclient-dev, libpq-dev (>= 8.3~rc2-1+b1), libsqlite0-dev, libsqlite3-dev, freetds-dev
+Standards-Version: 3.7.3
+Homepage: http://libdbi.sourceforge.net/
 
 Package: libdbd-sqlite
 Section: libs
 Architecture: any
-Depends: libdbi0 (>= 0.8.0), ${shlibs:Depends}
+Depends: libdbi0 (>= 0.8.2), ${shlibs:Depends}
 Description: SQLite database driver for libdbi
  This driver provides support for serverless SQLite databases through the
  libdbi Database Independent Abstraction Layer. Switching a program's driver
@@ -17,16 +18,16 @@ Description: SQLite database driver for libdbi
 Package: libdbd-sqlite3
 Section: libs
 Architecture: any
-Depends: libdbi0 (>= 0.8.0), ${shlibs:Depends}
+Depends: libdbi0 (>= 0.8.2), ${shlibs:Depends}
 Description: SQLite3 database driver for libdbi
- This driver provides support for serverless SQLite3 databases through the
+ This driver provides support for serverless SQLite databases through the
  libdbi Database Independent Abstraction Layer. Switching a program's driver
  does not require recompilation or rewriting source code.
 
 Package: libdbd-mysql
 Section: libs
 Architecture: any
-Depends: libdbi0 (>= 0.8.0), ${shlibs:Depends}
+Depends: libdbi0 (>= 0.8.2), ${shlibs:Depends}
 Description: MySQL database server driver for libdbi
  This driver provides connectivity to MySQL database servers through the
  libdbi Database Independent Abstraction Layer. Switching a program's driver
@@ -35,9 +36,18 @@ Description: MySQL database server driver for libdbi
 Package: libdbd-pgsql
 Section: libs
 Architecture: any
-Depends: libdbi0 (>= 0.8.0), ${shlibs:Depends}
+Depends: libdbi0 (>= 0.8.2), ${shlibs:Depends}
 Description: PostgreSQL database server driver for libdbi
  This driver provides connectivity to PostgreSQL database servers through the
  libdbi Database Independent Abstraction Layer. Switching a program's driver
  does not require recompilation or rewriting source code.
 
+Package: libdbd-freetds
+Section: libs
+Architecture: any
+Depends: libdbi0 (>= 0.8.2), ${shlibs:Depends}
+Description: Freetds database server driver for libdbi
+ This driver provides connectivity to MS SQL Server or Sybase database
+ servers through the libdbi Database Independent Abstraction Layer using
+ Freetds. Switching a program's driver does not require recompilation or
+ rewriting source code.

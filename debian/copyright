@@ -1,23 +1,298 @@
 This package was debianized by David Parker <david@neongoat.com> on
 Tue, 25 Mar 2003 21:50:34 -0800.
 
-It was downloaded from http://libdbi-drivers.sourceforge.net/
+Original source may be found at: from http://libdbi-drivers.sourceforge.net/
 
-Upstream Author: Markus Hoenicka <mhoenicka@users.sourceforge.net>
+Packager note (Thomas Goirand <thomas@goirand.fr>):
+	Most of the packages here are released using LGPL. Some documentation
+	are released using GFDL (eg drivers/mysql & drivers/pgsql), but with no
+	invariant section, so they are seen as free in the eyes of Debian.
+	Others have no documentation notice at all, so they are supposedly
+	released with the same license as the library themself (eg: LGPL or GPL
+	depending on the driver). This particular topic has been confirmed by
+	the project admin, Markus Hoenicka.
 
-Copyright:
+Upstream Author:
 
-Copyright (C) 2001-2002, Markus Hoenicka.
+	Project admin:
+	* Markus Hoenicka <markus@mhoenicka.de>
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of
-the License, or (at your option) any later version.
+	Driver developers/maintainers:
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+	* Firebird/Interbase
+	  developed by Christian M. Stamgren <christian@centiongroup.com>
 
-On Debian systems, the complete text of the GNU General Public
-License can be found in /usr/share/common-licenses/GPL file.
+	* FreeTDS
+	  developed by Vadym Kononenko <vkononenko@atlantic-link.com.ua>
+
+	* mSQL
+	  developed by Christian M. Stamgren <christian@centiongroup.com>
+
+	* MySQL
+	  developed by Mark Tobenkin <mark at brentwoodradio.com>
+	  maintained by Markus Hoenicka <markus@mhoenicka.de>
+
+	* Oracle
+	  developed by Christian M. Stamgren <christian at centiongroup.com>
+	  maintained by Ashish Ranjan <ashishwave@yahoo.com>
+
+	* PostgreSQL
+	  developed by David A. Parker <david at neongoat.com>
+	  maintained by Markus Hoenicka <markus@mhoenicka.de>
+
+	* SQLite
+	  developed by Markus Hoenicka <markus@mhoenicka.de>
+
+	* SQLite3
+	  developed by Markus Hoenicka <markus@mhoenicka.de>
+
+	* Ingres 2006
+	  developed by Toby Thain <qu1j0t3@sourceforge.net>
+
+	Those who helped one way or another:
+	* Peter O'Gorman <pogma@opendarwin.org>
+	  - configure/Makefile/libtool fixes, OSX guru
+
+Files: debian/*
+Copyright: (C) 2005-2007 David Nebauer <david@nebauer.org>
+	(C) 2001-2005, David A. Parker <david@neongoat.com>
+	(C) 2007, Thomas Goirand <thomas@goirand.fr>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+Files: drivers/firebird/*
+Copyright: (C) 2001-2004, David Parker <david@neongoat.com>
+	(C) 2001-2004, Mark Tobenkin <mark@brentwoodradio.com>
+	(C) 2001-2005, Christian M. Stamgren <christian@centiongroup.com>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+Files: drivers/freetds/*
+Copyright: Copyright (C) 2001-2005, Vadym Kononenko <konan_v@users.sourceforge.net>
+	Copyright (C) 2001-2005, Christian M. Stamgren <christian@stamgren.com>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+Files: drivers/ingres/*
+Copyright: (C) 2006, Toby Thain <qu1j0t3@sourceforge.net>
+	Copyright (C) 2001-2002, David Parker <david@neongoat.com>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+Files: drivers/msql/*
+Copyright: (C) 2001-2002, Mark Tobenkin <mark@brentwoodradio.com>
+	Copyright (C) 2001-2002, David Parker <david@neongoat.com>
+	Copyright (C) 2001-2007, Markus Hoenicka <markus@mhoenicka.de>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+Files: driver/msql/*.sgml
+Copyright: (C) 2001-2003, Christian Stamgren christian@centiongroup.com
+License: GFDL-1.2
+
+	Permission is granted to copy, distribute and/or modify this document
+	under the terms of the GNU Free Documentation License, Version 1.2
+	published by the Free Software Foundation; with no Invariant Sections,
+	no Front-Cover Texts, and no Back-Cover Texts.
+
+Files: drivers/oracle/*
+Copyright: (C) 2003-2004, Christian M. Stamgren <christian@stamgren.com>
+	(C) 2001-2004, David Parker <david@neongoat.com>
+	(C) 2001-2007, Ashish Ranjan <ashishwave@yahoo.com>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+Files: drivers/pgsql/*
+Copyright: (C) 2001-2002, David A. Parker <david@neongoat.com>
+	Copyright (C) 2001-2007, Markus Hoenicka <markus@mhoenicka.de>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+Files: driver/pgsql/*.sgml
+Copyright: (C) 2001-2005, Neon Goat Productions <david@neongoat.com>
+	(C) 2001-2003, David A. Parker <david@neongoat.com>
+License: GFDL-1.2
+
+	Permission is granted to copy, distribute and/or modify this document
+	under the terms of the GNU Free Documentation License, Version 1.2
+	published by the Free Software Foundation; with no Invariant Sections,
+	no Front-Cover Texts, and no Back-Cover Texts.
+
+Files: drivers/sqlite/*
+Copyright: (C) 2001-2002, David Parker <david@neongoat.com>
+	(C) 2001-2007, Markus Hoenicka <markus@mhoenicka.de>
+License: GPL-2
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+	USA
+
+Files: drivers/sqlite3/*
+Copyright: (C) 2001-2002, David Parker <david@neongoat.com>
+	(C) 2001-2007, Markus Hoenicka <markus@mhoenicka.de>
+License: GPL-2
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
+	USA
+
+
+Files: drivers/mysql/*
+Copyright: (C) 2001-2002, Mark Tobenkin <mark@brentwoodradio.com>
+	(C) 2001-2002, David Parker <david@neongoat.com>
+	(C) 2001-2007, Markus Hoenicka <markus@mhoenicka.de>
+	(C) 2006, Toby Thain <qu1j0t3@users.sourceforge.net>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+Files: *
+Copyright: (C) 2001-2005, David Parker <david@neongoat.com>
+	(C) 2001-2007, Markus Hoenicka <markus@mhoenicka.de>
+	(C) 2001-2002, Mark Tobenkin <mark@brentwoodradio.com>
+	(C) 2006, Toby Thain <qu1j0t3@users.sourceforge.net>
+	(C) 2003-2004, Christian M. Stamgren <christian@stamgren.com>
+	(C) 2001-2007, Ashish Ranjan <ashishwave@yahoo.com>
+License: LGPL-2.1
+
+	This library is free software; you can redistribute it and/or
+	modify it under the terms of the GNU Lesser General Public
+	License as published by the Free Software Foundation; either
+	version 2.1 of the License, or (at your option) any later version.
+
+	This library is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	Lesser General Public License for more details.
+
+	You should have received a copy of the GNU Lesser General Public
+	License along with this library; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+
+On Debian systems, the complete text of the GNU Lesser General Public
+License can be found in /usr/share/common-licenses/LGPL.

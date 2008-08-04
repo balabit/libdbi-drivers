@@ -1,3 +1,70 @@
+libdbi-drivers (0.8.2-1-4.1) unstable; urgency=high
+
+  * Non-maintainer upload with maintainer's approval.
+  * High urgency upload for RC bugfix.
+  * Pass --freetds-inc-dir to configure, to bypass the ridiculous upstream
+    AC_FIND_FILE() checks for files that *aren't used during the build*;
+    fixes a build failure with FreeTDS 0.82.  Closes: #493349.
+
+ -- Steve Langasek <vorlon@debian.org>  Sat, 02 Aug 2008 09:00:11 +0000
+
+libdbi-drivers (0.8.2-1-4) unstable; urgency=low
+
+  * Updated the dbd_pgsql.c so it doesn't conflicts with the declaration of
+    pg_encoding_to_char() that is now declared in libpq-fe.h: it was not
+    declared in previous API (Closes: #462511)
+  * Added (>= 8.3~rc2-1+b1) for the libpq-dev build-depends so there is no risk
+    of FTBFS with the earlier version of the postgresql lib.
+  * Bumped Standards-Version to 3.7.3
+  * Fixed debian/*.doc-base indentation, and changed from Apps/Programming to
+    Applications/Programming, as it has to be now.
+  * Bumped compat level to 6.
+
+ -- Thomas Goirand <thomas@goirand.fr>  Sun, 27 Jan 2008 08:53:16 +0000
+
+libdbi-drivers (0.8.2-1-3) unstable; urgency=low
+
+  * Added --enable-libdbi to use -ldbi at linking time as Linux only option
+    so there is no dlopen() problem any more (Closes: #324937)
+
+ -- Thomas Goirand <thomas@goirand.fr>  Thu, 06 Dec 2007 05:00:09 +0000
+
+libdbi-drivers (0.8.2-1-2) unstable; urgency=low
+
+  * New maintainer (Closes: #444425)
+  * Now the -g -Wall are always added as compil flags
+  * Homepage: field should not have <> around the URL
+  * Now managing updates of config.sub and config.guess correctly
+  * custom nostrip handling isn't needed since dh_strip handles it properly
+  * Reviewed the debian/copyright for accuracy
+
+ -- Thomas Goirand <thomas@goirand.fr>  Mon, 26 Nov 2007 06:09:08 +0000
+
+libdbi-drivers (0.8.2-1-1) unstable; urgency=low
+
+  * New upstream release
+  * I'm taking over maintainance of this orphaned package (Closes: #444425)
+  * Not using dh_movefile anymore
+  * Added support for packaging the following drivers: sqlite3, freetds
+  (Sybase and MS SQL support). Updated (build) dependencies.
+  * Added a watch file
+  * Switched to debhelper >= 5
+  * Compat is now 5
+  * Cleaned debian/rules
+  * dh_shlibdeps is now working as it should
+
+ -- Thomas Goirand <thomas@goirand.fr>  Sun, 30 Sep 2007 12:02:13 +0000
+
+libdbi-drivers (0.7.1-3.1) unstable; urgency=low
+
+  * NMU
+  * Fix emplacement of pgsql include files (Closes: #322853)
+  * Upgrade to the latest mysql build-dependency (Closes: #356739)
+  * Switch to debhelper >> 4
+  * Don't compress pdf files in order to have valid references in doc-base
+
+ -- Julien Danjou <acid@debian.org>  Wed, 17 May 2006 14:52:19 +0200
+
 libdbi-drivers (0.7.1-3) unstable; urgency=low
 
   * Updated build depends to point to libmysqlclient12-dev (closes: #299163)

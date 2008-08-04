@@ -2,8 +2,9 @@ Document: libdbd-pgsql
 Title: PostgreSQL Driver for libdbi Documentation
 Author: David Parker
 Abstract: Documentation for the libdbi PostgreSQL driver.
-  Written for developers using the pgsql database driver in their libdbi application.
-Section: Apps/Programming
+ Written for developers using the pgsql database driver in their libdbi
+ application.
+Section: Applications/Programming
 
 Format: HTML
 Index: /usr/share/doc/libdbd-pgsql/dbd_pgsql/index.html

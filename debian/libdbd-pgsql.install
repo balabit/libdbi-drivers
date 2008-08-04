@@ -1,0 +1,2 @@
+debian/tmp/usr/lib/dbd/libdbdpgsql.la	/usr/lib/dbd
+debian/tmp/usr/lib/dbd/libdbdpgsql.so	/usr/lib/dbd

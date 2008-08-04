@@ -1,0 +1,2 @@
+debian/tmp/usr/lib/dbd/libdbdmysql.la /usr/lib/dbd
+debian/tmp/usr/lib/dbd/libdbdmysql.so /usr/lib/dbd

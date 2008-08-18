@@ -7,12 +7,19 @@
 # from having to guess our platform (since we know it already)
 DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_BUILD_ARCH ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 
 
 #ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
 #	CFLAGS += -g
 #endif
 CFLAGS += -g -Wall
+ORAOPTS=
+ifneq ($(DEB_BUILD_ARCH),sparc)
+       ORAOPTS=--with-oracle \
+               --with-oracle-incdir=/usr/include/oracle/10.2.0.3/client \
+               --with-oracle-libdir=/usr/lib/oracle/10.2.0.3/client/lib 
+endif
 
 config.status: configure
 	dh_testdir
@@ -23,7 +30,9 @@ config.status: configure
 	./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) \
 		--prefix=/usr --with-pgsql --with-mysql --with-sqlite \
 		--with-sqlite3 --with-freetds --with-freetds-dir=/usr \
-		--enable-docs --enable-libdbi
+		--enable-docs --enable-libdbi \
+		--with-dbi-incdir=/usr/include/dbi $(ORAOPTS)
+
 # This is for the moment removed until the upstream fixes the problems with
 # the new API: --with-firebird
 

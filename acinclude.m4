@@ -169,12 +169,12 @@ if test "$ac_pgsql" = "yes"; then
 	if test "$ac_pgsql_incdir" = "no"; then
 		PGSQL_INCLUDE="-I"`pg_config --includedir`
 	else
-		PGSQL_INCLUDE=-I$ac_mysql_incdir
+		PGSQL_INCLUDE=-I$ac_pgsql_incdir
 	fi
 	if test "$ac_pgsql_libdir" = "no"; then
 		PGSQL_LDFLAGS=`pg_config --libdir`
 	else
-		PGSQL_LDFLAGS=-L$ac_mysql_libdir
+		PGSQL_LDFLAGS=-L$ac_pgsql_libdir
 	fi
 
 	PGSQL_LIBS=-lpq

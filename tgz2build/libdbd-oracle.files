@@ -1,2 +1,2 @@
 opt/syslog-ng/lib/dbd/libdbdoracle.la
-opt/syslog-ng/lib/dbd/libdbdoracle.so
+opt/syslog-ng/lib/dbd/libdbdoracle.s[o,l]

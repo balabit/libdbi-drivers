@@ -4,30 +4,24 @@ STAMPDIR=tgz2build/stamps
 CONFIGURE_OPTS := --prefix=$(ZBS_PREFIX) --disable-docs --without-oracle
 
 ifneq (,$(findstring solaris,$(ZBS_DIST)))
-# Under solaris we need this switch to be able to use iconv.
-  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-mysql --with-pgsql --with-freetds --with-freetds-incdir=/opt/syslog-ng/include/ --with-freetds-libdir=/opt/syslog-ng/lib/
+  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-freetds --with-freetds-incdir=/opt/syslog-ng/include/ --with-freetds-libdir=/opt/syslog-ng/lib/ --with-mysql --with-mysql-libdir=/usr/local/mysql/lib/mysql/lib --with-mysql-incdir=/usr/local/mysql/include --with-sqlite3 --without-sqlite --with-pgsql --with-pgsql-libdir=/usr/local/pgsql/lib --with-pgsql-incdir=/usr/local/pgsql/include
 endif
 
 ifneq (,$(findstring hpux,$(ZBS_DIST)))
-# Under hpux we need this switch to be able to use iconv.
-  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-mysql --with-pgsql --with-freetds --with-freetds-incdir=/opt/syslog-ng/include/ --with-freetds-libdir=/opt/syslog-ng/lib/
+  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/local/lib --with-freetds --with-freetds-incdir=/opt/syslog-ng/include/ --with-freetds-libdir=/opt/syslog-ng/lib/
 endif
 
 ifneq (,$(findstring aix,$(ZBS_DIST)))
-# Under hpux we need this switch to be able to use iconv.
-  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib 
-#--with-mysql --with-pgsql --with-freetds --with-freetds-incdir=/opt/syslog-ng/include/ --with-freetds-libdir=/opt/syslog-ng/lib/
+  CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-freetds --with-freetds-incdir=/opt/syslog-ng/inc    lude/ --with-freetds-libdir=/opt/syslog-ng/lib/ 
 endif
 
 ifneq (,$(findstring freebsd,$(ZBS_DIST)))
-# Under solaris we need this switch to be able to use iconv.
   CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-mysql --with-pgsql --with-freetds --with-freetds-incdir=/opt/syslog-ng/include/ --with-freetds-libdir=/opt/syslog-ng/lib/
 LDFLAGS+="-Wl,-brtl"
 endif
 
 
 ifneq (,$(findstring linux-generic,$(ZBS_DIST)))
-# Under hpux we need this switch to be able to use iconv.
   CONFIGURE_OPTS += --with-dbi --with-dbi-incdir=/opt/syslog-ng/include/ --with-dbi-libdir=/opt/syslog-ng/lib/ --with-sqlite3 --with-sqlite3-incdir=/usr/local/include/ --with-sqlite3-libdir=/usr/local/lib --with-mysql --with-pgsql --with-freetds --with-freetds-incdir=/opt/syslog-ng/include/ --with-freetds-libdir=/opt/syslog-ng/lib/ --with-oracle --with-oracle-incdir=/opt/syslog-ng/include/oracle/10.2.0.3/client/ --with-oracle-libdir=/opt/syslog-ng/lib/oracle/10.2.0.3/client/lib/
 endif
 

@@ -1,2 +1,2 @@
 opt/syslog-ng/lib/dbd/libdbdmysql.la
-opt/syslog-ng/lib/dbd/libdbdmysql.so
+opt/syslog-ng/lib/dbd/libdbdmysql.s[o,l]

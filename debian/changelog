@@ -1,3 +1,9 @@
+libdbi-drivers (0.8.2-2.syslogng30) syslogng30; urgency=low
+
+  * Increased version, just for testing.
+
+ -- ZorpOS Maintainers <zorpos@balabit.com>  Tue, 09 Sep 2008 11:49:25 +0200
+
 libdbi-drivers (0.8.2-1.syslogng30) syslogng30; urgency=low
 
   * Added tgz2build support.

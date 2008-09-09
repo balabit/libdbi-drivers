@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Thomas Goirand <thomas@goirand.fr>
 Build-Depends: debhelper (>= 5), autotools-dev, libdbi0-dev (>= 0.7.0), libmysqlclient-dev, libsqlite0-dev, libsqlite3-dev, freetds-dev, oracle-instantclient-lite-dev
 Standards-Version: 3.7.3
-Homepage: http://libdbi.sourceforge.net/
+X-Homepage: http://libdbi.sourceforge.net/
 
 Package: libdbd-sqlite
 Section: libs
@@ -55,7 +55,7 @@ Description: Freetds database server driver for libdbi
 Package: libdbd-oracle
 Section: libs
 Architecture: any
-Depends: libdbi0 (>= 0.8.2), ${shlibs:Depends}
+Depends: libdbi0 (>= 0.8.2), oracle-instantclient-lite (>=10.2.0.3), ${shlibs:Depends}
 Description: Oracle database server driver for libdbi
  This driver provides connectivity to Oracle database servers through the
  libdbi Database Independent Abstraction Layer. Switching a program's driver

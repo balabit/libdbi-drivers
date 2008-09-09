@@ -1,2 +1,2 @@
-opt/syslog-ng/lib/dbd/libdbdfreetds.so
+opt/syslog-ng/lib/dbd/libdbdfreetds.s[o,l]
 opt/syslog-ng/lib/dbd/libdbdfreetds.la

@@ -36,7 +36,7 @@ $(STAMPDIR)/stamp-setup:
 	touch $@
 
 configure: $(STAMPDIR)/stamp-configure
-	LDFLAGS=$(LDFLAGS) ./configure $(CONFIGURE_OPTS)
+	LDFLAGS=" $(RPATH) $(LDFLAGS)" ./configure $(CONFIGURE_OPTS)
 	touch $@
 
 $(STAMPDIR)/stamp-configure: setup

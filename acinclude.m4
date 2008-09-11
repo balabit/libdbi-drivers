@@ -284,7 +284,7 @@ if test "$ac_sqlite3" = "yes"; then
 		AC_SEARCH_LIBS_VAR([sqlite3_exec], sqlite3, , , , SQLITE3_LIBS)
 		SQLITE3_LDFLAGS=""
 	else
-		SQLITE3_LIBS=-lsqlite
+		SQLITE3_LIBS=-lsqlite3
 		SQLITE3_LDFLAGS=-L$ac_sqlite3_libdir
 	fi
 

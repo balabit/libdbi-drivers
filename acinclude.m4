@@ -117,6 +117,7 @@ if test "$ac_mysql" = "yes"; then
 	else
 		MYSQL_LDFLAGS=-L$ac_mysql_libdir
 	fi
+    MYSQL_LIBS=-lmysqlclient
 
 	AM_CONDITIONAL(HAVE_MYSQL, true)
 	

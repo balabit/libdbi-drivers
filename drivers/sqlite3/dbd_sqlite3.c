@@ -718,22 +718,6 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
   }
   //printf("table = %s\ncolumn = %s\n",curr_table,curr_field);
 
-  /* If curr_table is empty, this means we have to get the
-     select tables from the statement (it is possible there is more than one),
-     otherwise we have the table for this field.
-     It would seem that even if the table is aliased in the statement,
-     we still have the original table name.
-     sqlite3_get_table returns the tablename and not the alias when returning table.column.
-     It probably isn't a good idea to rely on this, but we will. */
-
-  if ( strlen(curr_table) < 1 ) {
-    //printf("not curr_table\n");
-    table_count = getTables(tables,0,statement_copy);
-    //printf("*********TABLELIST************\n");
-    //		for ( counter = 0 ; counter < table_count ; counter++) {
-    //			printf("%s\n",tables[counter]);
-    //		}
-  }
 
   // resolve our curr_field to a real column
   char* token;
@@ -961,6 +945,7 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
     }
     token = strtok_r(NULL, " ,;", &saveptr);
   }
+  free(statement_copy);
   //printf("table = %s\ncolumn = %s\n",curr_table,curr_field);
 
   /* now we have to look for the field type in the curr_table
@@ -1008,6 +993,25 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
      * The reasoning here is that fields with the same name will
      * probably be the same type.  Obviously, this is a hole.
      */
+
+    /* If curr_table is empty, this means we have to get the
+       select tables from the statement (it is possible there is more than one),
+       otherwise we have the table for this field.
+       It would seem that even if the table is aliased in the statement,
+       we still have the original table name.
+       sqlite3_get_table returns the tablename and not the alias when returning table.column.
+       It probably isn't a good idea to rely on this, but we will. */
+
+    if ( strlen(curr_table) < 1 ) {
+      //printf("not curr_table\n");
+      table_count = getTables(tables,0,statement);
+      //printf("*********TABLELIST************\n");
+      //		for ( counter = 0 ; counter < table_count ; counter++) {
+      //			printf("%s\n",tables[counter]);
+      //		}
+    }
+     
+     
     if ( table_count > 0 ) {
 
       for ( counter = 0 ; counter < table_count ; counter++ ) {
@@ -1038,6 +1042,10 @@ int find_result_field_types(char* field, dbi_conn_t *conn, const char* statement
 	}
 	if ( curr_type )
 	  break;
+      }
+      
+      for ( counter = 0 ; counter < table_count ; counter++ ) {
+        free(tables[counter]);
       }
       if (!curr_type) {
 	/* the field was not found in any of the tables!

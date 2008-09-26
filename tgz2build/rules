@@ -1,10 +1,21 @@
 #!/usr/local/bin/make -f                                                                                                                                           
 STAMPDIR=tgz2build/stamps
 
-CONFIGURE_OPTS := --prefix=$(ZBS_PREFIX) --disable-docs --without-oracle --with-dbi --with-dbi-incdir=$(ZBS_PREFIX)/include/ --with-dbi-libdir=$(ZBS_PREFIX)/lib/ --with-freetds --with-freetds-incdir=$(ZBS_PREFIX)/include/ --with-freetds-libdir=$(ZBS_PREFIX)/lib/ --with-mysql --with-mysql-libdir=$(ZBS_PREFIX)/lib/ --with-mysql-incdir=$(ZBS_PREFIX)/include/ --with-pgsql --with-pgsql-libdir=$(ZBS_PREFIX)/lib --with-pgsql-incdir=$(ZBS_PREFIX)/include --with-sqlite3 --with-sqlite3-libdir=$(ZBS_PREFIX)/lib --with-sqlite3-incdir=$(ZBS_PREFIX)/include --without-sqlite
+CONFIGURE_OPTS := --prefix=$(ZBS_PREFIX) --disable-docs --without-oracle --with-dbi --with-dbi-incdir=$(ZBS_PREFIX)/include/ --with-dbi-libdir=$(ZBS_PREFIX)/lib/ --with-freetds --with-freetds-incdir=$(ZBS_PREFIX)/include/ --with-freetds-libdir=$(ZBS_PREFIX)/lib/ --with-mysql --with-mysql-libdir=$(ZBS_PREFIX)/lib/ --with-mysql-incdir=$(ZBS_PREFIX)/include/ --with-pgsql --with-pgsql-libdir=$(ZBS_PREFIX)/lib --with-pgsql-incdir=$(ZBS_PREFIX)/include --with-sqlite3 --with-sqlite3-libdir=$(ZBS_PREFIX)/lib --with-sqlite3-incdir=$(ZBS_PREFIX)/include --without-sqlite 
 
+ifeq (,$(findstring freebsd,$(ZBS_DIST)))
+	CONFIGURE_OPTS += --with-oracle --with-oracle-libdir=$(ZBS_PREFIX)/lib --with-oracle-incdir=$(ZBS_PREFIX)/include
+endif
 
 RPATH=-Wl,-R/$(ZBS_PREFIX)
+
+ifneq (,$(findstring aix,$(ZBS_DIST)))
+	RPATH=-Wl,-blibpath:/opt/syslog-ng/lib:/usr/lib:/lib
+endif
+
+ifneq (,$(findstring hpux,$(ZBS_DIST)))
+	RPATH=-Wl,+b/opt/syslog-ng/lib
+endif
 
 all: binary
 

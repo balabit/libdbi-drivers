@@ -1,3 +1,10 @@
+libdbi-drivers (0.8.2-3.syslogng30) syslogng30; urgency=low
+
+  * Fixed AIX packaging again. 
+  * On AIX don't put .so files to .a files.
+
+ -- Tamas Pal <folti@balabit.com>  Tue, 07 Oct 2008 16:12:51 +0200
+
 libdbi-drivers (0.8.2-2.syslogng30) syslogng30; urgency=low
 
   * Increased version, just for testing.

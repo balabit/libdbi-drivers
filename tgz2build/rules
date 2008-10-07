@@ -11,6 +11,7 @@ RPATH=-Wl,-R/$(ZBS_PREFIX)
 
 ifneq (,$(findstring aix,$(ZBS_DIST)))
 	RPATH=-Wl,-blibpath:/opt/syslog-ng/lib:/usr/lib:/lib
+	LDFLAGS+="-Wl,-brtl"
 endif
 
 ifneq (,$(findstring hpux,$(ZBS_DIST)))

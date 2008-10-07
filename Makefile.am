@@ -2,7 +2,9 @@
 
 AUTOMAKE_OPTIONS = foreign dist-zip
 
-SUBDIRS = drivers tests @docs_subdirs@
+ACLOCAL_AMFLAGS=-I m4
+
+SUBDIRS = drivers tests @docs_subdirs@ m4
 
 EXTRA_DIST = AUTHORS COPYING ChangeLog INSTALL README README.win32 README.osx README.encodings TODO libdbi.spec.in config.h.in Makefile.w32 autogen.sh fixlt.sh
 

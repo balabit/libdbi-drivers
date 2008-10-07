@@ -13,3 +13,7 @@ aclocal.m4
 ltmain.sh
 autom4te.cache
 gtk-doc.make
+m4/libtool.m4
+m4/lt*.m4
+typescript
+*~

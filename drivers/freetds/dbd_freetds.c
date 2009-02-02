@@ -248,6 +248,15 @@ int dbd_connect(dbi_conn_t * conn)
 	    return -1;
 	}
     }
+    str = (char *) dbi_conn_get_option(conn, "port");
+    if (str) {
+        num = strtol(str, NULL, 0);
+        ret = ct_con_props(tdscon->conn, CS_SET, CS_PORT, &num, sizeof(num), NULL);
+        if (ret != CS_SUCCEED) {
+	    // fprintf(stderr, "ct_con_props() SET PORT failed!\n");
+            return -1;
+        }
+    }
 
     /* Connect to CLI */
     ret = ct_connect(tdscon->conn,

@@ -1,0 +1,25 @@
+#!/bin/sh
+
+cmd=$1
+shift
+case "$cmd" in
+  bootstrap)
+    ./autogen.sh
+
+    ;;
+  configure)
+    ./configure --disable-docs --without-oracle \
+    		--with-dbi --with-dbi-incdir='${prefix}/include/' --with-dbi-libdir='${prefix}/lib/' \
+    		--with-freetds --with-mysql --with-pgsql \
+    		--with-sqlite3 --without-sqlite \
+    		$@
+    ;;
+  make)
+    make $@
+    ;;
+  *)
+    echo "Unknown command: $cmd"
+    exit 1
+    ;;
+esac
+exit 0

@@ -1,3 +1,9 @@
+libdbi-drivers (0.8.2-4.syslogng30) syslogng30; urgency=low
+
+  * Added support for setting MSSQL port number in the freetds driver.
+
+ -- Balazs Scheidler <bazsi@bzorp.balabit>  Tue, 03 Feb 2009 10:52:12 +0100
+
 libdbi-drivers (0.8.2-3.syslogng30) syslogng30; urgency=low
 
   * Fixed AIX packaging again. 

@@ -56,7 +56,6 @@ typedef struct freedts_type {
     CS_CONNECTION *conn;
     CS_COMMAND *cmd;
 } FREETDSCON;
-static FREETDSCON freetds;
 
 static const dbi_info_t driver_info = {
     "freetds",
@@ -150,12 +149,13 @@ int dbd_initialize(dbi_driver_t * driver)
 
 int dbd_connect(dbi_conn_t * conn)
 {
-
-    FREETDSCON *tdscon = &freetds;
+    FREETDSCON *tdscon;
     CS_RETCODE ret;
 
     char *str;
     unsigned int num;
+    
+    tdscon = malloc(sizeof(FREETDSCON));
 /*
  * Allocate memory for structs
  */
@@ -174,7 +174,7 @@ int dbd_connect(dbi_conn_t * conn)
 	/* Deallocate "ctx" struct */
 	cs_ctx_drop(tdscon->ctx);
     }
-
+    free(tdscon);
     return -1;
   success_allocate:
     conn->connection = tdscon;
@@ -282,7 +282,7 @@ int dbd_disconnect(dbi_conn_t * conn)
     ct_con_drop(tdscon->conn);
     ct_exit(tdscon->ctx, CS_UNUSED);
     cs_ctx_drop(tdscon->ctx);
-
+    free(tdscon);
     return 0;
 }
 

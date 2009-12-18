@@ -1,8 +1,14 @@
-libdbi-drivers (0.8.2-5.syslogng30) syslogng30; urgency=low
+libdbi-drivers (0.8.2-6.syslogng30) syslogng30; urgency=low
 
   * Allow multiple instances of the FreeTDS backend.
 
  -- ZorpOS Maintainers <zorpos@balabit.com>  Tue, 05 Aug 2008 11:09:18 +0200
+
+libdbi-drivers (0.8.2-5.syslogng30) syslogngdeps10; urgency=low
+
+  * Added Tru64 building instructions to tgz2build.
+
+ -- Tamas Pal <folti@balabit.com>  Fri, 18 Dec 2009 17:17:29 +0100
 
 libdbi-drivers (0.8.2-4.syslogng30) syslogng30; urgency=low
 

@@ -18,6 +18,10 @@ ifneq (,$(findstring hpux,$(ZBS_DIST)))
 	RPATH=-Wl,+b/opt/syslog-ng/lib
 endif
 
+ifneq (,$(findstring tru64,$(ZBS_DIST)))
+	RPATH=-Wl,-rpath,/opt/syslog-ng/lib
+endif
+
 all: binary
 
 binary: setup configure build install
